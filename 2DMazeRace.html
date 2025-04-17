@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>3D Bouncing Spheres in Maze</title>
+  <style>
+    canvas { border: 1px solid black; display: block; margin: auto; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" width="800" height="600"></canvas>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, canvas.width / canvas.height, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setSize(canvas.width, canvas.height);
+    
+    const radius = 300;
+    let angle = 0;
+    
+    class Sphere {
+      constructor(x, y, z, radius, color, dx, dy, dz) {
+        this.radius = radius;
+        this.mass = radius * radius;
+        this.mesh = new THREE.Mesh(
+          new THREE.SphereGeometry(radius, 32, 32),
+          new THREE.MeshPhongMaterial({ color })
+        );
+        this.mesh.position.set(x, y, z);
+        scene.add(this.mesh);
+        this.dx = dx;
+        this.dy = dy;
+        this.dz = dz;
+      }
+      
+      update(walls) {
+        const nextX = this.mesh.position.x + this.dx;
+        const nextY = this.mesh.position.y + this.dy;
+        const nextZ = this.mesh.position.z + this.dz;
+        
+        let collisionX = false, collisionY = false;
+        
+        walls.forEach(wall => {
+          const wx = wall.position.x, wy = wall.position.y;
+          const ww = wall.scale.x / 2, wh = wall.scale.y / 2;
+          const sr = this.radius;
+          
+          if (
+            nextX + sr > wx - ww && nextX - sr < wx + ww &&
+            nextY + sr > wy - wh && nextY - sr < wy + wh
+          ) {
+            const dx = nextX - wx, dy = nextY - wy;
+            if (Math.abs(dx / ww) > Math.abs(dy / wh)) {
+              collisionX = true;
+              this.mesh.position.x = dx > 0 ? wx + ww + sr : wx - ww - sr;
+            } else {
+              collisionY = true;
+              this.mesh.position.y = dy > 0 ? wy + wh + sr : wy - wh - sr;
+            }
+          }
+        });
+        
+        const boxSize = 100;
+        if (Math.abs(nextX) + this.radius > boxSize) collisionX = true;
+        if (Math.abs(nextY) + this.radius > boxSize) collisionY = true;
+        if (Math.abs(nextZ) + this.radius > boxSize) this.dz = -this.dz;
+        
+        if (!collisionX) this.mesh.position.x = nextX;
+        if (!collisionY) this.mesh.position.y = nextY;
+        this.mesh.position.z += this.dz;
+        
+        if (collisionX) this.dx = -this.dx;
+        if (collisionY) this.dy = -this.dy;
+      }
+    }
+    
+    const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff];
+    let spheres = [];
+    let startTime = Date.now();
+    let sphereCount = 0;
+    
+    const walls = [];
+    function createMaze() {
+      const wallMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x888888, 
+        transparent: true, 
+        opacity: 0.5 
+      });
+      const wallGeometry = new THREE.BoxGeometry(1, 1, 10);
+      const mazeLayout = [
+        // Outer walls
+        { x: -100, y: 0, w: 10, h: 200 },
+        { x: 100, y: 0, w: 10, h: 200 },
+        { x: 0, y: -100, w: 200, h: 10 },
+        { x: 0, y: 100, w: 200, h: 10 },
+        // Inner complex walls
+        { x: -70, y: 50, w: 10, h: 80 },
+        { x: 70, y: -50, w: 10, h: 80 },
+        { x: -30, y: 70, w: 60, h: 10 },
+        { x: 30, y: -70, w: 60, h: 10 },
+        { x: -50, y: 0, w: 10, h: 60 },
+        { x: 50, y: 0, w: 10, h: 60 },
+        { x: 0, y: 30, w: 80, h: 10 },
+        { x: 0, y: -30, w: 80, h: 10 },
+        { x: -80, y: 20, w: 10, h: 50 },
+        { x: 80, y: -20, w: 10, h: 50 },
+        { x: -20, y: 0, w: 50, h: 10 },
+        { x: 20, y: 0, w: 50, h: 10 }
+      ];
+      
+      mazeLayout.forEach(wall => {
+        const mesh = new THREE.Mesh(wallGeometry, wallMaterial);
+        mesh.position.set(wall.x, wall.y, 0);
+        mesh.scale.set(wall.w, wall.h, 10);
+        scene.add(mesh);
+        walls.push(mesh);
+      });
+    }
+    
+    createMaze();
+    
+    function addSphere(x = null, y = null, z = null) {
+      const radius = 5;
+      let posX, posY;
+      do {
+        posX = x || (Math.random() - 0.5) * 180;
+        posY = y || (Math.random() - 0.5) * 180;
+      } while (isInsideWall(posX, posY, radius));
+      const posZ = z || (Math.random() - 0.5) * 10;
+      const speed = 1;
+      const dx = (Math.random() - 0.5) * speed * 2;
+      const dy = (Math.random() - 0.5) * speed * 2;
+      const dz = (Math.random() - 0.5) * speed * 2;
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      spheres.push(new Sphere(posX, posY, posZ, radius, color, dx, dy, dz));
+      sphereCount++;
+    }
+    
+    function isInsideWall(x, y, radius) {
+      return walls.some(wall => {
+        const wx = wall.position.x, wy = wall.position.y;
+        const ww = wall.scale.x / 2, wh = wall.scale.y / 2;
+        return x + radius > wx - ww && x - radius < wx + ww &&
+               y + radius > wy - wh && y - radius < wy + wh;
+      });
+    }
+    
+    function handleCollisions() {
+      for (let i = 0; i < spheres.length; i++) {
+        for (let j = i + 1; j < spheres.length; j++) {
+          const s1 = spheres[i];
+          const s2 = spheres[j];
+          const dx = s2.mesh.position.x - s1.mesh.position.x;
+          const dy = s2.mesh.position.y - s1.mesh.position.y;
+          const dz = s2.mesh.position.z - s1.mesh.position.z;
+          const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+          
+          if (distance < s1.radius + s2.radius) {
+            if (s1.mesh.material.color.getHex() === s2.mesh.material.color.getHex()) {
+              const newRadius = Math.sqrt(s1.radius * s1.radius + s2.radius * s2.radius);
+              const newSphere = new Sphere(
+                s1.mesh.position.x, s1.mesh.position.y, s1.mesh.position.z,
+                newRadius, s1.mesh.material.color.getHex(), s1.dx, s1.dy, s1.dz
+              );
+              scene.remove(s1.mesh);
+              scene.remove(s2.mesh);
+              spheres.splice(j, 1);
+              spheres.splice(i, 1, newSphere);
+              sphereCount--;
+            } else {
+              const normalX = dx / distance;
+              const normalY = dy / distance;
+              const normalZ = dz / distance;
+              
+              const v1 = new THREE.Vector3(s1.dx, s1.dy, s1.dz);
+              const v2 = new THREE.Vector3(s2.dx, s2.dy, s2.dz);
+              const v1n = v1.dot(new THREE.Vector3(normalX, normalY, normalZ));
+              const v2n = v2.dot(new THREE.Vector3(normalX, normalY, normalZ));
+              
+              const finalV1n = ((s1.mass - s2.mass) * v1n + 2 * s2.mass * v2n) / (s1.mass + s2.mass);
+              const finalV2n = ((s2.mass - s1.mass) * v2n + 2 * s1.mass * v1n) / (s1.mass + s2.mass);
+              
+              s1.dx += (finalV1n - v1n) * normalX;
+              s1.dy += (finalV1n - v1n) * normalY;
+              s1.dz += (finalV1n - v1n) * normalZ;
+              s2.dx += (finalV2n - v2n) * normalX;
+              s2.dy += (finalV2n - v2n) * normalY;
+              s2.dz += (finalV2n - v2n) * normalZ;
+              
+              const overlap = (s1.radius + s2.radius - distance) / 2;
+              s1.mesh.position.x -= overlap * normalX;
+              s1.mesh.position.y -= overlap * normalY;
+              s1.mesh.position.z -= overlap * normalZ;
+              s2.mesh.position.x += overlap * normalX;
+              s2.mesh.position.y += overlap * normalY;
+              s2.mesh.position.z += overlap * normalZ;
+            }
+          }
+        }
+      }
+    }
+    
+    const gradientTexture = new THREE.CanvasTexture(generateGradient());
+    function generateGradient() {
+      const c = document.createElement('canvas');
+      c.width = 1;
+      c.height = 256;
+      const context = c.getContext('2d');
+      const gradient = context.createLinearGradient(0, 256, 0, 0);
+      gradient.addColorStop(0, 'black');
+      gradient.addColorStop(1, 'grey');
+      context.fillStyle = gradient;
+      context.fillRect(0, 0, 1, 256);
+      return c;
+    }
+    
+    scene.background = gradientTexture;
+    
+    const light = new THREE.DirectionalLight(0xffffff, 0.5);
+    light.position.set(0, 1, 1);
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0x404040));
+    
+    const uiCanvas = document.createElement('canvas');
+    uiCanvas.width = 256;
+    uiCanvas.height = 64;
+    const uiContext = uiCanvas.getContext('2d');
+    const uiTexture = new THREE.CanvasTexture(uiCanvas);
+    const uiSprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: uiTexture })
+    );
+    uiSprite.position.set(-canvas.width / 4, canvas.height / 4 - 32, 0);
+    uiSprite.scale.set(256, 64, 1);
+    scene.add(uiSprite);
+    
+    function updateUI() {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      uiContext.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
+      uiContext.fillStyle = 'white';
+      uiContext.font = '20px Arial';
+      uiContext.fillText(`Time: ${elapsed}s`, 10, 20);
+      uiContext.fillText(`Spheres: ${sphereCount}`, 10, 40);
+      uiTexture.needsUpdate = true;
+    }
+    
+    function updateCamera() {
+      angle += 0.01;
+      camera.position.x = radius * Math.cos(angle);
+      camera.position.z = radius * Math.sin(angle);
+      camera.position.y = 50;
+      camera.lookAt(0, 0, 0);
+    }
+    
+    function animate() {
+      updateCamera();
+      spheres.forEach(sphere => sphere.update(walls));
+      handleCollisions();
+      updateUI();
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+    
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / canvas.width) * 2 - 1;
+      const y = -((e.clientY - rect.top) / canvas.height) * 2 + 1;
+      const vector = new THREE.Vector3(x, y, 0.5).unproject(camera);
+      const dir = vector.sub(camera.position).normalize();
+      const distance = -camera.position.z / dir.z;
+      const pos = camera.position.clone().add(dir.multiplyScalar(distance));
+      addSphere(pos.x, pos.y, 0);
+    });
+    
+    setInterval(addSphere, 1000);
+    addSphere();
+    animate();
+  </script>
+</body>
+</html>
