@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>3D Maze with Ten Moving Balls, Path, Sun, Floor, and Star Field</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+</head>
+<body>
+<script>
+let maze = [];
+let balls = [];
+let stars = [];
+let cellSize = 10;
+let cols = 30;
+let rows = 30;
+let start = { x: 1, y: 1 };
+let end = { x: cols - 2, y: rows - 2 };
+let stack = [];
+let path = [];
+let startTime;
+let gameOver = false;
+let winner = null;
+let winTime = null;
+let cameraAngle = 0;
+
+class Star {
+  constructor() {
+    this.x = random(-width * 2, width * 2);
+    this.y = random(-height * 2, height * 2);
+    this.z = random(100, 1000);
+    this.speed = random(1, 3);
+  }
+
+  update() {
+    this.z -= this.speed;
+    if (this.z < 100) {
+      this.z = 1000;
+      this.x = random(-width * 2, width * 2);
+      this.y = random(-height * 2, height * 2);
+    }
+  }
+
+  show() {
+    push();
+    translate(this.x, this.y, this.z);
+    fill(255);
+    noStroke();
+    sphere(2, 4, 4);
+    pop();
+  }
+}
+
+class Ball {
+  constructor(x, y, color) {
+    this.pos = { x: x * cellSize, y: y * cellSize };
+    this.dir = { x: 1, y: 0 };
+    this.speed = 2;
+    this.color = color;
+  }
+
+  update() {
+    if (gameOver) return;
+    let nextX = this.pos.x + this.dir.x * this.speed;
+    let nextY = this.pos.y + this.dir.y * this.speed;
+    let cellX = Math.floor(nextX / cellSize);
+    let cellY = Math.floor(nextY / cellSize);
+
+    if (cellY < 0 || cellY >= rows || cellX < 0 || cellX >= cols || maze[cellY][cellX] === 1) {
+      if (this.dir.x !== 0) {
+        this.dir = random([{ x: 0, y: 1 }, { x: 0, y: -1 }]);
+      } else {
+        this.dir = random([{ x: 1, y: 0 }, { x: -1, y: 0 }]);
+      }
+      nextX = this.pos.x;
+      nextY = this.pos.y;
+    }
+
+    this.pos.x = nextX;
+    this.pos.y = nextY;
+
+    if (cellX === end.x && cellY === end.y) {
+      gameOver = true;
+      winner = this;
+      winTime = (millis() - startTime) / 1000;
+    }
+  }
+
+  show() {
+    push();
+    translate(this.pos.x, this.pos.y, cellSize / 2);
+    fill(this.color);
+    noStroke();
+    sphere(cellSize / 4, 8, 8);
+    pop();
+  }
+}
+
+function setup() {
+  createCanvas(800, 600, WEBGL);
+  frameRate(30);
+  maze = Array(rows).fill().map(() => Array(cols).fill(1));
+  maze[start.y][start.x] = 0;
+  stack.push(start);
+  generateMaze();
+  maze[end.y][end.x] = 0;
+  findPath();
+  let colors = [
+    color(255, 0, 0), color(0, 0, 255), color(255, 255, 0),
+    color(0, 255, 0), color(255, 0, 255), color(0, 255, 255),
+    color(128, 0, 0), color(0, 128, 0), color(0, 0, 128),
+    color(128, 128, 0)
+  ];
+  for (let i = 0; i < 10; i++) {
+    balls.push(new Ball(start.x, start.y, colors[i]));
+  }
+  for (let i = 0; i < 100; i++) {
+    stars.push(new Star());
+  }
+  startTime = millis();
+}
+
+function generateMaze() {
+  while (stack.length > 0) {
+    let current = stack[stack.length - 1];
+    let neighbors = getUnvisitedNeighbors(current);
+    if (neighbors.length > 0) {
+      let next = random(neighbors);
+      let x = (current.x + next.x) / 2;
+      let y = (current.y + next.y) / 2;
+      maze[y][x] = 0;
+      maze[next.y][next.x] = 0;
+      stack.push(next);
+    } else {
+      stack.pop();
+    }
+  }
+}
+
+function getUnvisitedNeighbors(cell) {
+  let neighbors = [];
+  let directions = [
+    { x: 0, y: -2 },
+    { x: 0, y: 2 },
+    { x: -2, y: 0 },
+    { x: 2, y: 0 }
+  ];
+  for (let dir of directions) {
+    let nx = cell.x + dir.x;
+    let ny = cell.y + dir.y;
+    if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && maze[ny][nx] === 1) {
+      neighbors.push({ x: nx, y: ny });
+    }
+  }
+  return neighbors;
+}
+
+function findPath() {
+  let visited = Array(rows).fill().map(() => Array(cols).fill(false));
+  let queue = [{ x: start.x, y: start.y, path: [{ x: start.x, y: start.y }] }];
+  visited[start.y][start.x] = true;
+
+  while (queue.length > 0) {
+    let { x, y, path: currentPath } = queue.shift();
+    if (x === end.x && y === end.y) {
+      path = currentPath;
+      return;
+    }
+
+    let directions = [
+      { x: 0, y: -1 },
+      { x: 0, y: 1 },
+      { x: -1, y: 0 },
+      { x: 1, y: 0 }
+    ];
+    for (let dir of directions) {
+      let nx = x + dir.x;
+      let ny = y + dir.y;
+      if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && !visited[ny][nx] && maze[ny][nx] === 0) {
+        visited[ny][nx] = true;
+        queue.push({ x: nx, y: ny, path: [...currentPath, { x: nx, y: ny }] });
+      }
+    }
+  }
+}
+
+function draw() {
+  background(0); // Black background
+  cameraAngle += 0.015;
+  let camX = Math.sin(cameraAngle) * 500;
+  let camY = Math.cos(cameraAngle) * 500;
+  camera(camX, camY, 250, cols * cellSize / 2, rows * cellSize / 2, 0, 0, 0, -1);
+
+  directionalLight(255, 255, 200, -0.5, -0.5, -1);
+  ambientLight(80);
+
+  for (let star of stars) {
+    star.update();
+    star.show();
+  }
+
+  push();
+  translate(0, 0, -cellSize / 2);
+  fill(150);
+  noStroke();
+  plane(cols * cellSize, rows * cellSize);
+  pop();
+
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      if (maze[y][x] === 1) {
+        push();
+        translate(x * cellSize, y * cellSize, cellSize / 2);
+        fill(100);
+        noStroke();
+        box(cellSize, cellSize, cellSize, 4, 4);
+        pop();
+      }
+    }
+  }
+
+  push();
+  translate(end.x * cellSize, end.y * cellSize, cellSize / 2);
+  fill(0, 255, 0);
+  noStroke();
+  box(cellSize, 4, 4);
+  pop();
+
+  push();
+  stroke(144, 238, 144);
+  strokeWeight(1);
+  noFill();
+  beginShape(LINES);
+  for (let i = 0; i < path.length - 1; i++) {
+    let p1 = path[i];
+    let p2 = path[i + 1];
+    vertex(p1.x * cellSize, p1.y * cellSize, 0);
+    vertex(p2.x * cellSize, p2.y * cellSize, 0);
+  }
+  endShape();
+  pop();
+
+  for (let ball of balls) {
+    ball.update();
+    ball.show();
+  }
+
+  if (gameOver) {
+    push();
+    translate(cols * cellSize / 2, rows * cellSize / 2, 80);
+    fill(255, 0, 0);
+    textSize(20);
+    textAlign(CENTER);
+    text("Game Over", 0, 0);
+    text(`Winner: Ball`, 0, 25);
+    translate(-30, 20, 0);
+    fill(winner.color);
+    sphere(cellSize / 4, 8, 8);
+    pop();
+    push();
+    translate(cols * cellSize / 2, rows * cellSize / 2, 80);
+    fill(255, 0, 0);
+    text(`Time: ${winTime.toFixed(2)}s`, 0, 50);
+    pop();
+  }
+}
+
+function mousePressed() {
+  if (!gameOver) {
+    for (let ball of balls) {
+      ball.speed *= 2;
+    }
+  }
+}
+</script>
+</body>
+</html>
