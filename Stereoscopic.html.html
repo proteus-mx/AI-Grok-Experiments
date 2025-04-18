@@ -1,0 +1,182 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row =>
+                    row.some(cell => cell !== '' && cell !== null && cell !== undefined)
+                );
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html>
+<head>
+  <title>3D Shaded Morph Stereoscopic</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; }
+    canvas { display: block; }
+    #container { display: flex; }
+  </style>
+</head>
+<body>
+  <div id="container"></div>
+  <script>
+    const scene = new THREE.Scene();
+    const cameraLeft = new THREE.PerspectiveCamera(75, window.innerWidth / 2 / window.innerHeight, 0.1, 1000);
+    const cameraRight = new THREE.PerspectiveCamera(75, window.innerWidth / 2 / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    const container = document.getElementById('container');
+    container.appendChild(renderer.domElement);
+
+    const light = new THREE.DirectionalLight(0xffffff, 0.8);
+    light.position.set(1, 1, 1).normalize();
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0x404040));
+
+    const shapes = [
+      new THREE.TetrahedronGeometry(1, 0),
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.OctahedronGeometry(1, 0),
+      new THREE.DodecahedronGeometry(1, 0),
+      new THREE.IcosahedronGeometry(1, 0)
+    ];
+
+    let currentShape = 0;
+    let morphProgress = 0;
+    let holdTime = 0;
+    const holdDuration = 60; // 1 second at 60fps
+    const geometry = new THREE.BufferGeometry();
+    const material = new THREE.MeshPhongMaterial({ 
+      color: 0xff00ff, 
+      shininess: 100, 
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.7
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+
+    let startPositions, targetPositions, startNormals, targetNormals;
+    const eyeSeparation = 0.06; // Distance between eyes for stereoscopic effect
+
+    function updateGeometry() {
+      const fromGeometry = shapes[currentShape];
+      const toGeometry = shapes[(currentShape + 1) % shapes.length];
+
+      fromGeometry.computeVertexNormals();
+      toGeometry.computeVertexNormals();
+
+      startPositions = fromGeometry.attributes.position.array;
+      targetPositions = toGeometry.attributes.position.array;
+      startNormals = fromGeometry.attributes.normal.array;
+      targetNormals = toGeometry.attributes.normal.array;
+
+      const maxLength = Math.max(startPositions.length, targetPositions.length);
+      startPositions = padArray(startPositions, maxLength);
+      targetPositions = padArray(targetPositions, maxLength);
+      startNormals = padArray(startNormals, maxLength);
+      targetNormals = padArray(targetNormals, maxLength);
+
+      morphProgress = 0;
+      currentShape = (currentShape + 1) % shapes.length;
+
+      const neonColors = [0xff00ff, 0x00ffff, 0xff00ff, 0xffff00];
+      material.color.setHex(neonColors[currentShape % neonColors.length]);
+    }
+
+    function padArray(array, length) {
+      const result = new Float32Array(length);
+      for (let i = 0; i < length; i++) {
+        result[i] = array[i % array.length];
+      }
+      return result;
+    }
+
+    updateGeometry();
+
+    cameraLeft.position.z = 3;
+    cameraRight.position.z = 3;
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (morphProgress < 1) {
+        morphProgress += 0.008; // 2-second transition
+      } else if (holdTime < holdDuration) {
+        holdTime++;
+      } else {
+        holdTime = 0;
+        updateGeometry();
+      }
+
+      const positions = new Float32Array(startPositions.length);
+      const normals = new Float32Array(startNormals.length);
+      for (let i = 0; i < positions.length; i++) {
+        positions[i] = THREE.MathUtils.lerp(startPositions[i], targetPositions[i], Math.min(morphProgress, 1));
+        normals[i] = THREE.MathUtils.lerp(startNormals[i], targetNormals[i], Math.min(morphProgress, 1));
+      }
+
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+
+      const time = Date.now() * 0.001;
+      const camX = Math.sin(time * 0.5) * 2;
+      const camY = Math.cos(time * 0.5) * 2;
+      const camZ = Math.sin(time * 0.3) * 2 + 2;
+
+      // Stereoscopic camera positions
+      cameraLeft.position.set(camX - eyeSeparation / 2, camY, camZ);
+      cameraRight.position.set(camX + eyeSeparation / 2, camY, camZ);
+      cameraLeft.lookAt(0, 0, 0);
+      cameraRight.lookAt(0, 0, 0);
+
+      mesh.rotation.x += 0.01;
+      mesh.rotation.y += 0.01;
+
+      // Render left eye
+      renderer.setScissorTest(true);
+      renderer.setScissor(0, 0, window.innerWidth / 2, window.innerHeight);
+      renderer.setViewport(0, 0, window.innerWidth / 2, window.innerHeight);
+      renderer.render(scene, cameraLeft);
+
+      // Render right eye
+      renderer.setScissor(window.innerWidth / 2, 0, window.innerWidth / 2, window.innerHeight);
+      renderer.setViewport(window.innerWidth / 2, 0, window.innerWidth / 2, window.innerHeight);
+      renderer.render(scene, cameraRight);
+
+      renderer.setScissorTest(false);
+    }
+
+    animate();
+
+    window.addEventListener('resize', () => {
+      cameraLeft.aspect = window.innerWidth / 2 / window.innerHeight;
+      cameraRight.aspect = window.innerWidth / 2 / window.innerHeight;
+      cameraLeft.updateProjectionMatrix();
+      cameraRight.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,176 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row =>
+                    row.some(cell => cell !== '' && cell !== null && cell !== undefined)
+                );
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Landscape Flythrough</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 3000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.Directional Above is the beginning of the updated artifact to make the landscape larger, randomize tree positions and sizes, and maintain the existing structure. Below is the complete updated version:
+
+<xaiArtifact artifact_id="526bec25-0129-4704-9354-615ef5394b6e" artifact_version_id="268f8632-6e0e-46f6-9d89-3e5e367e03b2" title="index.html" contentType="text/html">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Landscape Flythrough</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 3000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(0, 1, 1);
+        scene.add(directionalLight);
+
+        // Texture loader
+        const loader = new THREE.TextureLoader();
+
+        // Terrain (hills)
+        const terrainTexture = loader.load('https://threejs.org/examples/textures/terrain/grasslight-big.jpg');
+        terrainTexture.wrapS = terrainTexture.wrapT = THREE.RepeatWrapping;
+        terrainTexture.repeat.set(100, 100);
+        const terrainMaterial = new THREE.MeshStandardMaterial({ map: terrainTexture });
+        const terrainGeometry = new THREE.PlaneGeometry(2000, 2000, 256, 256);
+        const vertices = terrainGeometry.attributes.position.array;
+        for (let i = 0; i < vertices.length; i += 3) {
+            const x = vertices[i];
+            const y = vertices[i + 1];
+            vertices[i + 2] = Math.sin(x * 0.01) * Math.cos(y * 0.01) * 40 + Math.random() * 10; // Larger hills
+        }
+        terrainGeometry.computeVertexNormals();
+        const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
+        terrain.rotation.x = -Math.PI / 2;
+        scene.add(terrain);
+
+        // Rivers
+        const riverTexture = loader.load('https://threejs.org/examples/textures/water.jpg');
+        riverTexture.wrapS = riverTexture.wrapT = THREE.RepeatWrapping;
+        riverTexture.repeat.set(10, 40);
+        const riverMaterial = new THREE.MeshStandardMaterial({ map: riverTexture, color: 0x4682b4 });
+        const riverGeometry = new THREE.PlaneGeometry(2000, 40);
+        const river1 = new THREE.Mesh(riverGeometry, riverMaterial);
+        river1.rotation.x = -Math.PI / 2;
+        river1.position.set(0, 0.1, 100);
+        scene.add(river1);
+        const river2 = new THREE.Mesh(riverGeometry, riverMaterial);
+        river2.rotation.x = -Math.PI / 2;
+        river2.rotation.z = Math.PI / 2;
+        river2.position.set(-100, 0.1, 0);
+        scene.add(river2);
+
+        // Gardens
+        const gardenTexture = loader.load('https://threejs.org/examples/textures/terrain/grasslight-big.jpg');
+        gardenTexture.wrapS = gardenTexture.wrapT = THREE.RepeatWrapping;
+        gardenTexture.repeat.set(4, 4);
+        const gardenMaterial = new THREE.MeshStandardMaterial({ map: gardenTexture });
+        for (let x = -800; x <= 800; x += 80) {
+            for (let z = -800; z <= 800; z += 80) {
+                if (Math.abs(x - 100) < 40 || Math.abs(z + 100) < 40) continue;
+                const gardenGeometry = new THREE.PlaneGeometry(32, 32);
+                const garden = new THREE.Mesh(gardenGeometry, gardenMaterial);
+                garden.rotation.x = -Math.PI / 2;
+                garden.position.set(x, 0.3 + Math.sin(x * 0.01) * Math.cos(z * 0.01) * 40, z);
+                scene.add(garden);
+            }
+        }
+
+        // Trees (random positions and sizes)
+        const treeTexture = loader.load('https://threejs.org/examples/textures/sprites/circle.png');
+        const treeMaterial = new THREE.MeshStandardMaterial({ map: treeTexture, color: 0x228b22 });
+        for (let i = 0; i < 1000; i++) {
+            const x = Math.random() * 1800 - 900;
+            const z = Math.random() * 1800 - 900;
+            if (Math.abs(x - 100) < 40 || Math.abs(z + 100) < 40) continue;
+            const size = Math.random() * 3 + 1; // Random size between 1 and 4
+            const treeGeometry = new THREE.SphereGeometry(size, 8, 8);
+            const tree = new THREE.Mesh(treeGeometry, treeMaterial);
+            const yOffset = Math.sin(x * 0.01) * Math.cos(z * 0.01) * 40;
+            tree.position.set(x, size + yOffset, z);
+            scene.add(tree);
+        }
+
+        // Camera path
+        camera.position.set(0, 100, -1000);
+        let time = 0;
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.01;
+            camera.position.x = Math.sin(time) * 400;
+            camera.position.z = time * 100 - 1000;
+            camera.position.y = 100 + Math.sin(time * 2) * 20 + Math.sin(camera.position.x * 0.01) * Math.cos(camera.position.z * 0.01) * 40;
+            camera.lookAt(0, 0, camera.position.z + 100);
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

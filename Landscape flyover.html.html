@@ -1,0 +1,147 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row =>
+                    row.some(cell => cell !== '' && cell !== null && cell !== undefined)
+                );
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Landscape Flythrough</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(0, 1, 1);
+        scene.add(directionalLight);
+
+        // Texture loader
+        const loader = new THREE.TextureLoader();
+
+        // Terrain (hills)
+        const terrainTexture = loader.load('https://threejs.org/examples/textures/terrain/grasslight-big.jpg');
+        terrainTexture.wrapS = terrainTexture.wrapT = THREE.RepeatWrapping;
+        terrainTexture.repeat.set(50, 50);
+        const terrainMaterial = new THREE.MeshStandardMaterial({ map: terrainTexture });
+        const terrainGeometry = new THREE.PlaneGeometry(1000, 1000, 128, 128);
+        const vertices = terrainGeometry.attributes.position.array;
+        for (let i = 0; i < vertices.length; i += 3) {
+            const x = vertices[i];
+            const y = vertices[i + 1];
+            vertices[i + 2] = Math.sin(x * 0.02) * Math.cos(y * 0.02) * 20 + Math.random() * 5; // Larger hills
+        }
+        terrainGeometry.computeVertexNormals();
+        const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
+        terrain.rotation.x = -Math.PI / 2;
+        scene.add(terrain);
+
+        // Rivers
+        const riverTexture = loader.load('https://threejs.org/examples/textures/water.jpg');
+        riverTexture.wrapS = riverTexture.wrapT = THREE.RepeatWrapping;
+        riverTexture.repeat.set(5, 20);
+        const riverMaterial = new THREE.MeshStandardMaterial({ map: riverTexture, color: 0x4682b4 });
+        const riverGeometry = new THREE.PlaneGeometry(1000, 20);
+        const river1 = new THREE.Mesh(riverGeometry, riverMaterial);
+        river1.rotation.x = -Math.PI / 2;
+        river1.position.set(0, 0.1, 50);
+        scene.add(river1);
+        const river2 = new THREE.Mesh(riverGeometry, riverMaterial);
+        river2.rotation.x = -Math.PI / 2;
+        river2.rotation.z = Math.PI / 2;
+        river2.position.set(-50, 0.1, 0);
+        scene.add(river2);
+
+        // Gardens
+        const gardenTexture = loader.load('https://threejs.org/examples/textures/terrain/grasslight-big.jpg');
+        gardenTexture.wrapS = gardenTexture.wrapT = THREE.RepeatWrapping;
+        gardenTexture.repeat.set(4, 4);
+        const gardenMaterial = new THREE.MeshStandardMaterial({ map: gardenTexture });
+        for (let x = -400; x <= 400; x += 40) {
+            for (let z = -400; z <= 400; z += 40) {
+                if (Math.abs(x - 50) < 20 || Math.abs(z + 50) < 20) continue;
+                const gardenGeometry = new THREE.PlaneGeometry(16, 16);
+                const garden = new THREE.Mesh(gardenGeometry, gardenMaterial);
+                garden.rotation.x = -Math.PI / 2;
+                garden.position.set(x, 0.3 + Math.sin(x * 0.02) * Math.cos(z * 0.02) * 20, z);
+                scene.add(garden);
+            }
+        }
+
+        // Trees
+        const treeTexture = loader.load('https://threejs.org/examples/textures/sprites/circle.png');
+        const treeMaterial = new THREE.MeshStandardMaterial({ map: treeTexture, color: 0x228b22 });
+        for (let x = -400; x <= 400; x += 40) {
+            for (let z = -400; z <= 400; z += 40) {
+                if (Math.abs(x - 50) < 20 || Math.abs(z + 50) < 20) continue;
+                const treeGeometry = new THREE.SphereGeometry(2, 8, 8);
+                const tree = new THREE.Mesh(treeGeometry, treeMaterial);
+                tree.position.set(x, 4 + Math.sin(x * 0.02) * Math.cos(z * 0.02) * 20, z);
+                scene.add(tree);
+            }
+        }
+
+        // Camera path
+        camera.position.set(0, 50, -500);
+        let time = 0;
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.01;
+            camera.position.x = Math.sin(time) * 200;
+            camera.position.z = time * 50 - 500;
+            camera.position.y = 50 + Math.sin(time * 2) * 10 + Math.sin(camera.position.x * 0.02) * Math.cos(camera.position.z * 0.02) * 20;
+            camera.lookAt(0, 0, camera.position.z + 50);
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

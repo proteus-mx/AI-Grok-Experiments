@@ -1,0 +1,221 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row =>
+                    row.some(cell => cell !== '' && cell !== null && cell !== undefined)
+                );
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html>
+<head>
+  <title>3D Morphing Shapes Game with Starfield</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: black; }
+    canvas { display: block; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <script>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Starfield
+    const starGeometry = new THREE.BufferGeometry();
+    const starCount = 10000;
+    const starPositions = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount; i++) {
+      starPositions[i * 3] = (Math.random() - 0.5) * 2000;
+      starPositions[i * 3 + 1] = (Math.random() - 0.5) * 2000;
+      starPositions[i * 3 + 2] = (Math.random() - 0.5) * 2000;
+    }
+    starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    const starMaterial = new THREE.PointsMaterial({ color: 0xFFFFFF, size: 0.5 });
+    const starfield = new THREE.Points(starGeometry, starMaterial);
+    scene.add(starfield);
+
+    class Shape {
+      constructor(x, y, z, radius, color) {
+        this.position = new THREE.Vector3(x, y, z);
+        this.radius = radius;
+        this.color = color;
+        this.velocity = new THREE.Vector3((Math.random() - 0.5) * 0.04, (Math.random() - 0.5) * 0.04, (Math.random() - 0.5) * 0.04);
+        this.geometry = new THREE.SphereGeometry(radius, 16, 16);
+        this.positions = this.geometry.attributes.position.array;
+        this.originalPositions = new Float32Array(this.positions.slice());
+        this.vertexVelocities = [];
+        for (let i = 0; i < this.positions.length / 3; i++) {
+          this.vertexVelocities.push(
+            new THREE.Vector3((Math.random() - 0.5) * 0.002, (Math.random() - 0.5) * 0.002, (Math.random() - 0.5) * 0.002)
+          );
+        }
+        const gradientTexture = createGradientTexture(color);
+        this.material = new THREE.MeshBasicMaterial({ map: gradientTexture, transparent: true, side: THREE.DoubleSide });
+        this.mesh = new THREE.Mesh(this.geometry, this.material);
+        scene.add(this.mesh);
+      }
+
+      update() {
+        this.position.add(this.velocity);
+        if (this.position.x < -5) { this.position.x = -5; this.velocity.x *= -1; }
+        if (this.position.x > 5) { this.position.x = 5; this.velocity.x *= -1; }
+        if (this.position.y < -5) { this.position.y = -5; this.velocity.y *= -1; }
+        if (this.position.y > 5) { this.position.y = 5; this.velocity.y *= -1; }
+        if (this.position.z < -5) { this.position.z = -5; this.velocity.z *= -1; }
+        if (this.position.z > 5) { this.position.z = 5; this.velocity.z *= -1; }
+        this.mesh.position.copy(this.position);
+
+        const pos = this.geometry.attributes.position.array;
+        for (let i = 0; i < pos.length / 3; i++) {
+          const vertex = new THREE.Vector3(pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]);
+          vertex.add(this.vertexVelocities[i]);
+          const dist = vertex.length();
+          const maxDist = this.radius * 1.2;
+          if (dist > maxDist) {
+            vertex.normalize().multiplyScalar(maxDist);
+          }
+          pos[i * 3] = vertex.x;
+          pos[i * 3 + 1] = vertex.y;
+          pos[i * 3 + 2] = vertex.z;
+        }
+        this.geometry.attributes.position.needsUpdate = true;
+      }
+    }
+
+    const shapes = [];
+    function getRandomNeonColor() {
+      const colors = [0xFF00FF, 0x00FFFF, 0xFF0000, 0x00FF00, 0xFFFF00];
+      return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    function blendColors(color1, color2) {
+      const r = Math.floor(((color1 >> 16) + (color2 >> 16)) / 2);
+      const g = Math.floor(((color1 >> 8 & 0xFF) + (color2 >> 8 & 0xFF)) / 2);
+      const b = Math.floor(((color1 & 0xFF) + (color2 & 0xFF)) / 2);
+      return (r << 16) + (g << 8) + b;
+    }
+
+    function createGradientTexture(color) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+      const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+      gradient.addColorStop(0, `#${color.toString(16).padStart(6, '0')}`);
+      gradient.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 128, 128);
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    renderer.domElement.addEventListener('click', () => {
+      const x = (Math.random() - 0.5) * 10;
+      const y = (Math.random() - 0.5) * 10;
+      const z = (Math.random() - 0.5) * 10;
+      const shape = new Shape(x, y, z, 0.5, getRandomNeonColor());
+      shapes.push(shape);
+    });
+
+    setInterval(() => {
+      const x = (Math.random() - 0.5) * 10;
+      const y = (Math.random() - 0.5) * 10;
+      const z = (Math.random() - 0.5) * 10;
+      const radius = 0.3 + Math.random() * 0.4;
+      const shape = new Shape(x, y, z, radius, getRandomNeonColor());
+      shapes.push(shape);
+    }, 1000);
+
+    let time = 0;
+    let cameraMode = 'rotate';
+    let targetShape = null;
+    let modeSwitchTime = 0;
+
+    setInterval(() => {
+      if (cameraMode === 'rotate') {
+        if (shapes.length > 0) {
+          cameraMode = 'follow';
+          targetShape = shapes[Math.floor(Math.random() * shapes.length)];
+        }
+      } else {
+        cameraMode = 'rotate';
+        targetShape = null;
+      }
+      modeSwitchTime = 0;
+    }, 5000);
+
+    function animate() {
+      time += 0.01;
+      modeSwitchTime += 0.01;
+
+      if (cameraMode === 'rotate') {
+        camera.position.x = Math.sin(time) * 15;
+        camera.position.z = Math.cos(time) * 15;
+        camera.position.y = Math.sin(time * 0.5) * 5;
+        camera.lookAt(0, 0, 0);
+      } else if (cameraMode === 'follow' && targetShape) {
+        const targetPos = targetShape.position;
+        camera.position.x = targetPos.x + Math.sin(time) * 3;
+        camera.position.z = targetPos.z + Math.cos(time) * 3;
+        camera.position.y = targetPos.y + 1;
+        camera.lookAt(targetPos);
+      }
+
+      for (let i = shapes.length - 1; i >= 0; i--) {
+        shapes[i].update();
+        for (let j = i - 1; j >= 0; j--) {
+          const distance = shapes[i].position.distanceTo(shapes[j].position);
+          if (distance < shapes[i].radius + shapes[j].radius) {
+            const newColor = blendColors(shapes[i].color, shapes[j].color);
+            const newShape = new Shape(
+              (shapes[i].position.x + shapes[j].position.x) / 2,
+              (shapes[i].position.y + shapes[j].position.y) / 2,
+              (shapes[i].position.z + shapes[j].position.z) / 2,
+              (shapes[i].radius + shapes[j].radius) / 1.5,
+              newColor
+            );
+            scene.remove(shapes[i].mesh);
+            scene.remove(shapes[j].mesh);
+            shapes.splice(i, 1);
+            shapes.splice(j, 1);
+            shapes.push(newShape);
+            if (targetShape === shapes[i] || targetShape === shapes[j]) {
+              targetShape = newShape;
+            }
+            break;
+          }
+        }
+      }
+
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+  </script>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row =>
+                    row.some(cell => cell !== '' && cell !== null && cell !== undefined)
+                );
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html>
+<head>
+  <title>3D Neon Tunnel Flythrough</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <style>
+    body { margin: 0; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+  // Scene setup
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  // Tunnel parameters
+  const tunnelRadius = 5;
+  const tunnelSegments = 32;
+  const tunnelLength = 5000;
+  const segmentLength = 10;
+  const numSegments = Math.floor(tunnelLength / segmentLength);
+
+  // Generate curvier tunnel path
+  const path = new THREE.CatmullRomCurve3(
+    Array.from({ length: numSegments }, (_, i) => {
+      const t = i / (numSegments - 1);
+      const isStraight = Math.floor(t * 10) % 4 === 0;
+      return new THREE.Vector3(
+        isStraight ? 0 : Math.sin(t * 15) * 30 + (Math.random() - 0.5) * 10,
+        isStraight ? 0 : Math.cos(t * 15) * 30 + (Math.random() - 0.5) * 10,
+        -i * segmentLength
+      );
+    })
+  );
+
+  // Tunnel geometry
+  const tubeGeometry = new THREE.TubeGeometry(path, numSegments, tunnelRadius, tunnelSegments, false);
+
+  // Neon-style multi-colored material
+  const neonColors = [0xff00ff, 0x00ffff, 0xffff00, 0xff0000, 0x00ff00];
+  const tunnelMaterial = new THREE.MeshPhongMaterial({
+    side: THREE.BackSide,
+    shininess: 100,
+    specular: 0xffffff,
+    emissive: 0x333333,
+    vertexColors: true
+  });
+
+  // Assign neon colors
+  const colors = new Float32Array(tubeGeometry.attributes.position.count * 3);
+  for (let i = 0; i < tubeGeometry.attributes.position.count; i++) {
+    const segment = Math.floor(i / tunnelSegments) % neonColors.length;
+    const color = new THREE.Color(neonColors[segment]);
+    colors[i * 3] = color.r;
+    colors[i * 3 + 1] = color.g;
+    colors[i * 3 + 2] = color.b;
+  }
+  tubeGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+  const tunnel = new THREE.Mesh(tubeGeometry, tunnelMaterial);
+  scene.add(tunnel);
+
+  // Red rolling ball
+  const ballGeometry = new THREE.SphereGeometry(1, 32, 32);
+  const ballMaterial = new THREE.MeshPhongMaterial({
+    color: 0xff0000,
+    shininess: 100,
+    specular: 0x555555
+  });
+  const ball = new THREE.Mesh(ballGeometry, ballMaterial);
+  scene.add(ball);
+
+  // Starfield
+  const starGeometry = new THREE.BufferGeometry();
+  const starCount = 10000;
+  const starPositions = new Float32Array(starCount * 3);
+  for (let i = 0; i < starCount * 3; i += 3) {
+    starPositions[i] = (Math.random() - 0.5) * 2000;
+    starPositions[i + 1] = (Math.random() - 0.5) * 2000;
+    starPositions[i + 2] = (Math.random() - 0.5) * 2000;
+  }
+  starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+  const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.2 });
+  const starField = new THREE.Points(starGeometry, starMaterial);
+  scene.add(starField);
+
+  // Lighting: Brighter, wider spotlight
+  const cameraLight = new THREE.SpotLight(0xffffff, 2, 100, Math.PI / 4, 0.6);
+  cameraLight.position.set(0, 0, 0);
+  cameraLight.target.position.set(0, 0, -1);
+  camera.add(cameraLight);
+  camera.add(cameraLight.target);
+  scene.add(camera);
+
+  // Lighting: Dimmer sun-like directional light
+  const sunLight = new THREE.DirectionalLight(0xffdd88, 0.3);
+  sunLight.position.set(50, 50, 100);
+  scene.add(sunLight);
+
+  // Dim ambient light
+  const ambientLight = new THREE.AmbientLight(0x202020, 0.3);
+  scene.add(ambientLight);
+
+  // Camera position (outside tunnel, looking at entrance)
+  const startPoint = path.getPointAt(0);
+  camera.position.set(startPoint.x, startPoint.y, startPoint.z + 50);
+  camera.lookAt(path.getPointAt(0.001));
+
+  // Animation variables
+  let t = 0;
+  let baseSpeed = 0.00005;
+  const speedIncrement = 0.00001;
+  const speedInterval = 3000;
+  let isFollowing = true;
+  let orbitAngle = 0;
+  let smoothedPosition = camera.position.clone();
+  let smoothedTarget = new THREE.Vector3();
+  let ballRotation = 0;
+
+  // Speed up every few seconds
+  setInterval(() => {
+    baseSpeed += speedIncrement;
+    if (baseSpeed > 0.0002) baseSpeed = 0.0002;
+  }, speedInterval);
+
+  // Toggle camera mode on tap
+  document.addEventListener('touchstart', () => {
+    isFollowing = !isFollowing;
+  });
+
+  // Handle window resize
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  // Animation loop
+  function animate() {
+    requestAnimationFrame(animate);
+
+    // Move along path
+    const point = path.getPointAt(t);
+    const nextT = Math.min(t + 0.001, 1);
+    const nextPoint = path.getPointAt(nextT);
+    const tangent = path.getTangentAt(t);
+
+    // Calculate curvature
+    const nextTangent = path.getTangentAt(nextT);
+    const dot = tangent.dot(nextTangent);
+    const isStraight = dot > 0.999;
+
+    // Adjust speed: faster in straight, slower in curves
+    const speed = isStraight ? baseSpeed * 3 : baseSpeed * 0.5;
+    t += speed;
+    if (t > 1) t -= 1;
+
+    // Position ball in front of camera
+    const ballDistance = 10; // Distance from camera
+    const ballPoint = path.getPointAt(Math.min(t + 0.002, 1)); // Slightly ahead
+    ball.position.copy(ballPoint);
+    // Simulate rolling
+    ballRotation += speed * 100;
+    ball.rotation.set(ballRotation, ballRotation, 0);
+
+    if (isFollowing) {
+      // Follow tunnel with smoother movement in turns
+      const targetPosition = point;
+      const targetLookAt = point.clone().add(tangent);
+      
+      // Smooth camera position and look-at
+      smoothedPosition.lerp(targetPosition, isStraight ? 0.2 : 0.1);
+      smoothedTarget.lerp(targetLookAt, isStraight ? 0.2 : 0.1);
+      
+      camera.position.copy(smoothedPosition);
+      camera.lookAt(smoothedTarget);
+    } else {
+      // Orbit around tunnel from far away
+      orbitAngle += 0.01;
+      const orbitRadius = 200;
+      const orbitPoint = path.getPointAt(Math.min(t + 0.1, 1));
+      camera.position.set(
+        orbitPoint.x + Math.cos(orbitAngle) * orbitRadius,
+        orbitPoint.y + Math.sin(orbitAngle) * orbitRadius,
+        orbitPoint.z
+      );
+      camera.lookAt(orbitPoint);
+    }
+
+    renderer.render(scene, camera);
+  }
+  animate();
+</script>
+</body>
+</html>

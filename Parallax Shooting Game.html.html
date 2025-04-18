@@ -1,0 +1,369 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row =>
+                    row.some(cell => cell !== '' && cell !== null && cell !== undefined)
+                );
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html>
+<head>
+  <title>Shooting Game</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+</head>
+<body>
+<script>
+let greenObj, redObj;
+let bullets = [];
+let obstacles = [];
+let stars = [];
+let gameOver = false;
+let nextShotTime = 0;
+let nextObstacleTime = 0;
+let startTime;
+let level = 1;
+let speedIncreaseTime;
+let shieldRegenTime;
+let bulletSpeed = 5;
+let obstacleCount = 0;
+let greenDoubleFireEnd = 0;
+let redDoubleFireEnd = 0;
+let greenHitTime = 0;
+let redHitTime = 0;
+let greenFlashCount = 0;
+let redFlashCount = 0;
+
+function setup() {
+  createCanvas(800, 600);
+  greenObj = { x: 50, y: height/2, speed: random(2, 5), lives: 5, color: 'red', shieldHealth: 100, score: 0 };
+  redObj = { x: width-50, y: height/2, speed: random(2, 5), lives: 5, color: 'green', shieldHealth: 100, score: 0 };
+  startTime = millis();
+  speedIncreaseTime = millis() + 5000;
+  shieldRegenTime = millis() + 10000;
+  nextObstacleTime = millis() + 1000;
+  
+  // Initialize starfield with layers for parallax
+  for (let i = 0; i < 100; i++) {
+    stars.push({
+      x: random(width),
+      y: random(height),
+      size: random(1, 3),
+      layer: random(1, 3)
+    });
+  }
+}
+
+function draw() {
+  if (gameOver) {
+    background(0);
+    textSize(32);
+    fill(255);
+    textAlign(CENTER);
+    text("Game Over", width/2, height/2);
+    return;
+  }
+
+  // Draw starfield background with parallax scrolling
+  background(0);
+  for (let star of stars) {
+    star.x -= (0.5 * level) / star.layer;
+    if (star.x < 0) star.x += width;
+    fill(255);
+    noStroke();
+    ellipse(star.x, star.y, star.size);
+  }
+  
+  // Timer
+  let elapsedTime = floor((millis() - startTime) / 1000);
+  
+  // Shield regeneration countdown
+  let shieldCountdown = ceil((shieldRegenTime - millis()) / 1000);
+  if (shieldCountdown < 0) shieldCountdown = 0;
+  
+  // Double fire countdown
+  let greenDoubleFireCountdown = ceil((greenDoubleFireEnd - millis()) / 1000);
+  if (greenDoubleFireCountdown < 0) greenDoubleFireCountdown = 0;
+  let redDoubleFireCountdown = ceil((redDoubleFireEnd - millis()) / 1000);
+  if (redDoubleFireCountdown < 0) redDoubleFireCountdown = 0;
+  
+  // Increase bullet speed and level every 5 seconds, but only up to 30 seconds
+  if (elapsedTime < 30 && millis() > speedIncreaseTime) {
+    bulletSpeed *= 1.2;
+    level++;
+    speedIncreaseTime = millis() + 5000;
+  }
+  
+  // Regenerate shields every 10 seconds
+  if (millis() > shieldRegenTime) {
+    greenObj.shieldHealth = 100;
+    redObj.shieldHealth = 100;
+    shieldRegenTime = millis() + 10000;
+  }
+  
+  // Add random bouncing obstacles every 1 second
+  if (millis() > nextObstacleTime) {
+    obstacles.push({
+      x: random(100, width-100),
+      y: random(100, height-100),
+      vx: random(-3, 3),
+      vy: random(-3, 3),
+      size: 20,
+      isStar: false
+    });
+    obstacleCount++;
+    // Every 10 obstacles, add a star
+    if (obstacleCount % 10 === 0) {
+      obstacles.push({
+        x: random(100, width-100),
+        y: random(100, height-100),
+        vx: random(-3, 3),
+        vy: random(-3, 3),
+        size: 30,
+        isStar: true
+      });
+    }
+    nextObstacleTime = millis() + 1000;
+  }
+  
+  // Update and draw obstacles
+  for (let i = obstacles.length-1; i >= 0; i--) {
+    let o = obstacles[i];
+    o.x += o.vx;
+    o.y += o.vy;
+    
+    // Bounce off walls
+    if (o.x < 50 || o.x > width-50) o.vx *= -1;
+    if (o.y < 50 || o.y > height-50) o.vy *= -1;
+    
+    // Check collision with other obstacles
+    for (let j = obstacles.length-1; j > i; j--) {
+      let other = obstacles[j];
+      if (dist(o.x, o.y, other.x, other.y) < o.size/2 + other.size/2) {
+        // Merge obstacles
+        let newSize = min(o.size + 5, 40);
+        obstacles.splice(j, 1);
+        o.size = newSize;
+        o.vx = (o.vx + other.vx) / 2;
+        o.vy = (o.vy + other.vy) / 2;
+        if (other.isStar) o.isStar = true;
+      }
+    }
+    
+    // Check collision with greenObj
+    if (dist(o.x, o.y, greenObj.x, greenObj.y) < o.size/2 + 15) {
+      greenObj.score += o.isStar ? 50 : 10;
+      obstacles.splice(i, 1);
+      continue;
+    }
+    
+    // Check collision with redObj
+    if (dist(o.x, o.y, redObj.x, redObj.y) < o.size/2 + 15) {
+      redObj.score += o.isStar ? 50 : 10;
+      obstacles.splice(i, 1);
+      continue;
+    }
+    
+    fill(o.isStar ? color(255, 255, 0) : 128);
+    ellipse(o.x, o.y, o.size);
+  }
+  
+  // Dodge bullets
+  let greenDodge = dodgeBullets(greenObj, bullets.filter(b => b.vx > 0));
+  let redDodge = dodgeBullets(redObj, bullets.filter(b => b.vx < 0));
+  
+  // Move objects smoothly
+  greenObj.y += greenObj.speed * greenDodge;
+  redObj.y += redObj.speed * redDodge;
+  
+  // Bounce off boundaries
+  if (greenObj.y < 50) greenObj.y = 50;
+  if (greenObj.y > height-50) greenObj.y = height-50;
+  if (redObj.y < 50) redObj.y = 50;
+  if (redObj.y > height-50) redObj.y = height-50;
+  
+  // Draw shields
+  if (greenObj.shieldHealth > 0) {
+    fill(0, 0, 255, 150);
+    rect(greenObj.x + 20, greenObj.y - 30, 10, 60);
+  }
+  if (redObj.shieldHealth > 0) {
+    fill(0, 0, 255, 150);
+    rect(redObj.x - 30, redObj.y - 30, 10, 60);
+  }
+  
+  // Draw objects with shake and flash effect
+  let greenColor = greenObj.color;
+  let redColor = redObj.color;
+  let greenX = greenObj.x;
+  let redX = redObj.x;
+
+  // Green object shake and flash
+  if (millis() < greenHitTime + 500) {
+    greenX += random(-2, 2); // Shake effect
+    if (millis() < greenHitTime + 100 || (millis() >= greenHitTime + 300 && millis() < greenHitTime + 400)) {
+      greenColor = 'white'; // Flash white twice
+    }
+  }
+  
+  // Red object shake and flash
+  if (millis() < redHitTime + 500) {
+    redX += random(-2, 2); // Shake effect
+    if (millis() < redHitTime + 100 || (millis() >= redHitTime + 300 && millis() < redHitTime + 400)) {
+      redColor = 'white'; // Flash white twice
+    }
+  }
+  
+  fill(greenColor);
+  ellipse(greenX, greenObj.y, 30);
+  fill(redColor);
+  ellipse(redX, redObj.y, 30);
+  
+  // Display lives, shield health, score, shield countdown, and double fire countdown
+  textSize(20);
+  fill(255);
+  text(`Green Lives: ${greenObj.lives}`, 10, 30);
+  text(`Green Shield: ${floor(greenObj.shieldHealth)}`, 10, 50);
+  text(`Green Score: ${greenObj.score}`, 10, 70);
+  text(`Shield in: ${shieldCountdown}s`, 10, 90);
+  text(`Double Fire: ${greenDoubleFireCountdown}s`, 10, 110);
+  text(`Red Lives: ${redObj.lives}`, width-120, 30);
+  text(`Red Shield: ${floor(redObj.shieldHealth)}`, width-120, 50);
+  text(`Red Score: ${redObj.score}`, width-120, 70);
+  text(`Shield in: ${shieldCountdown}s`, width-120, 90);
+  text(`Double Fire: ${redDoubleFireCountdown}s`, width-120, 110);
+  
+  // Display timer and level
+  text(`Time: ${elapsedTime}s`, width/2 - 40, 30);
+  text(`Level: ${level}`, width/2 - 40, 60);
+  
+  // Fire bullets at random intervals (0.3 to 0.8 seconds)
+  if (millis() > nextShotTime) {
+    bullets.push({ x: greenObj.x, y: greenObj.y, vx: bulletSpeed, from: 'green', color: 'red' });
+    if (millis() < greenDoubleFireEnd) {
+      bullets.push({ x: greenObj.x, y: greenObj.y + 10, vx: bulletSpeed, from: 'green', color: 'red' });
+    }
+    bullets.push({ x: redObj.x, y: redObj.y, vx: -bulletSpeed, from: 'red', color: 'green' });
+    if (millis() < redDoubleFireEnd) {
+      bullets.push({ x: redObj.x, y: redObj.y + 10, vx: -bulletSpeed, from: 'red', color: 'green' });
+    }
+    nextShotTime = millis() + random(300, 800);
+  }
+  
+  // Update and draw bullets
+  for (let i = bullets.length-1; i >= 0; i--) {
+    let b = bullets[i];
+    b.x += b.vx;
+    
+    // Check collision with other bullets
+    for (let j = bullets.length-1; j > i; j--) {
+      let other = bullets[j];
+      if (b.from !== other.from && dist(b.x, b.y, other.x, other.y) < 5) {
+        // Reverse direction of both bullets
+        b.vx *= -1;
+        other.vx *= -1;
+      }
+    }
+    
+    // Check collision with obstacles
+    for (let j = obstacles.length-1; j >= 0; j--) {
+      let o = obstacles[j];
+      if (dist(b.x, b.y, o.x, o.y) < o.size/2 + 5) {
+        if (b.from === 'green') {
+          greenObj.score += o.isStar ? 50 : 15;
+          if (o.isStar) greenDoubleFireEnd = millis() + 5000;
+        }
+        if (b.from === 'red') {
+          redObj.score += o.isStar ? 50 : 15;
+          if (o.isStar) redDoubleFireEnd = millis() + 5000;
+        }
+        bullets.splice(i, 1);
+        obstacles.splice(j, 1);
+        break;
+      }
+    }
+    if (i < 0 || !bullets[i]) continue;
+    
+    fill(b.color);
+    rect(b.x, b.y, 5, 5);
+    
+    // Check collision with redObj's shield (only for bullets from green)
+    if (b.vx > 0 && redObj.shieldHealth > 0 && b.x >= redObj.x - 30 && b.x <= redObj.x - 20 && b.y >= redObj.y - 30 && b.y <= redObj.y + 30) {
+      redObj.shieldHealth = 0;
+      bullets.splice(i, 1);
+      continue;
+    }
+    
+    // Check collision with greenObj's shield (only for bullets from red)
+    if (b.vx < 0 && greenObj.shieldHealth > 0 && b.x >= greenObj.x + 20 && b.x <= greenObj.x + 30 && b.y >= greenObj.y - 30 && b.y <= greenObj.y + 30) {
+      greenObj.shieldHealth = 0;
+      bullets.splice(i, 1);
+      continue;
+    }
+    
+    // Check collision with objects (if shield is down)
+    if (redObj.shieldHealth <= 0 && dist(b.x, b.y, redObj.x, redObj.y) < 15 && b.vx > 0) {
+      redObj.lives--;
+      redHitTime = millis(); // Trigger shake and flash
+      bullets.splice(i, 1);
+      if (redObj.lives <= 0) gameOver = true;
+      continue;
+    }
+    if (greenObj.shieldHealth <= 0 && dist(b.x, b.y, greenObj.x, greenObj.y) < 15 && b.vx < 0) {
+      greenObj.lives--;
+      greenHitTime = millis(); // Trigger shake and flash
+      bullets.splice(i, 1);
+      if (greenObj.lives <= 0) gameOver = true;
+      continue;
+    }
+    
+    // Remove bullets off screen
+    if (b.x < 0 || b.x > width) bullets.splice(i, 1);
+  }
+}
+
+function dodgeBullets(obj, bullets) {
+  let closest = null;
+  let minDist = Infinity;
+  
+  for (let b of bullets) {
+    let d = dist(b.x, b.y, obj.x, obj.y);
+    if (d < minDist && d < 200) {
+      minDist = d;
+      closest = b;
+    }
+  }
+  
+  if (closest) {
+    let dy = closest.y - obj.y;
+    if (abs(dy) < 50) {
+      if (dy > 0 && obj.y > 50) return -1;
+      if (dy < 0 && obj.y < height-50) return 1;
+    }
+  }
+  return random([-1, 1]);
+}
+</script>
+</body>
+</html>

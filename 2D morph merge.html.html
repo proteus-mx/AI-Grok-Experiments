@@ -1,0 +1,163 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row =>
+                    row.some(cell => cell !== '' && cell !== null && cell !== undefined)
+                );
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html>
+<head>
+  <title>Morphing Shapes Game</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: black; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    class Shape {
+      constructor(x, y, radius, color) {
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+        this.color = color;
+        this.vx = (Math.random() - 0.5) * 4;
+        this.vy = (Math.random() - 0.5) * 4;
+        this.points = [];
+        const numPoints = 8;
+        for (let i = 0; i < numPoints; i++) {
+          const angle = (i / numPoints) * Math.PI * 2;
+          const r = radius * (0.8 + Math.random() * 0.4);
+          this.points.push({
+            x: r * Math.cos(angle),
+            y: r * Math.sin(angle),
+            vx: (Math.random() - 0.5) * 0.02,
+            vy: (Math.random() - 0.5) * 0.02
+          });
+        }
+      }
+
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.x < this.radius) { this.x = this.radius; this.vx *= -1; }
+        if (this.x > canvas.width - this.radius) { this.x = canvas.width - this.radius; this.vx *= -1; }
+        if (this.y < this.radius) { this.y = this.radius; this.vy *= -1; }
+        if (this.y > canvas.height - this.radius) { this.y = canvas.height - this.radius; this.vy *= -1; }
+        this.points.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          const dist = Math.sqrt(p.x * p.x + p.y * p.y);
+          const maxDist = this.radius * 1.2;
+          if (dist > maxDist) {
+            const angle = Math.atan2(p.y, p.x);
+            p.x = maxDist * Math.cos(angle);
+            p.y = maxDist * Math.sin(angle);
+          }
+        });
+      }
+
+      draw() {
+        const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
+        gradient.addColorStop(0, this.color);
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.beginPath();
+        ctx.moveTo(this.x + this.points[0].x, this.y + this.points[0].y);
+        for (let i = 1; i < this.points.length; i++) {
+          ctx.lineTo(this.x + this.points[i].x, this.y + this.points[i].y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = gradient;
+        ctx.fill();
+      }
+    }
+
+    const shapes = [];
+    function getRandomNeonColor() {
+      const colors = ['#FF00FF', '#00FFFF', '#FF0000', '#00FF00', '#FFFF00'];
+      return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    function blendColors(color1, color2) {
+      const c1 = parseInt(color1.slice(1), 16);
+      const c2 = parseInt(color2.slice(1), 16);
+      const r = Math.floor(((c1 >> 16) + (c2 >> 16)) / 2);
+      const g = Math.floor(((c1 >> 8 & 0xFF) + (c2 >> 8 & 0xFF)) / 2);
+      const b = Math.floor(((c1 & 0xFF) + (c2 & 0xFF)) / 2);
+      return `#${((r << 16) + (g << 8) + b).toString(16).padStart(6, '0')}`;
+    }
+
+    canvas.addEventListener('click', (e) => {
+      const shape = new Shape(e.clientX, e.clientY, 50, getRandomNeonColor());
+      shapes.push(shape);
+    });
+
+    setInterval(() => {
+      const x = Math.random() * canvas.width;
+      const y = Math.random() * canvas.height;
+      const radius = 30 + Math.random() * 40; // Random radius between 30 and 70
+      const shape = new Shape(x, y, radius, getRandomNeonColor());
+      shapes.push(shape);
+    }, 1000);
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = shapes.length - 1; i >= 0; i--) {
+        shapes[i].update();
+        shapes[i].draw();
+        for (let j = i - 1; j >= 0; j--) {
+          const dx = shapes[i].x - shapes[j].x;
+          const dy = shapes[i].y - shapes[j].y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if (distance < shapes[i].radius + shapes[j].radius) {
+            const newColor = blendColors(shapes[i].color, shapes[j].color);
+            const newShape = new Shape(
+              (shapes[i].x + shapes[j].x) / 2,
+              (shapes[i].y + shapes[j].y) / 2,
+              (shapes[i].radius + shapes[j].radius) / 1.5,
+              newColor
+            );
+            shapes.splice(i, 1);
+            shapes.splice(j, 1);
+            shapes.push(newShape);
+            break;
+          }
+        }
+      }
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+  </script>
+</body>
+</html>
