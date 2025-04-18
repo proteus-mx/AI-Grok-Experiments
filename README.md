@@ -8,3 +8,12 @@ Outputs viewable here:
 https://proteus-mx.github.io/AI-Grok-Experiments/
 
 recordings captured here: https://x.com/proteusmx?s=21
+
+Approach:
+1. Ideate 
+2. NL initial promot into Grok (mainly using grok3 model, occasionally grok2)
+3. Preview generated code (HTML & JavaScript)
+4. increase conplexity and tailor through durther prompts.
+5. Iterate until sufficient output generated
+ 
+note, occasionally grok introduces JavaScript errors, which are typically corrected with a prompt to fix.
