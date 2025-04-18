@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File List</title>
+</head>
+<body>
+    <h1>Files in Current Directory</h1>
+    <ul id="fileList"></ul>
+
+    <script>
+        // Fetch the directory contents
+        fetch('.')
+            .then(response => response.text())
+            .then(data => {
+                // Parse the HTML response
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(data, 'text/html');
+                const links = doc.querySelectorAll('a');
+
+                // Get the file list element
+                const fileList = document.getElementById('fileList');
+
+                // Add each file as a list item
+                links.forEach(link => {
+                    const fileName = link.getAttribute('href');
+                    if (fileName !== '../') { // Skip parent directory link
+                        const li = document.createElement('li');
+                        li.innerHTML = `<a href="${fileName}">${fileName}</a>`;
+                        fileList.appendChild(li);
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching directory:', error);
+                document.getElementById('fileList').innerText = 'Unable to load file list.';
+            });
+    </script>
+</body>
+</html>
