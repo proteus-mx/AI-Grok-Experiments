@@ -1,0 +1,570 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Periodic Table Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.9/babel.min.js"></script>
+    <style>
+        .periodic-table {
+            display: grid;
+            grid-template-columns: repeat(18, 60px);
+            grid-template-rows: repeat(10, 60px);
+            gap: 2px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .element {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            position: relative;
+        }
+        .element:hover {
+            filter: brightness(0.9);
+        }
+        .correct {
+            background-color: #10b981 !important;
+        }
+        .correct:hover {
+            background-color: #059669 !important;
+        }
+        .incorrect {
+            animation: flashRed 0.5s;
+        }
+        .tapped {
+            animation: flashWhite 0.3s;
+        }
+        @keyframes flashRed {
+            0%, 100% { filter: brightness(1); }
+            50% { background-color: #ef4444; }
+        }
+        @keyframes flashWhite {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.5); }
+        }
+        .nonmetal { background-color: #f59e0b; }
+        .noble-gas { background-color: #8b5cf6; }
+        .alkali-metal { background-color: #ef4444; }
+        .alkaline-earth-metal { background-color: #f97316; }
+        .metalloid { background-color: #14b8a6; }
+        .post-transition-metal { background-color: #6b7280; }
+        .transition-metal { background-color: #3b82f6; }
+        .lanthanide { background-color: #ec4899; }
+        .actinide { background-color: #d946ef; }
+        .halogen { background-color: #22c55e; }
+        .empty {
+            background-color: transparent;
+        }
+        .progress-bar {
+            height: 20px;
+            background-color: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #10b981;
+            transition: width 0.3s, background-color 0.3s;
+        }
+        .progress-fill-low {
+            background-color: #ef4444;
+        }
+        .score-progress-fill {
+            height: 100%;
+            background-color: #3b82f6;
+            transition: width 0.3s;
+        }
+        .incorrect-progress-fill {
+            height: 100%;
+            background-color: #ef4444;
+            transition: width 0.3s;
+        }
+        .tick {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 16px;
+            height: 16px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="root"></div>
+    <script type="text/babel">
+        const elements = [
+            { atomicNumber: 1, symbol: 'H', name: 'Hydrogen', atomicMass: 1.008, category: 'Nonmetal', row: 1, col: 1 },
+            { atomicNumber: 2, symbol: 'He', name: 'Helium', atomicMass: 4.002, category: 'Noble Gas', row: 1, col: 18 },
+            { atomicNumber: 3, symbol: 'Li', name: 'Lithium', atomicMass: 6.941, category: 'Alkali Metal', row: 2, col: 1 },
+            { atomicNumber: 4, symbol: 'Be', name: 'Beryllium', atomicMass: 9.012, category: 'Alkaline Earth Metal', row: 2, col: 2 },
+            { atomicNumber: 5, symbol: 'B', name: 'Boron', atomicMass: 10.811, category: 'Metalloid', row: 2, col: 13 },
+            { atomicNumber: 6, symbol: 'C', name: 'Carbon', atomicMass: 12.011, category: 'Nonmetal', row: 2, col: 14 },
+            { atomicNumber: 7, symbol: 'N', name: 'Nitrogen', atomicMass: 14.007, category: 'Nonmetal', row: 2, col: 15 },
+            { atomicNumber: 8, symbol: 'O', name: 'Oxygen', atomicMass: 15.999, category: 'Nonmetal', row: 2, col: 16 },
+            { atomicNumber: 9, symbol: 'F', name: 'Fluorine', atomicMass: 18.998, category: 'Halogen', row: 2, col: 17 },
+            { atomicNumber: 10, symbol: 'Ne', name: 'Neon', atomicMass: 20.180, category: 'Noble Gas', row: 2, col: 18 },
+            { atomicNumber: 11, symbol: 'Na', name: 'Sodium', atomicMass: 22.990, category: 'Alkali Metal', row: 3, col: 1 },
+            { atomicNumber: 12, symbol: 'Mg', name: 'Magnesium', atomicMass: 24.305, category: 'Alkaline Earth Metal', row: 3, col: 2 },
+            { atomicNumber: 13, symbol: 'Al', name: 'Aluminum', atomicMass: 26.982, category: 'Post-Transition Metal', row: 3, col: 13 },
+            { atomicNumber: 14, symbol: 'Si', name: 'Silicon', atomicMass: 28.085, category: 'Metalloid', row: 3, col: 14 },
+            { atomicNumber: 15, symbol: 'P', name: 'Phosphorus', atomicMass: 30.974, category: 'Nonmetal', row: 3, col: 15 },
+            { atomicNumber: 16, symbol: 'S', name: 'Sulfur', atomicMass: 32.06, category: 'Nonmetal', row: 3, col: 16 },
+            { atomicNumber: 17, symbol: 'Cl', name: 'Chlorine', atomicMass: 35.45, category: 'Halogen', row: 3, col: 17 },
+            { atomicNumber: 18, symbol: 'Ar', name: 'Argon', atomicMass: 39.948, category: 'Noble Gas', row: 3, col: 18 },
+            { atomicNumber: 19, symbol: 'K', name: 'Potassium', atomicMass: 39.098, category: 'Alkali Metal', row: 4, col: 1 },
+            { atomicNumber: 20, symbol: 'Ca', name: 'Calcium', atomicMass: 40.078, category: 'Alkaline Earth Metal', row: 4, col: 2 },
+            { atomicNumber: 21, symbol: 'Sc', name: 'Scandium', atomicMass: 44.956, category: 'Transition Metal', row: 4, col: 3 },
+            { atomicNumber: 22, symbol: 'Ti', name: 'Titanium', atomicMass: 47.867, category: 'Transition Metal', row: 4, col: 4 },
+            { atomicNumber: 23, symbol: 'V', name: 'Vanadium', atomicMass: 50.942, category: 'Transition Metal', row: 4, col: 5 },
+            { atomicNumber: 24, symbol: 'Cr', name: 'Chromium', atomicMass: 51.996, category: 'Transition Metal', row: 4, col: 6 },
+            { atomicNumber: 25, symbol: 'Mn', name: 'Manganese', atomicMass: 54.938, category: 'Transition Metal', row: 4, col: 7 },
+            { atomicNumber: 26, symbol: 'Fe', name: 'Iron', atomicMass: 55.845, category: 'Transition Metal', row: 4, col: 8 },
+            { atomicNumber: 27, symbol: 'Co', name: 'Cobalt', atomicMass: 58.933, category: 'Transition Metal', row: 4, col: 9 },
+            { atomicNumber: 28, symbol: 'Ni', name: 'Nickel', atomicMass: 58.693, category: 'Transition Metal', row: 4, col: 10 },
+            { atomicNumber: 29, symbol: 'Cu', name: 'Copper', atomicMass: 63.546, category: 'Transition Metal', row: 4, col: 11 },
+            { atomicNumber: 30, symbol: 'Zn', name: 'Zinc', atomicMass: 65.38, category: 'Transition Metal', row: 4, col: 12 },
+            { atomicNumber: 31, symbol: 'Ga', name: 'Gallium', atomicMass: 69.723, category: 'Post-Transition Metal', row: 4, col: 13 },
+            { atomicNumber: 32, symbol: 'Ge', name: 'Germanium', atomicMass: 72.630, category: 'Metalloid', row: 4, col: 14 },
+            { atomicNumber: 33, symbol: 'As', name: 'Arsenic', atomicMass: 74.922, category: 'Metalloid', row: 4, col: 15 },
+            { atomicNumber: 34, symbol: 'Se', name: 'Selenium', atomicMass: 78.971, category: 'Nonmetal', row: 4, col: 16 },
+            { atomicNumber: 35, symbol: 'Br', name: 'Bromine', atomicMass: 79.904, category: 'Halogen', row: 4, col: 17 },
+            { atomicNumber: 36, symbol: 'Kr', name: 'Krypton', atomicMass: 83.798, category: 'Noble Gas', row: 4, col: 18 },
+            { atomicNumber: 37, symbol: 'Rb', name: 'Rubidium', atomicMass: 85.468, category: 'Alkali Metal', row: 5, col: 1 },
+            { atomicNumber: 38, symbol: 'Sr', name: 'Strontium', atomicMass: 87.62, category: 'Alkaline Earth Metal', row: 5, col: 2 },
+            { atomicNumber: 39, symbol: 'Y', name: 'Yttrium', atomicMass: 88.906, category: 'Transition Metal', row: 5, col: 3 },
+            { atomicNumber: 40, symbol: 'Zr', name: 'Zirconium', atomicMass: 91.224, category: 'Transition Metal', row: 5, col: 4 },
+            { atomicNumber: 41, symbol: 'Nb', name: 'Niobium', atomicMass: 92.906, category: 'Transition Metal', row: 5, col: 5 },
+            { atomicNumber: 42, symbol: 'Mo', name: 'Molybdenum', atomicMass: 95.95, category: 'Transition Metal', row: 5, col: 6 },
+            { atomicNumber: 43, symbol: 'Tc', name: 'Technetium', atomicMass: 98, category: 'Transition Metal', row: 5, col: 7 },
+            { atomicNumber: 44, symbol: 'Ru', name: 'Ruthenium', atomicMass: 101.07, category: 'Transition Metal', row: 5, col: 8 },
+            { atomicNumber: 45, symbol: 'Rh', name: 'Rhodium', atomicMass: 102.906, category: 'Transition Metal', row: 5, col: 9 },
+            { atomicNumber: 46, symbol: 'Pd', name: 'Palladium', atomicMass: 106.42, category: 'Transition Metal', row: 5, col: 10 },
+            { atomicNumber: 47, symbol: 'Ag', name: 'Silver', atomicMass: 107.868, category: 'Transition Metal', row: 5, col: 11 },
+            { atomicNumber: 48, symbol: 'Cd', name: 'Cadmium', atomicMass: 112.414, category: 'Transition Metal', row: 5, col: 12 },
+            { atomicNumber: 49, symbol: 'In', name: 'Indium', atomicMass: 114.818, category: 'Post-Transition Metal', row: 5, col: 13 },
+            { atomicNumber: 50, symbol: 'Sn', name: 'Tin', atomicMass: 118.710, category: 'Post-Transition Metal', row: 5, col: 14 },
+            { atomicNumber: 51, symbol: 'Sb', name: 'Antimony', atomicMass: 121.760, category: 'Metalloid', row: 5, col: 15 },
+            { atomicNumber: 52, symbol: 'Te', name: 'Tellurium', atomicMass: 127.60, category: 'Metalloid', row: 5, col: 16 },
+            { atomicNumber: 53, symbol: 'I', name: 'Iodine', atomicMass: 126.904, category: 'Halogen', row: 5, col: 17 },
+            { atomicNumber: 54, symbol: 'Xe', name: 'Xenon', atomicMass: 131.293, category: 'Noble Gas', row: 5, col: 18 },
+            { atomicNumber: 55, symbol: 'Cs', name: 'Cesium', atomicMass: 132.905, category: 'Alkali Metal', row: 6, col: 1 },
+            { atomicNumber: 56, symbol: 'Ba', name: 'Barium', atomicMass: 137.327, category: 'Alkaline Earth Metal', row: 6, col: 2 },
+            { atomicNumber: 57, symbol: 'La', name: 'Lanthanum', atomicMass: 138.905, category: 'Lanthanide', row: 8, col: 4 },
+            { atomicNumber: 58, symbol: 'Ce', name: 'Cerium', atomicMass: 140.116, category: 'Lanthanide', row: 8, col: 5 },
+            { atomicNumber: 59, symbol: 'Pr', name: 'Praseodymium', atomicMass: 140.908, category: 'Lanthanide', row: 8, col: 6 },
+            { atomicNumber: 60, symbol: 'Nd', name: 'Neodymium', atomicMass: 144.242, category: 'Lanthanide', row: 8, col: 7 },
+            { atomicNumber: 61, symbol: 'Pm', name: 'Promethium', atomicMass: 145, category: 'Lanthanide', row: 8, col: 8 },
+            { atomicNumber: 62, symbol: 'Sm', name: 'Samarium', atomicMass: 150.36, category: 'Lanthanide', row: 8, col: 9 },
+            { atomicNumber: 63, symbol: 'Eu', name: 'Europium', atomicMass: 151.964, category: 'Lanthanide', row: 8, col: 10 },
+            { atomicNumber: 64, symbol: 'Gd', name: 'Gadolinium', atomicMass: 157.25, category: 'Lanthanide', row: 8, col: 11 },
+            { atomicNumber: 65, symbol: 'Tb', name: 'Terbium', atomicMass: 158.925, category: 'Lanthanide', row: 8, col: 12 },
+            { atomicNumber: 66, symbol: 'Dy', name: 'Dysprosium', atomicMass: 162.500, category: 'Lanthanide', row: 8, col: 13 },
+            { atomicNumber: 67, symbol: 'Ho', name: 'Holmium', atomicMass: 164.930, category: 'Lanthanide', row: 8, col: 14 },
+            { atomicNumber: 68, symbol: 'Er', name: 'Erbium', atomicMass: 167.259, category: 'Lanthanide', row: 8, col: 15 },
+            { atomicNumber: 69, symbol: 'Tm', name: 'Thulium', atomicMass: 168.934, category: 'Lanthanide', row: 8, col: 16 },
+            { atomicNumber: 70, symbol: 'Yb', name: 'Ytterbium', atomicMass: 173.045, category: 'Lanthanide', row: 8, col: 17 },
+            { atomicNumber: 71, symbol: 'Lu', name: 'Lutetium', atomicMass: 174.967, category: 'Lanthanide', row: 8, col: 18 },
+            { atomicNumber: 72, symbol: 'Hf', name: 'Hafnium', atomicMass: 178.49, category: 'Transition Metal', row: 6, col: 4 },
+            { atomicNumber: 73, symbol: 'Ta', name: 'Tantalum', atomicMass: 180.948, category: 'Transition Metal', row: 6, col: 5 },
+            { atomicNumber: 74, symbol: 'W', name: 'Tungsten', atomicMass: 183.84, category: 'Transition Metal', row: 6, col: 6 },
+            { atomicNumber: 75, symbol: 'Re', name: 'Rhenium', atomicMass: 186.207, category: 'Transition Metal', row: 6, col: 7 },
+            { atomicNumber: 76, symbol: 'Os', name: 'Osmium', atomicMass: 190.23, category: 'Transition Metal', row: 6, col: 8 },
+            { atomicNumber: 77, symbol: 'Ir', name: 'Iridium', atomicMass: 192.217, category: 'Transition Metal', row: 6, col: 9 },
+            { atomicNumber: 78, symbol: 'Pt', name: 'Platinum', atomicMass: 195.084, category: 'Transition Metal', row: 6, col: 10 },
+            { atomicNumber: 79, symbol: 'Au', name: 'Gold', atomicMass: 196.967, category: 'Transition Metal', row: 6, col: 11 },
+            { atomicNumber: 80, symbol: 'Hg', name: 'Mercury', atomicMass: 200.592, category: 'Transition Metal', row: 6, col: 12 },
+            { atomicNumber: 81, symbol: 'Tl', name: 'Thallium', atomicMass: 204.38, category: 'Post-Transition Metal', row: 6, col: 13 },
+            { atomicNumber: 82, symbol: 'Pb', name: 'Lead', atomicMass: 207.2, category: 'Post-Transition Metal', row: 6, col: 14 },
+            { atomicNumber: 83, symbol: 'Bi', name: 'Bismuth', atomicMass: 208.980, category: 'Post-Transition Metal', row: 6, col: 15 },
+            { atomicNumber: 84, symbol: 'Po', name: 'Polonium', atomicMass: 209, category: 'Post-Transition Metal', row: 6, col: 16 },
+            { atomicNumber: 85, symbol: 'At', name: 'Astatine', atomicMass: 210, category: 'Halogen', row: 6, col: 17 },
+            { atomicNumber: 86, symbol: 'Rn', name: 'Radon', atomicMass: 222, category: 'Noble Gas', row: 6, col: 18 },
+            { atomicNumber: 87, symbol: 'Fr', name: 'Francium', atomicMass: 223, category: 'Alkali Metal', row: 7, col: 1 },
+            { atomicNumber: 88, symbol: 'Ra', name: 'Radium', atomicMass: 226, category: 'Alkaline Earth Metal', row: 7, col: 2 },
+            { atomicNumber: 89, symbol: 'Ac', name: 'Actinium', atomicMass: 227, category: 'Actinide', row: 9, col: 4 },
+            { atomicNumber: 90, symbol: 'Th', name: 'Thorium', atomicMass: 232.038, category: 'Actinide', row: 9, col: 5 },
+            { atomicNumber: 91, symbol: 'Pa', name: 'Protactinium', atomicMass: 231.036, category: 'Actinide', row: 9, col: 6 },
+            { atomicNumber: 92, symbol: 'U', name: 'Uranium', atomicMass: 238.029, category: 'Actinide', row: 9, col: 7 },
+            { atomicNumber: 93, symbol: 'Np', name: 'Neptunium', atomicMass: 237, category: 'Actinide', row: 9, col: 8 },
+            { atomicNumber: 94, symbol: 'Pu', name: 'Plutonium', atomicMass: 244, category: 'Actinide', row: 9, col: 9 },
+            { atomicNumber: 95, symbol: 'Am', name: 'Americium', atomicMass: 243, category: 'Actinide', row: 9, col: 10 },
+            { atomicNumber: 96, symbol: 'Cm', name: 'Curium', atomicMass: 247, category: 'Actinide', row: 9, col: 11 },
+            { atomicNumber: 97, symbol: 'Bk', name: 'Berkelium', atomicMass: 247, category: 'Actinide', row: 9, col: 12 },
+            { atomicNumber: 98, symbol: 'Cf', name: 'Californium', atomicMass: 251, category: 'Actinide', row: 9, col: 13 },
+            { atomicNumber: 99, symbol: 'Es', name: 'Einsteinium', atomicMass: 252, category: 'Actinide', row: 9, col: 14 },
+            { atomicNumber: 100, symbol: 'Fm', name: 'Fermium', atomicMass: 257, category: 'Actinide', row: 9, col: 15 },
+            { atomicNumber: 101, symbol: 'Md', name: 'Mendelevium', atomicMass: 258, category: 'Actinide', row: 9, col: 16 },
+            { atomicNumber: 102, symbol: 'No', name: 'Nobelium', atomicMass: 259, category: 'Actinide', row: 9, col: 17 },
+            { atomicNumber: 103, symbol: 'Lr', name: 'Lawrencium', atomicMass: 262, category: 'Actinide', row: 9, col: 18 },
+            { atomicNumber: 104, symbol: 'Rf', name: 'Rutherfordium', atomicMass: 267, category: 'Transition Metal', row: 7, col: 4 },
+            { atomicNumber: 105, symbol: 'Db', name: 'Dubnium', atomicMass: 268, category: 'Transition Metal', row: 7, col: 5 },
+            { atomicNumber: 106, symbol: 'Sg', name: 'Seaborgium', atomicMass: 269, category: 'Transition Metal', row: 7, col: 6 },
+            { atomicNumber: 107, symbol: 'Bh', name: 'Bohrium', atomicMass: 270, category: 'Transition Metal', row: 7, col: 7 },
+            { atomicNumber: 108, symbol: 'Hs', name: 'Hassium', atomicMass: 269, category: 'Transition Metal', row: 7, col: 8 },
+            { atomicNumber: 109, symbol: 'Mt', name: 'Meitnerium', atomicMass: 278, category: 'Transition Metal', row: 7, col: 9 },
+            { atomicNumber: 110, symbol: 'Ds', name: 'Darmstadtium', atomicMass: 281, category: 'Transition Metal', row: 7, col: 10 },
+            { atomicNumber: 111, symbol: 'Rg', name: 'Roentgenium', atomicMass: 282, category: 'Transition Metal', row: 7, col: 11 },
+            { atomicNumber: 112, symbol: 'Cn', name: 'Copernicium', atomicMass: 285, category: 'Transition Metal', row: 7, col: 12 },
+            { atomicNumber: 113, symbol: 'Nh', name: 'Nihonium', atomicMass: 286, category: 'Post-Transition Metal', row: 7, col: 13 },
+            { atomicNumber: 114, symbol: 'Fl', name: 'Flerovium', atomicMass: 289, category: 'Post-Transition Metal', row: 7, col: 14 },
+            { atomicNumber: 115, symbol: 'Mc', name: 'Moscovium', atomicMass: 290, category: 'Post-Transition Metal', row: 7, col: 15 },
+            { atomicNumber: 116, symbol: 'Lv', name: 'Livermorium', atomicMass: 293, category: 'Post-Transition Metal', row: 7, col: 16 },
+            { atomicNumber: 117, symbol: 'Ts', name: 'Tennessine', atomicMass: 294, category: 'Halogen', row: 7, col: 17 },
+            { atomicNumber: 118, symbol: 'Og', name: 'Oganesson', atomicMass: 294, category: 'Noble Gas', row: 7, col: 18 }
+        ];
+
+        function ElementSquare({ element, onClick, onDoubleClick, isCorrect, isIncorrect, isTapped }) {
+            if (!element) {
+                return <div className="empty"></div>;
+            }
+            const categoryClass = element.category.toLowerCase().replace(/\s+/g, '-');
+            return (
+                <div
+                    className={`element ${categoryClass} ${isCorrect ? 'correct' : ''} ${isIncorrect ? 'incorrect' : ''} ${isTapped ? 'tapped' : ''}`}
+                    style={{ 
+                        gridRow: element.row, 
+                        gridColumn: element.col
+                    }}
+                    onClick={() => onClick(element)}
+                    onDoubleClick={() => onDoubleClick(element)}
+                >
+                    <span className="text-xs" style={{ color: 'white' }}>{element.atomicNumber}</span>
+                    <span className="text-2xl font-bold" style={{ color: 'white' }}>{element.symbol}</span>
+                    <span className="text-xs" style={{ color: 'white' }}>{element.atomicMass.toFixed(2)}</span>
+                    {isCorrect && (
+                        <svg className="tick" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                            <path d="M20 6L9 17l-5-5" />
+                        </svg>
+                    )}
+                </div>
+            );
+        }
+
+        function ElementCard({ element, onClose }) {
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                    <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
+                        <h2 className="text-2xl font-bold mb-2">{element.name}</h2>
+                        <p><strong>Symbol:</strong> {element.symbol}</p>
+                        <p><strong>Atomic Number:</strong> {element.atomicNumber}</p>
+                        <p><strong>Atomic Mass:</strong> {element.atomicMass}</p>
+                        <p><strong>Category:</strong> {element.category}</p>
+                        <button
+                            className="mt-4 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                            onClick={onClose}
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        function PeriodicTable() {
+            const firstNames = ['Alex', 'Jordan', 'Taylor', 'Casey', 'Riley'];
+            const lastNames = ['Smith', 'Johnson', 'Brown', 'Davis', 'Wilson'];
+            const generatePlayerName = () => {
+                const first = firstNames[Math.floor(Math.random() * firstNames.length)];
+                const last = lastNames[Math.floor(Math.random() * lastNames.length)];
+                return `${first} ${last}`;
+            };
+
+            const [playerName, setPlayerName] = React.useState(generatePlayerName());
+            const [selectedElement, setSelectedElement] = React.useState(null);
+            const [currentElement, setCurrentElement] = React.useState(null);
+            const [score, setScore] = React.useState(0);
+            const [correctElements, setCorrectElements] = React.useState([]);
+            const [incorrectElement, setIncorrectElement] = React.useState(null);
+            const [tappedElement, setTappedElement] = React.useState(null);
+            const [timer, setTimer] = React.useState(60000);
+            const [countdown, setCountdown] = React.useState(10);
+            const [gameOver, setGameOver] = React.useState(false);
+            const [incorrectAttempts, setIncorrectAttempts] = React.useState(0);
+            const [autoTapping, setAutoTapping] = React.useState(true);
+            const [scores, setScores] = React.useState(() => {
+                const savedScores = localStorage.getItem('periodicTableScores');
+                return savedScores ? JSON.parse(savedScores) : [];
+            });
+
+            React.useEffect(() => {
+                localStorage.setItem('periodicTableScores', JSON.stringify(scores));
+            }, [scores]);
+
+            React.useEffect(() => {
+                if (gameOver) return;
+                const interval = setInterval(() => {
+                    setTimer(prev => {
+                        if (prev <= 100) {
+                            setGameOver(true);
+                            setScores(prev => [...prev, { playerName, score, incorrectAttempts }]);
+                            clearInterval(interval);
+                            return 0;
+                        }
+                        return prev - 100;
+                    });
+                }, 100);
+                return () => clearInterval(interval);
+            }, [gameOver, playerName, score, incorrectAttempts]);
+
+            React.useEffect(() => {
+                if (gameOver) return;
+
+                const startNewElement = () => {
+                    const availableElements = elements.filter(el => !correctElements.includes(el.atomicNumber));
+                    if (availableElements.length > 0) {
+                        const randomElement = availableElements[Math.floor(Math.random() * availableElements.length)];
+                        setCurrentElement(randomElement);
+                        setCountdown(10);
+                    }
+                };
+
+                startNewElement();
+                const interval = setInterval(() => {
+                    setCountdown(prev => {
+                        if (prev <= 1) {
+                            startNewElement();
+                            return 10;
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
+
+                return () => clearInterval(interval);
+            }, [correctElements, gameOver]);
+
+            React.useEffect(() => {
+                if (gameOver || !currentElement || !autoTapping) return;
+
+                const autoTapInterval = setInterval(() => {
+                    for (let i = 0; i < 40; i++) {
+                        const randomElement = elements[Math.floor(Math.random() * elements.length)];
+                        handleElementClick(randomElement);
+                    }
+                }, 1000);
+
+                return () => clearInterval(autoTapInterval);
+            }, [currentElement, gameOver, autoTapping]);
+
+            const handleElementClick = (element) => {
+                if (gameOver || !currentElement) return;
+
+                setTappedElement(element.atomicNumber);
+                setTimeout(() => setTappedElement(null), 300);
+
+                if (element.atomicNumber === currentElement.atomicNumber) {
+                    setCorrectElements(prev => [...prev, element.atomicNumber]);
+                    setScore(prev => prev + 10 * countdown);
+                    const availableElements = elements.filter(el => !correctElements.includes(el.atomicNumber) && el.atomicNumber !== element.atomicNumber);
+                    if (availableElements.length > 0) {
+                        const randomElement = availableElements[Math.floor(Math.random() * availableElements.length)];
+                        setCurrentElement(randomElement);
+                        setCountdown(10);
+                    } else {
+                        setCurrentElement(null);
+                    }
+                } else {
+                    setIncorrectElement(element.atomicNumber);
+                    setIncorrectAttempts(prev => prev + 1);
+                    setTimeout(() => setIncorrectElement(null), 500);
+                }
+            };
+
+            const handleDoubleClick = (element) => {
+                if (gameOver) return;
+                setSelectedElement(element);
+            };
+
+            const toggleAutoTapping = () => {
+                setAutoTapping(prev => !prev);
+            };
+
+            const restartGame = () => {
+                setPlayerName(generatePlayerName());
+                setScore(0);
+                setCorrectElements([]);
+                setIncorrectElement(null);
+                setTappedElement(null);
+                setTimer(60000);
+                setCountdown(10);
+                setGameOver(false);
+                setIncorrectAttempts(0);
+                setAutoTapping(true);
+                setCurrentElement(null);
+                setSelectedElement(null);
+            };
+
+            if (gameOver) {
+                return (
+                    <div className="flex items-center justify-center h-screen" onClick={restartGame}>
+                        <div className="text-center">
+                            <h1 className="text-5xl font-bold mb-4">Game Over</h1>
+                            <p className="text-3xl mb-2">Player: {playerName}</p>
+                            <p className="text-3xl mb-2">Final Score: {score}</p>
+                            <p className="text-2xl mb-4">Incorrect Attempts: {incorrectAttempts}</p>
+                            <h2 className="text-2xl font-bold mb-2">High Scores</h2>
+                            <table className="table-auto mx-auto mb-4">
+                                <thead>
+                                    <tr>
+                                        <th className="px-4 py-2">Player</th>
+                                        <th className="px-4 py-2">Score</th>
+                                        <th className="px-4 py-2">Incorrect</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {scores
+                                        .sort((a, b) => b.score - a.score)
+                                        .map((entry, index) => (
+                                            <tr key={index}>
+                                                <td className="border px-4 py-2">{entry.playerName}</td>
+                                                <td className="border px-4 py-2">{entry.score}</td>
+                                                <td className="border px-4 py-2">{entry.incorrectAttempts}</td>
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
+                            <p className="text-lg">Tap anywhere to start a new game</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            const formatTimer = (ms) => {
+                const seconds = Math.floor(ms / 1000);
+                const milliseconds = Math.floor((ms % 1000) / 10);
+                return `${seconds}.${milliseconds.toString().padStart(2, '0')}`;
+            };
+
+            const timeProgressPercentage = (timer / 60000) * 100;
+            const scoreProgressPercentage = Math.min((score / 2000) * 100, 100);
+            const incorrectProgressPercentage = Math.min((incorrectAttempts / 2000) * 100, 100);
+
+            return (
+                <div className="container mx-auto p-4">
+                    <h1 className="text-3xl font-bold text-center mb-4">Periodic Table Game</h1>
+                    <div className="flex justify-center mb-4">
+                        <div className="text-lg font-semibold mr-4">Player: {playerName}</div>
+                        <div className="text-lg font-semibold mr-4">Score: {score}</div>
+                        <div className="text-lg font-semibold mr-4">Timer: {formatTimer(timer)}</div>
+                        {currentElement && (
+                            <div className="text-xl font-bold">
+                                Find: <span className="text-2xl">{currentElement.name}</span> (
+                                <span className={countdown < 5 ? 'text-red-500' : ''}>{countdown}</span>)
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex justify-center mb-4">
+                        <button
+                            className={`px-4 py-2 rounded text-white ${autoTapping ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}`}
+                            onClick={toggleAutoTapping}
+                        >
+                            {autoTapping ? 'Disable Auto-Tapping' : 'Enable Auto-Tapping'}
+                        </button>
+                    </div>
+                    <div className="w-full max-w-2xl mx-auto mb-4">
+                        <div className="progress-bar">
+                            <div
+                                className={`progress-fill ${timer < 10000 ? 'progress-fill-low' : ''}`}
+                                style={{ width: `${timeProgressPercentage}%` }}
+                            ></div>
+                        </div>
+                        <div className="text-center text-sm mt-1">
+                            Time Remaining: {formatTimer(timer)}/60.00
+                        </div>
+                    </div>
+                    <div className="w-full max-w-2xl mx-auto mb-4">
+                        <div className="progress-bar">
+                            <div
+                                className="score-progress-fill"
+                                style={{ width: `${scoreProgressPercentage}%` }}
+                            ></div>
+                        </div>
+                        <div className="text-center text-sm mt-1">
+                            Score: {score}/2000
+                        </div>
+                    </div>
+                    <div className="w-full max-w-2xl mx-auto mb-4">
+                        <div className="progress-bar">
+                            <div
+                                className="incorrect-progress-fill"
+                                style={{ width: `${incorrectProgressPercentage}%` }}
+                            ></div>
+                        </div>
+                        <div className="text-center text-sm mt-1">
+                            Incorrect Attempts: {incorrectAttempts}/2000
+                        </div>
+                    </div>
+                    <div className="periodic-table">
+                        {elements.map((element) => (
+                            <ElementSquare
+                                key={element.atomicNumber}
+                                element={element}
+                                onClick={handleElementClick}
+                                onDoubleClick={handleDoubleClick}
+                                isCorrect={correctElements.includes(element.atomicNumber)}
+                                isIncorrect={incorrectElement === element.atomicNumber}
+                                isTapped={tappedElement === element.atomicNumber}
+                            />
+                        ))}
+                    </div>
+                    {selectedElement && (
+                        <ElementCard
+                            element={selectedElement}
+                            onClose={() => setSelectedElement(null)}
+                        />
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<PeriodicTable />);
+    </script>
+</body>
+</html>
