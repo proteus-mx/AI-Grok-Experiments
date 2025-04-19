@@ -1,0 +1,375 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Grid Mesh with Shaded Spheres, Gradient Lines, Starfield, Planets, and Morphing</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+</head>
+<body>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Starfield setup
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 1000;
+        const starPositions = new Float32Array(starCount * 3);
+        const starColors = new Float32Array(starCount * 3);
+
+        for (let i = 0; i < starCount; i++) {
+            const distance = 50 + Math.random() * 50;
+            const theta = Math.random() * 2 * Math.PI;
+            const phi = Math.acos(2 * Math.random() - 1);
+            starPositions[i * 3] = distance * Math.sin(phi) * Math.cos(theta);
+            starPositions[i * 3 + 1] = distance * Math.sin(phi) * Math.sin(theta);
+            starPositions[i * 3 + 2] = distance * Math.cos(phi);
+            const brightness = 0.3 + Math.random() * 0.7;
+            starColors[i * 3] = brightness;
+            starColors[i * 3 + 1] = brightness;
+            starColors[i * 3 + 2] = brightness;
+        }
+
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        starGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+        const starMaterial = new THREE.PointsMaterial({ size: 0.1, vertexColors: true });
+        const starfield = new THREE.Points(starGeometry, starMaterial);
+        scene.add(starfield);
+
+        // Planets setup
+        const planetGeometry = new THREE.SphereGeometry(1, 32, 32);
+        const planetTextures = [
+            new THREE.TextureLoader().load('https://threejs.org/examples/textures/planets/mars_1k_color.jpg'),
+            new THREE.TextureLoader().load('https://threejs.org/examples/textures/planets/jupiter2_1k.jpg'),
+            new THREE.TextureLoader().load('https://threejs.org/examples/textures/planets/saturn_1k.jpg')
+        ];
+        const planets = [];
+        
+        for (let i = 0; i < 3; i++) {
+            const planetMaterial = new THREE.MeshStandardMaterial({ map: planetTextures[i] });
+            const planet = new THREE.Mesh(planetGeometry, planetMaterial);
+            const angle = (i / 3) * 2 * Math.PI;
+            planet.position.set(20 * Math.cos(angle), 0, 20 * Math.sin(angle));
+            planet.scale.setScalar(2 + Math.random());
+            scene.add(planet);
+            planets.push(planet);
+        }
+
+        // Create 125 spheres in a 5x5x5 3D grid
+        const points = [];
+        const sphereGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+        const spheres = new THREE.Group();
+        const gridSize = 5;
+        const spacing = 1;
+
+        for (let x = 0; x < gridSize; x++) {
+            for (let y = 0; y < gridSize; y++) {
+                for (let z = 0; z < gridSize; z++) {
+                    const posX = (x - (gridSize - 1) / 2) * spacing;
+                    const posY = (y - (gridSize - 1) / 2) * spacing;
+                    const posZ = (z - (gridSize - 1) / 2) * spacing;
+                    const color = new THREE.Color().setHSL(x / gridSize, 1, (y + z) / (gridSize * 2));
+                    const sphereMaterial = new THREE.MeshStandardMaterial({ color, metalness: 0.3, roughness: 0.7 });
+                    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+                    sphere.position.set(posX, posY, posZ);
+                    spheres.add(sphere);
+                    points.push({ 
+                        original: new THREE.Vector3(posX, posY, posZ), 
+                        current: new THREE.Vector3(posX, posY, posZ), 
+                        target: new THREE.Vector3(posX, posY, posZ), // For morphing
+                        velocity: new THREE.Vector3(), 
+                        mesh: sphere,
+                        color: color
+                    });
+                }
+            }
+        }
+        scene.add(spheres);
+
+        // Add lighting for shaded spheres
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+        pointLight.position.set(5, 5, 5);
+        scene.add(pointLight);
+
+        // Create lines between adjacent points with gradient colors
+        const lines = new THREE.Group();
+        for (let i = 0; i < points.length; i++) {
+            const x = i % gridSize;
+            const y = Math.floor(i / gridSize) % gridSize;
+            const z = Math.floor(i / (gridSize * gridSize));
+
+            if (x < gridSize - 1) {
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(6);
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                const colors = new Float32Array(6);
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ vertexColors: true }));
+                line.userData = { point1: i, point2: i + 1 };
+                lines.add(line);
+            }
+            if (y < gridSize - 1) {
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(6);
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                const colors = new Float32Array(6);
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ vertexColors: true }));
+                line.userData = { point1: i, point2: i + gridSize };
+                lines.add(line);
+            }
+            if (z < gridSize - 1) {
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(6);
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                const colors = new Float32Array(6);
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ vertexColors: true }));
+                line.userData = { point1: i, point2: i + gridSize * gridSize };
+                lines.add(line);
+            }
+        }
+        scene.add(lines);
+
+        // Morphing setup
+        let morphTimer = 0;
+        const morphInterval = 5; // Seconds between morphs
+        const shapes = [
+            // Cube (default grid)
+            (point, x, y, z) => point.original.clone(),
+            // Sphere
+            (point, x, y, z) => {
+                const theta = (x / (gridSize - 1)) * Math.PI * 2;
+                const phi = (y / (gridSize - 1)) * Math.PI;
+                const radius = 2 * (z / (gridSize - 1)) + 1;
+                return new THREE.Vector3(
+                    radius * Math.sin(phi) * Math.cos(theta),
+                    radius * Math.sin(phi) * Math.sin(theta),
+                    radius * Math.cos(phi)
+                );
+            },
+            // Torus
+            (point, x, y, z) => {
+                const theta = (x / (gridSize - 1)) * Math.PI * 2;
+                const phi = (y / (gridSize - 1)) * Math.PI * 2;
+                const radius = 1 + 0.5 * (z / (gridSize - 1));
+                return new THREE.Vector3(
+                    (2 + radius * Math.cos(phi)) * Math.cos(theta),
+                    (2 + radius * Math.cos(phi)) * Math.sin(theta),
+                    radius * Math.sin(phi)
+                );
+            },
+            // Cylinder
+            (point, x, y, z) => {
+                const theta = (x / (gridSize - 1)) * Math.PI * 2;
+                const height = (y / (gridSize - 1)) * 4 - 2;
+                const radius = 1 + (z / (gridSize - 1)) * 0.5;
+                return new THREE.Vector3(
+                    radius * Math.cos(theta),
+                    height,
+                    radius * Math.sin(theta)
+                );
+            }
+        ];
+        let currentShapeIndex = 0;
+
+        // Function to update target positions for morphing
+        function updateMorphTargets() {
+            const shape = shapes[currentShapeIndex];
+            for (let i = 0; i < points.length; i++) {
+                const x = i % gridSize;
+                const y = Math.floor(i / gridSize) % gridSize;
+                const z = Math.floor(i / (gridSize * gridSize));
+                points[i].target = shape(points[i], x, y, z);
+            }
+            currentShapeIndex = (currentShapeIndex + 1) % shapes.length;
+        }
+
+        updateMorphTargets(); // Initial morph setup
+
+        // Camera orbit setup
+        let cameraAngle = 0;
+        const cameraRadius = 7;
+
+        // Raycaster for mouse interaction
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let isDragging = false;
+
+        // Handle mouse/touch down
+        function onDown(event) {
+            event.preventDefault();
+            isDragging = true;
+            updateMousePosition(event);
+        }
+
+        // Update mouse position and affect spheres
+        function updateMousePosition(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX || (event.touches && event.touches[0].clientX)) - rect.left) / rect.width * 2 - 1;
+            mouse.y = -(((event.clientY || (event.touches && event.touches[0].clientY)) - rect.top) / rect.height) * 2 + 1;
+
+            if (isDragging) {
+                raycaster.setFromCamera(mouse, camera);
+                const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+                const intersect = new THREE.Vector3();
+                raycaster.ray.intersectPlane(plane, intersect);
+
+                // Affect spheres near the mouse position
+                for (let i = 0; i < points.length; i++) {
+                    const point = points[i];
+                    const dist = point.current.distanceTo(intersect);
+                    if (dist < 1.5) {
+                        const influence = (1.5 - dist) / 1.5;
+                        const direction = intersect.clone().sub(point.current).normalize();
+                        point.current.add(direction.multiplyScalar(influence * 0.3));
+                    }
+                }
+            }
+        }
+
+        // Handle mouse/touch move
+        function onMove(event) {
+            event.preventDefault();
+            updateMousePosition(event);
+        }
+
+        // Handle mouse/touch up
+        function onUp() {
+            isDragging = false;
+        }
+
+        // Event listeners
+        renderer.domElement.addEventListener('mousedown', onDown);
+        renderer.domElement.addEventListener('mousemove', onMove);
+        renderer.domElement.addEventListener('mouseup', onUp);
+        renderer.domElement.addEventListener('touchstart', onDown);
+        renderer.domElement.addEventListener('touchmove', onMove);
+        renderer.domElement.addEventListener('touchend', onUp);
+
+        // Animation loop
+        function animate(time) {
+            requestAnimationFrame(animate);
+
+            // Update morph timer
+            morphTimer += 0.016; // Approximate frame time in seconds (60 FPS)
+            if (morphTimer > morphInterval) {
+                updateMorphTargets();
+                morphTimer = 0;
+            }
+
+            // Update camera position to orbit around the mesh
+            cameraAngle += 0.01;
+            camera.position.x = cameraRadius * Math.sin(cameraAngle);
+            camera.position.z = cameraRadius * Math.cos(cameraAngle);
+            camera.position.y = cameraRadius * Math.sin(cameraAngle * 0.5);
+            camera.lookAt(0, 0, 0);
+
+            // Rotate planets
+            planets.forEach(planet => {
+                planet.rotation.y += 0.002;
+            });
+
+            // Update spheres with random movement and morphing
+            for (let i = 0; i < points.length; i++) {
+                const point = points[i];
+                if (!isDragging) {
+                    // Random movement
+                    const randomForce = new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.02,
+                        (Math.random() - 0.5) * 0.02,
+                        (Math.random() - 0.5) * 0.02
+                    );
+                    point.velocity.add(randomForce);
+                    // Morph towards target position
+                    const morphForce = point.target.clone().sub(point.current).multiplyScalar(0.05);
+                    point.velocity.add(morphForce);
+                    point.velocity.multiplyScalar(0.9); // Damping
+                    point.current.add(point.velocity);
+                }
+                point.mesh.position.copy(point.current);
+            }
+
+            // Update lines with gradient colors
+            lines.children.forEach(line => {
+                const { point1, point2 } = line.userData;
+                const positions = line.geometry.attributes.position.array;
+                const colors = line.geometry.attributes.color.array;
+
+                positions[0] = points[point1].current.x;
+                positions[1] = points[point1].current.y;
+                positions[2] = points[point1].current.z;
+                positions[3] = points[point2].current.x;
+                positions[4] = points[point2].current.y;
+                positions[5] = points[point2].current.z;
+
+                colors[0] = points[point1].color.r;
+                colors[1] = points[point1].color.g;
+                colors[2] = points[point1].color.b;
+                colors[3] = points[point2].color.r;
+                colors[4] = points[point2].color.g;
+                colors[5] = points[point2].color.b;
+
+                line.geometry.attributes.position.needsUpdate = true;
+                line.geometry.attributes.color.needsUpdate = true;
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        animate(0);
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
