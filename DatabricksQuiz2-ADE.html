@@ -45,21 +45,22 @@
     <title>Databricks Quiz Game</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
-            background-color: #f0f0f0;
+            background-color: #E6ECEF; /* Databricks Light Gray */
         }
         .quiz-container, .summary-container {
-            background: white;
+            background: #FFFFFF; /* White */
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
             width: 600px;
             text-align: center;
+            border: 1px solid #D3D8DB; /* Databricks Border Gray */
         }
         .summary-container img {
             max-width: 150px;
@@ -68,10 +69,15 @@
         .summary-container h1 {
             font-size: 1.8em;
             margin-bottom: 20px;
+            color: #FF3621; /* Databricks Red */
         }
         .summary-container p {
             font-size: 1.1em;
             margin-bottom: 20px;
+            color: #2E2E2E; /* Databricks Dark Gray */
+        }
+        .summary-container h3 {
+            color: #FF3621; /* Databricks Red */
         }
         .summary-container ul {
             text-align: left;
@@ -84,24 +90,25 @@
             align-items: center;
             justify-content: space-between;
             margin-bottom: 10px;
+            color: #2E2E2E; /* Databricks Dark Gray */
         }
         .section-btn {
             padding: 5px 10px;
-            background: #007bff;
-            color: white;
+            background: #FF3621; /* Databricks Red */
+            color: #FFFFFF; /* White */
             border: none;
             border-radius: 5px;
             cursor: pointer;
             font-size: 0.9em;
         }
         .section-btn:hover {
-            background: #0056b3;
+            background: #E0301E; /* Databricks Red Hover */
         }
         .question {
             font-size: 1.2em;
             margin-bottom: 20px;
             min-height: 1.2em;
-            color: blue;
+            color: #0066CC; /* Databricks Blue */
         }
         .options {
             display: flex;
@@ -110,59 +117,63 @@
         }
         .option {
             padding: 10px;
-            background: #e0e0e0;
+            background: #F5F6F5; /* Databricks Light Gray */
             border-radius: 5px;
             cursor: pointer;
+            color: #2E2E2E; /* Databricks Dark Gray */
+            border: 1px solid #D3D8DB; /* Databricks Border Gray */
         }
         .option:hover {
-            background: #d0d0d0;
+            background: #E6ECEF; /* Databricks Light Gray Hover */
         }
         .option.selected {
-            background: #a0a0ff;
-            color: white;
+            background: #0066CC; /* Databricks Blue */
+            color: #FFFFFF; /* White */
         }
         .feedback {
             margin-top: 20px;
             font-weight: bold;
         }
         .correct {
-            color: green;
+            color: #00A65A; /* Databricks Green */
         }
         .incorrect {
-            color: red;
+            color: #FF3621; /* Databricks Red */
         }
         button {
             margin: 10px 5px;
             padding: 10px 20px;
-            background: #007bff;
-            color: white;
+            background: #FF3621; /* Databricks Red */
+            color: #FFFFFF; /* White */
             border: none;
             border-radius: 5px;
             cursor: pointer;
         }
         button:hover {
-            background: #0056b3;
+            background: #E0301E; /* Databricks Red Hover */
         }
         .skip-btn {
-            background: #6c757d;
+            background: #6C757D; /* Databricks Neutral Gray */
         }
         .skip-btn:hover {
-            background: #5a6268;
+            background: #5A6268; /* Databricks Neutral Gray Hover */
         }
         .score {
             margin-bottom: 20px;
             font-size: 1.1em;
+            color: #2E2E2E; /* Databricks Dark Gray */
         }
         .progress-bar {
             width: 100%;
-            background: #e0e0e0;
+            background: #F5F6F5; /* Databricks Light Gray */
             border-radius: 5px;
             height: 20px;
             margin-bottom: 10px;
+            border: 1px solid #D3D8DB; /* Databricks Border Gray */
         }
         .progress {
             height: 100%;
-            background: #007bff;
+            background: #0066CC; /* Databricks Blue */
             border-radius: 5px;
             transition: width 0.3s;
         }
@@ -172,16 +183,18 @@
         .section-title {
             font-size: 1.3em;
             margin-bottom: 10px;
+            color: #FF3621; /* Databricks Red */
         }
         .timer {
             font-size: 1.1em;
             margin-bottom: 10px;
+            color: #2E2E2E; /* Databricks Dark Gray */
         }
     </style>
 </head>
 <body>
     <div class="summary-container" id="summary">
-
+        <img src="https://www.databricks.com/wp-content/uploads/2020/03/databricks-logo.png" alt="Databricks Logo">
         <h1>Databricks Quiz Challenge</h1>
         <p>Test your knowledge of Databricks with this engaging quiz! Designed for Associate Data Engineer exam preparation, it covers key concepts across multiple domains. Answer questions, track your progress, and learn with instant feedback.</p>
         <h3>Quiz Sections:</h3>
