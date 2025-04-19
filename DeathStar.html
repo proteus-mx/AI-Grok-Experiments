@@ -1,0 +1,135 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html>
+<head>
+    <title>Death Star Flyaround</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Add lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+        pointLight.position.set(10, 10, 10);
+        scene.add(pointLight);
+
+        // Create Death Star
+        const geometry = new THREE.SphereGeometry(5, 32, 32);
+        const texture = new THREE.TextureLoader().load('https://i.imgur.com/3j4f5rL.jpg');
+        const material = new THREE.MeshPhongMaterial({ 
+            map: texture, 
+            wireframe: true, 
+            shininess: 30 
+        });
+        const deathStar = new THREE.Mesh(geometry, material);
+        scene.add(deathStar);
+
+        // Starfield
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 1000;
+        const starPositions = new Float32Array(starCount * 3);
+        for (let i = 0; i < starCount * 3; i += 3) {
+            starPositions[i] = (Math.random() - 0.5) * 2000;
+            starPositions[i + 1] = (Math.random() - 0.5) * 2000;
+            starPositions[i + 2] = (Math.random() - 0.5) * 2000;
+        }
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 2 });
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+
+        // Planets
+        const planetGeometry = new THREE.SphereGeometry(1, 16, 16);
+        const planetMaterial1 = new THREE.MeshPhongMaterial({ color: 0x4a90e2, shininess: 10 });
+        const planetMaterial2 = new THREE.MeshPhongMaterial({ color: 0x8b4513, shininess: 10 });
+        const planet1 = new THREE.Mesh(planetGeometry, planetMaterial1);
+        const planet2 = new THREE.Mesh(planetGeometry, planetMaterial2);
+        planet1.position.set(20, 10, -50);
+        planet2.position.set(-30, -15, -60);
+        scene.add(planet1, planet2);
+
+        // Camera position
+        camera.position.z = 15;
+
+        // Animation loop
+        let angle = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Orbit and zoom camera
+            angle += 0.01;
+            const baseDistance = 15;
+            const zoom = 3 * Math.sin(angle * 0.5);
+            const distance = baseDistance + zoom;
+            camera.position.x = distance * Math.sin(angle);
+            camera.position.z = distance * Math.cos(angle);
+            camera.lookAt(deathStar.position);
+
+            // Rotate Death Star and planets
+            deathStar.rotation.y += 0.005;
+            planet1.rotation.y += 0.002;
+            planet2.rotation.y += 0.003;
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
