@@ -1,0 +1,807 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Databricks Quiz Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .quiz-container, .summary-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 600px;
+            text-align: center;
+        }
+        .summary-container img {
+            max-width: 150px;
+            margin-bottom: 20px;
+        }
+        .summary-container h1 {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+        }
+        .summary-container p {
+            font-size: 1.1em;
+            margin-bottom: 20px;
+        }
+        .summary-container ul {
+            text-align: left;
+            margin-bottom: 20px;
+            list-style: none;
+            padding: 0;
+        }
+        .summary-container li {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .section-btn {
+            padding: 5px 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .section-btn:hover {
+            background: #0056b3;
+        }
+        .question {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+            min-height: 1.2em;
+            color: blue;
+        }
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .option {
+            padding: 10px;
+            background: #e0e0e0;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .option:hover {
+            background: #d0d0d0;
+        }
+        .option.selected {
+            background: #a0a0ff;
+            color: white;
+        }
+        .feedback {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        .correct {
+            color: green;
+        }
+        .incorrect {
+            color: red;
+        }
+        button {
+            margin: 10px 5px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .skip-btn {
+            background: #6c757d;
+        }
+        .skip-btn:hover {
+            background: #5a6268;
+        }
+        .score {
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+        .progress-bar {
+            width: 100%;
+            background: #e0e0e0;
+            border-radius: 5px;
+            height: 20px;
+            margin-bottom: 10px;
+        }
+        .progress {
+            height: 100%;
+            background: #007bff;
+            border-radius: 5px;
+            transition: width 0.3s;
+        }
+        .hidden {
+            display: none;
+        }
+        .section-title {
+            font-size: 1.3em;
+            margin-bottom: 10px;
+        }
+        .timer {
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="summary-container" id="summary">
+        <img src="https://www.databricks.com/wp-content/uploads/2020/03/databricks-logo.png" alt="Databricks Logo">
+        <h1>Databricks Quiz Challenge</h1>
+        <p>Test your knowledge of Databricks with this engaging quiz! Designed for Associate Data Engineer exam preparation, it covers key concepts across multiple domains. Answer questions, track your progress, and learn with instant feedback.</p>
+        <h3>Quiz Sections:</h3>
+        <ul>
+            <li><span>Databricks Platform Basics [10]</span><button class="section-btn" data-section="Platform Basics">Start Section</button></li>
+            <li><span>Delta Lake and Data Management [20]</span><button class="section-btn" data-section="Delta Lake">Start Section</button></li>
+            <li><span>Spark and Distributed Computing [6]</span><button class="section-btn" data-section="Spark">Start Section</button></li>
+            <li><span>SQL and Data Processing [17]</span><button class="section-btn" data-section="SQL">Start Section</button></li>
+            <li><span>Workflows and Automation [8]</span><button class="section-btn" data-section="Workflows">Start Section</button></li>
+            <li><span>Data Governance and Security [21]</span><button class="section-btn" data-section="Governance">Start Section</button></li>
+        </ul>
+        <button id="start-btn">Start Quiz</button>
+    </div>
+    <div class="quiz-container hidden" id="quiz">
+        <div class="score">Score: <span id="score">0</span> / <span id="total">0</span></div>
+        <div class="timer">Time: <span id="timer">0:00</span></div>
+        <div class="progress-bar"><div class="progress" id="overall-progress"></div></div>
+        <div class="section-title" id="section-title"></div>
+        <div class="progress-bar"><div class="progress" id="section-progress"></div></div>
+        <div class="question" id="question"></div>
+        <div class="options" id="options"></div>
+        <div class="feedback" id="feedback"></div>
+        <button id="skip-question-btn" class="skip-btn">Skip Question</button>
+        <button id="skip-section-btn" class="skip-btn">Skip Section</button>
+        <button id="next-btn" style="display: none;">Next Question</button>
+    </div>
+
+    <script>
+        const sections = {
+            "Platform Basics": [
+                {
+                    question: "What is Databricks primarily known for?",
+                    options: ["Cloud storage", "Data analytics platform", "Web development", "Cybersecurity"],
+                    answer: "Data analytics platform"
+                },
+                {
+                    question: "Which company co-founded Databricks?",
+                    options: ["Google", "Microsoft", "UC Berkeley", "Amazon"],
+                    answer: "UC Berkeley"
+                },
+                {
+                    question: "What is Databricks' collaborative environment called?",
+                    options: ["Workspace", "Dashboard", "Studio", "Lab"],
+                    answer: "Workspace"
+                },
+                {
+                    question: "What is the purpose of the Databricks Community Edition?",
+                    options: ["Production pipelines", "Learning platform", "Enterprise security", "High-performance queries"],
+                    answer: "Learning platform"
+                },
+                {
+                    question: "What is the role of the Databricks web application?",
+                    options: ["Data storage", "User interface", "Query execution", "Cluster management"],
+                    answer: "User interface"
+                },
+                {
+                    question: "What is the purpose of the Databricks lakehouse platform?",
+                    options: ["Data storage only", "Unified analytics", "Cluster management", "Permission control"],
+                    answer: "Unified analytics"
+                },
+                {
+                    question: "What is the primary benefit of a data lakehouse in Databricks?",
+                    options: ["Real-time collaboration", "Single source of truth", "Autoscaling", "Ad-hoc query speed"],
+                    answer: "Single source of truth"
+                },
+                {
+                    question: "Which cloud platforms does Databricks support?",
+                    options: ["AWS only", "Azure only", "AWS, Azure, Google Cloud", "Google Cloud only"],
+                    answer: "AWS, Azure, Google Cloud"
+                },
+                {
+                    question: "What language is NOT natively supported in Databricks notebooks?",
+                    options: ["Python", "R", "Scala", "PHP"],
+                    answer: "PHP"
+                },
+                {
+                    question: "What is the name of Databricks' AI assistant?",
+                    options: ["Genie", "Sparkle", "DeltaBot", "BrickBot"],
+                    answer: "Genie"
+                }
+            ],
+            "Delta Lake": [
+                {
+                    question: "What is Delta Lake in Databricks?",
+                    options: ["A machine learning model", "A storage layer", "A visualization tool", "A programming language"],
+                    answer: "A storage layer"
+                },
+                {
+                    question: "Which command optimizes a Delta table for query performance?",
+                    options: ["VACUUM", "MERGE", "ZORDER", "CLONE"],
+                    answer: "ZORDER"
+                },
+                {
+                    question: "What does the MERGE command do in Databricks?",
+                    options: ["Deletes records", "Upserts data", "Clones tables", "Partitions data"],
+                    answer: "Upserts data"
+                },
+                {
+                    question: "What is the purpose of the VACUUM command in Delta Lake?",
+                    options: ["Optimizes queries", "Removes old data files", "Merges tables", "Clones data"],
+                    answer: "Removes old data files"
+                },
+                {
+                    question: "Which feature allows time travel in Delta Lake?",
+                    options: ["Transaction logs", "Z-ordering", "Auto Loader", "Photon"],
+                    answer: "Transaction logs"
+                },
+                {
+                    question: "What is the purpose of the OPTIMIZE command in Delta Lake?",
+                    options: ["Removes duplicates", "Compacts small files", "Clones tables", "Merges data"],
+                    answer: "Compacts small files"
+                },
+                {
+                    question: "What is the default file format for Delta Lake tables?",
+                    options: ["Parquet", "CSV", "JSON", "Avro"],
+                    answer: "Parquet"
+                },
+                {
+                    question: "Which Databricks feature ensures ACID transactions?",
+                    options: ["Delta Lake", "Photon", "MLflow", "Auto Loader"],
+                    answer: "Delta Lake"
+                },
+                {
+                    question: "What is the purpose of the CLONE command in Delta Lake?",
+                    options: ["Creates a copy", "Deletes data", "Merges tables", "Optimizes queries"],
+                    answer: "Creates a copy"
+                },
+                {
+                    question: "What is the benefit of using Z-ordering in Delta Lake?",
+                    options: ["Data compression", "Query performance", "Data cloning", "Real-time streaming"],
+                    answer: "Query performance"
+                },
+                {
+                    question: "Which command is used to delete records in a Delta table?",
+                    options: ["DELETE", "DROP", "REMOVE", "ERASE"],
+                    answer: "DELETE"
+                },
+                {
+                    question: "What is the purpose of the CHANGE DATA FEED in Delta Lake?",
+                    options: ["Clones data", "Tracks changes", "Optimizes queries", "Manages clusters"],
+                    answer: "Tracks changes"
+                },
+                {
+                    question: "Which command is used to view table history in Delta Lake?",
+                    options: ["DESCRIBE HISTORY", "SHOW HISTORY", "LIST HISTORY", "VIEW HISTORY"],
+                    answer: "DESCRIBE HISTORY"
+                },
+                {
+                    question: "Which command is used to create a shallow clone in Delta Lake?",
+                    options: ["CLONE SHALLOW", "COPY SHALLOW", "CREATE SHALLOW", "DUPLICATE SHALLOW"],
+                    answer: "CLONE SHALLOW"
+                },
+                {
+                    question: "Which command is used to merge two tables in Databricks?",
+                    options: ["MERGE INTO", "COMBINE INTO", "JOIN INTO", "UNION INTO"],
+                    answer: "MERGE INTO"
+                },
+                {
+                    question: "Which command is used to partition a Delta table?",
+                    options: ["PARTITION BY", "DIVIDE BY", "SPLIT BY", "GROUP BY"],
+                    answer: "PARTITION BY"
+                },
+                {
+                    question: "Which command is used to clone a Delta table?",
+                    options: ["CLONE TABLE", "COPY TABLE", "DUPLICATE TABLE", "REPLICATE TABLE"],
+                    answer: "CLONE TABLE"
+                },
+                {
+                    question: "Which Databricks feature supports schema enforcement?",
+                    options: ["Delta Lake", "Photon", "MLflow", "Auto Loader"],
+                    answer: "Delta Lake"
+                },
+                {
+                    question: "Which Databricks feature supports change data capture (CDC)?",
+                    options: ["Delta Lake", "Photon", "MLflow", "Auto Loader"],
+                    answer: "Delta Lake"
+                },
+                {
+                    question: "What is the purpose of the Databricks transaction log?",
+                    options: ["Query optimization", "Data versioning", "Cluster management", "Permission control"],
+                    answer: "Data versioning"
+                }
+            ],
+            "Spark": [
+                {
+                    question: "What does Databricks use for distributed computing?",
+                    options: ["Hadoop", "Spark", "Kubernetes", "Docker"],
+                    answer: "Spark"
+                },
+                {
+                    question: "Which component runs on the driver node in Databricks?",
+                    options: ["Executor", "SparkContext", "Worker", "Cluster manager"],
+                    answer: "SparkContext"
+                },
+                {
+                    question: "Which Databricks feature supports streaming data processing?",
+                    options: ["Structured Streaming", "Delta Lake", "MLflow", "Unity Catalog"],
+                    answer: "Structured Streaming"
+                },
+                {
+                    question: "Which Databricks feature supports windowing in streaming?",
+                    options: ["Structured Streaming", "Photon", "MLflow", "Auto Loader"],
+                    answer: "Structured Streaming"
+                },
+                {
+                    question: "What is the role of the Databricks worker node?",
+                    options: ["Task coordination", "Data processing", "Query optimization", "Permission control"],
+                    answer: "Data processing"
+                },
+                {
+                    question: "Which Databricks feature supports batch and streaming workloads?",
+                    options: ["Delta Lake", "Photon", "MLflow", "Auto Loader"],
+                    answer: "Delta Lake"
+                }
+            ],
+            "SQL": [
+                {
+                    question: "Which feature optimizes Databricks' SQL queries?",
+                    options: ["Photon", "Spark", "Delta", "MLflow"],
+                    answer: "Photon"
+                },
+                {
+                    question: "Which command is used to create a table in Databricks SQL?",
+                    options: ["CREATE TABLE", "INSERT TABLE", "DEFINE TABLE", "BUILD TABLE"],
+                    answer: "CREATE TABLE"
+                },
+                {
+                    question: "What does the COPY INTO command do in Databricks?",
+                    options: ["Clones tables", "Ingests data", "Deletes data", "Optimizes queries"],
+                    answer: "Ingests data"
+                },
+                {
+                    question: "Which command retrieves table metadata in Databricks?",
+                    options: ["DESCRIBE TABLE", "SHOW TABLE", "LIST TABLE", "INFO TABLE"],
+                    answer: "DESCRIBE TABLE"
+                },
+                {
+                    question: "What is the benefit of using serverless SQL endpoints in Databricks?",
+                    options: ["Cost savings", "Manual scaling", "Fixed compute", "Limited queries"],
+                    answer: "Cost savings"
+                },
+                {
+                    question: "What does the INSERT OVERWRITE command do in Databricks?",
+                    options: ["Appends data", "Replaces table data", "Deletes records", "Clones table"],
+                    answer: "Replaces table data"
+                },
+                {
+                    question: "Which command is used to create a new database in Databricks?",
+                    options: ["CREATE DATABASE", "NEW DATABASE", "DEFINE DATABASE", "BUILD DATABASE"],
+                    answer: "CREATE DATABASE"
+                },
+                {
+                    question: "What is the role of the Photon engine in Databricks?",
+                    options: ["Data governance", "Query acceleration", "Machine learning", "Streaming"],
+                    answer: "Query acceleration"
+                },
+                {
+                    question: "Which command is used to update records in a Delta table?",
+                    options: ["UPDATE", "MODIFY", "ALTER", "CHANGE"],
+                    answer: "UPDATE"
+                },
+                {
+                    question: "What is the role of the Databricks SQL dashboard?",
+                    options: ["Data visualization", "Cluster management", "Query optimization", "Permission control"],
+                    answer: "Data visualization"
+                },
+                {
+                    question: "Which command is used to drop a table in Databricks?",
+                    options: ["DROP TABLE", "DELETE TABLE", "REMOVE TABLE", "ERASE TABLE"],
+                    answer: "DROP TABLE"
+                },
+                {
+                    question: "What is the purpose of the Databricks SQL warehouse?",
+                    options: ["Data storage", "Query execution", "Cluster management", "Permission control"],
+                    answer: "Query execution"
+                },
+                {
+                    question: "Which command is used to view database details in Databricks?",
+                    options: ["DESCRIBE DATABASE", "SHOW DATABASE", "LIST DATABASE", "INFO DATABASE"],
+                    answer: "DESCRIBE DATABASE"
+                },
+                {
+                    question: "Which command is used to create a view in Databricks?",
+                    options: ["CREATE VIEW", "DEFINE VIEW", "BUILD VIEW", "SET VIEW"],
+                    answer: "CREATE VIEW"
+                },
+                {
+                    question: "Which command is used to refresh a Delta table?",
+                    options: ["REFRESH TABLE", "UPDATE TABLE", "RELOAD TABLE", "SYNC TABLE"],
+                    answer: "REFRESH TABLE"
+                },
+                {
+                    question: "What is the benefit of using Databricks SQL analytics?",
+                    options: ["Data storage", "Real-time insights", "Cluster management", "Permission control"],
+                    answer: "Real-time insights"
+                },
+                {
+                    question: "Which command is used to set table properties in Databricks?",
+                    options: ["ALTER TABLE", "MODIFY TABLE", "SET TABLE", "CONFIGURE TABLE"],
+                    answer: "ALTER TABLE"
+                }
+            ],
+            "Workflows": [
+                {
+                    question: "Which Databricks tool is used to manage workflows?",
+                    options: ["Jobs", "Notebooks", "Dashboards", "Clusters"],
+                    answer: "Jobs"
+                },
+                {
+                    question: "What is the purpose of Delta Live Tables (DLT)?",
+                    options: ["Real-time dashboards", "ETL pipelines", "Machine learning", "Cluster management"],
+                    answer: "ETL pipelines"
+                },
+                {
+                    question: "Which Databricks feature allows conditional task execution in workflows?",
+                    options: ["Depends On", "Auto Loader", "Photon", "Unity Catalog"],
+                    answer: "Depends On"
+                },
+                {
+                    question: "Which Databricks feature supports multi-hop architecture?",
+                    options: ["Delta Live Tables", "MLflow", "Photon", "Auto Loader"],
+                    answer: "Delta Live Tables"
+                },
+                {
+                    question: "What is the benefit of using Databricks Workflows?",
+                    options: ["Query optimization", "Task automation", "Data cloning", "Permission control"],
+                    answer: "Task automation"
+                },
+                {
+                    question: "What is the purpose of the Databricks Jobs API?",
+                    options: ["Data visualization", "Workflow automation", "Query optimization", "Permission control"],
+                    answer: "Workflow automation"
+                },
+                {
+                    question: "Which Databricks feature supports query scheduling?",
+                    options: ["Jobs", "Photon", "MLflow", "Auto Loader"],
+                    answer: "Jobs"
+                },
+                {
+                    question: "What is the purpose of the Databricks notebook?",
+                    options: ["Data visualization", "Code execution", "Cluster management", "Permission control"],
+                    answer: "Code execution"
+                }
+            ],
+            "Governance": [
+                {
+                    question: "Which tool is used for incremental data ingestion in Databricks?",
+                    options: ["Auto Loader", "Delta Lake", "MLflow", "Photon"],
+                    answer: "Auto Loader"
+                },
+                {
+                    question: "What is the role of the Unity Catalog in Databricks?",
+                    options: ["Data governance", "Query optimization", "Machine learning", "Cluster management"],
+                    answer: "Data governance"
+                },
+                {
+                    question: "Which permission allows a user to run a notebook in Databricks?",
+                    options: ["Can View", "Can Edit", "Can Run", "Can Manage"],
+                    answer: "Can Run"
+                },
+                {
+                    question: "What is the purpose of the Auto Stop feature in Databricks?",
+                    options: ["Optimizes queries", "Saves costs", "Clones clusters", "Manages permissions"],
+                    answer: "Saves costs"
+                },
+                {
+                    question: "Which command is used to grant permissions in Databricks?",
+                    options: ["GRANT", "ALLOW", "PERMIT", "ENABLE"],
+                    answer: "GRANT"
+                },
+                {
+                    question: "What is the purpose of the Databricks File System (DBFS)?",
+                    options: ["Query optimization", "Data storage", "Cluster management", "Permission control"],
+                    answer: "Data storage"
+                },
+                {
+                    question: "Which Databricks tool is used for data exploration?",
+                    options: ["Data Explorer", "Auto Loader", "MLflow", "Jobs"],
+                    answer: "Data Explorer"
+                },
+                {
+                    question: "What is the benefit of using managed tables in Databricks?",
+                    options: ["Manual storage", "Automatic lifecycle", "External access", "No governance"],
+                    answer: "Automatic lifecycle"
+                },
+                {
+                    question: "What is the purpose of the Databricks CLI?",
+                    options: ["Query execution", "Cluster management", "Data visualization", "Permission control"],
+                    answer: "Cluster management"
+                },
+                {
+                    question: "What is the benefit of using cluster pools in Databricks?",
+                    options: ["Query optimization", "Cost savings", "Data cloning", "Permission control"],
+                    answer: "Cost savings"
+                },
+                {
+                    question: "What is the purpose of the Databricks REST API?",
+                    options: ["Data visualization", "Cluster management", "Query execution", "Permission control"],
+                    answer: "Cluster management"
+                },
+                {
+                    question: "Which Databricks feature supports real-time collaboration?",
+                    options: ["Workspace", "Photon", "MLflow", "Auto Loader"],
+                    answer: "Workspace"
+                },
+                {
+                    question: "Which Databricks feature supports PII data tagging?",
+                    options: ["Unity Catalog", "Photon", "MLflow", "Auto Loader"],
+                    answer: "Unity Catalog"
+                },
+                {
+                    question: "What is the benefit of using Auto Loader in Databricks?",
+                    options: ["Query optimization", "Incremental ingestion", "Data cloning", "Permission control"],
+                    answer: "Incremental ingestion"
+                },
+                {
+                    question: "What is the purpose of the Databricks secret scope?",
+                    options: ["Data storage", "Secure credentials", "Query optimization", "Cluster management"],
+                    answer: "Secure credentials"
+                },
+                {
+                    question: "Which Databricks feature supports cost monitoring?",
+                    options: ["Clusters", "Photon", "MLflow", "Auto Loader"],
+                    answer: "Clusters"
+                },
+                {
+                    question: "Which Databricks feature supports data lineage tracking?",
+                    options: ["Unity Catalog", "Photon", "MLflow", "Auto Loader"],
+                    answer: "Unity Catalog"
+                },
+                {
+                    question: "What is the role of the Databricks control plane?",
+                    options: ["Data processing", "Platform management", "Query optimization", "Permission control"],
+                    answer: "Platform management"
+                },
+                {
+                    question: "What is the purpose of the Databricks metastore?",
+                    options: ["Data storage", "Metadata management", "Query optimization", "Cluster management"],
+                    answer: "Metadata management"
+                },
+                {
+                    question: "What is the role of the Databricks data plane?",
+                    options: ["Platform management", "Data processing", "Query optimization", "Permission control"],
+                    answer: "Data processing"
+                },
+                {
+                    question: "What is the purpose of the Databricks cluster?",
+                    options: ["Data storage", "Compute resources", "Query optimization", "Permission control"],
+                    answer: "Compute resources"
+                }
+            ]
+        };
+
+        let currentSection = "Platform Basics";
+        let availableQuestions = JSON.parse(JSON.stringify(sections));
+        let score = 0;
+        let totalAnswered = 0;
+        let sectionAnswered = 0;
+        let selectedOption = null;
+        let timerInterval = null;
+        let totalSeconds = 0;
+        const totalQuestions = Object.values(sections).reduce((sum, section) => sum + section.length, 0);
+        const initialSectionLengths = Object.fromEntries(
+            Object.entries(sections).map(([section, questions]) => [section, questions.length])
+        );
+
+        const summaryEl = document.getElementById('summary');
+        const quizEl = document.getElementById('quiz');
+        const startBtn = document.getElementById('start-btn');
+        const questionEl = document.getElementById('question');
+        const optionsEl = document.getElementById('options');
+        const feedbackEl = document.getElementById('feedback');
+        const nextBtn = document.getElementById('next-btn');
+        const skipQuestionBtn = document.getElementById('skip-question-btn');
+        const skipSectionBtn = document.getElementById('skip-section-btn');
+        const scoreEl = document.getElementById('score');
+        const totalEl = document.getElementById('total');
+        const overallProgressEl = document.getElementById('overall-progress');
+        const sectionProgressEl = document.getElementById('section-progress');
+        const sectionTitleEl = document.getElementById('section-title');
+        const timerEl = document.getElementById('timer');
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                totalSeconds++;
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                timerEl.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+        }
+
+        function typeQuestion(text) {
+            questionEl.textContent = '';
+            let index = 0;
+            const interval = setInterval(() => {
+                if (index < text.length) {
+                    questionEl.textContent += text[index];
+                    index++;
+                } else {
+                    clearInterval(interval);
+                }
+            }, 20);
+        }
+
+        function startQuiz(section) {
+            currentSection = section || "Platform Basics";
+            summaryEl.classList.add('hidden');
+            quizEl.classList.remove('hidden');
+            startTimer();
+            loadQuestion();
+        }
+
+        startBtn.onclick = () => startQuiz();
+        document.querySelectorAll('.section-btn').forEach(btn => {
+            btn.onclick = () => startQuiz(btn.dataset.section);
+        });
+
+        function updateProgress() {
+            const overallProgress = (totalAnswered / totalQuestions) * 100;
+            overallProgressEl.style.width = `${overallProgress}%`;
+            const sectionProgress = ((initialSectionLengths[currentSection] - availableQuestions[currentSection].length) / initialSectionLengths[currentSection]) * 100;
+            sectionProgressEl.style.width = `${sectionProgress}%`;
+        }
+
+        function loadQuestion() {
+            if (totalAnswered >= totalQuestions) {
+                stopTimer();
+                questionEl.textContent = `Quiz Over! Your final score is ${score}/${totalQuestions}!`;
+                optionsEl.innerHTML = '';
+                feedbackEl.textContent = '';
+                nextBtn.style.display = 'none';
+                skipQuestionBtn.style.display = 'none';
+                skipSectionBtn.style.display = 'none';
+                sectionTitleEl.textContent = '';
+                return;
+            }
+
+            if (availableQuestions[currentSection].length === 0) {
+                const remainingSections = Object.keys(availableQuestions).filter(section => availableQuestions[section].length > 0);
+                if (remainingSections.length === 0) {
+                    stopTimer();
+                    questionEl.textContent = `Quiz Over! Your final score is ${score}/${totalQuestions}!`;
+                    optionsEl.innerHTML = '';
+                    feedbackEl.textContent = '';
+                    nextBtn.style.display = 'none';
+                    skipQuestionBtn.style.display = 'none';
+                    skipSectionBtn.style.display = 'none';
+                    sectionTitleEl.textContent = '';
+                    return;
+                }
+                currentSection = remainingSections[0];
+                sectionAnswered = 0;
+            }
+
+            sectionTitleEl.textContent = `Section: ${currentSection} [${availableQuestions[currentSection].length}/${initialSectionLengths[currentSection]}]`;
+            const randomIndex = Math.floor(Math.random() * availableQuestions[currentSection].length);
+            const q = availableQuestions[currentSection][randomIndex];
+            typeQuestion(q.question);
+            optionsEl.innerHTML = '';
+            feedbackEl.textContent = '';
+            nextBtn.style.display = 'none';
+            skipQuestionBtn.style.display = 'inline-block';
+            skipSectionBtn.style.display = 'inline-block';
+            selectedOption = null;
+
+            q.options.forEach(option => {
+                const div = document.createElement('div');
+                div.className = 'option';
+                div.textContent = option;
+                div.onclick = () => selectOption(div, option, q, randomIndex);
+                optionsEl.appendChild(div);
+            });
+
+            updateProgress();
+        }
+
+        function selectOption(div, option, question, questionIndex) {
+            if (selectedOption) return;
+            selectedOption = option;
+            div.classList.add('selected');
+            const correct = option === question.answer;
+            totalAnswered++;
+            totalEl.textContent = totalAnswered;
+
+            if (correct) {
+                score++;
+                scoreEl.textContent = score;
+                feedbackEl.textContent = 'Correct! 🎉';
+                feedbackEl.className = 'feedback correct';
+                availableQuestions[currentSection].splice(questionIndex, 1);
+                setTimeout(loadQuestion, 1000);
+            } else {
+                feedbackEl.textContent = `Incorrect! The right answer is "${question.answer}".`;
+                feedbackEl.className = 'feedback incorrect';
+                nextBtn.style.display = 'block';
+            }
+        }
+
+        skipQuestionBtn.onclick = () => {
+            totalAnswered++;
+            totalEl.textContent = totalAnswered;
+            availableQuestions[currentSection].splice(Math.floor(Math.random() * availableQuestions[currentSection].length), 1);
+            loadQuestion();
+        };
+
+        skipSectionBtn.onclick = () => {
+            const remainingQuestions = availableQuestions[currentSection].length;
+            totalAnswered += remainingQuestions;
+            totalEl.textContent = totalAnswered;
+            availableQuestions[currentSection] = [];
+            loadQuestion();
+        };
+
+        nextBtn.onclick = () => {
+            loadQuestion();
+        };
+    </script>
+</body>
+</html>
