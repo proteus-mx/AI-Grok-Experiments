@@ -1,0 +1,362 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Machine Learning Visualization Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+    <style>
+        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #000; }
+        canvas { border: 2px solid #fff; }
+        #info { position: absolute; top: 10px; left: 10px; background: rgba(0, 0, 0, 0.8); color: #fff; padding: 10px; font-family: Arial, sans-serif; }
+        button { margin: 5px; padding: 5px 10px; cursor: pointer; background: #333; color: #fff; border: 1px solid #fff; }
+        button:hover { background: #555; }
+        #summary { margin-top: 10px; font-size: 14px; max-width: 200px; }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>ML Visualization Game</h3>
+        <p>Click canvas to add points.</p>
+        <button onclick="setMode('linear')">Linear Regression</button>
+        <button onclick="setMode('kmeans')">K-Means Clustering</button>
+        <button onclick="setMode('tree')">Decision Tree</button>
+        <button onclick="setMode('svm')">SVM</button>
+        <button onclick="setMode('knn')">K-Nearest Neighbors</button>
+        <button onclick="setMode('logistic')">Logistic Regression</button>
+        <button onclick="setMode('dbscan')">DBSCAN</button>
+        <button onclick="reset()">Reset</button>
+        <div id="summary"></div>
+    </div>
+<script>
+let points = [];
+let mode = null;
+
+function setup() {
+    createCanvas(800, 600);
+}
+
+function draw() {
+    background(0);
+    drawPoints();
+    if (mode === 'linear') drawLinearRegression();
+    if (mode === 'kmeans') drawKMeans();
+    if (mode === 'tree') drawDecisionTree();
+    if (mode === 'svm') drawSVM();
+    if (mode === 'knn') drawKNN();
+    if (mode === 'logistic') drawLogisticRegression();
+    if (mode === 'dbscan') drawDBSCAN();
+}
+
+function drawPoints() {
+    fill(255);
+    noStroke();
+    for (let p of points) {
+        ellipse(p.x, p.y, 8, 8);
+    }
+}
+
+function mousePressed() {
+    if (mouseX > 0 && mouseX < width && mouseY > 0 && mouseY < height) {
+        points.push(createVector(mouseX, mouseY));
+    }
+}
+
+function setMode(newMode) {
+    mode = newMode;
+    updateSummary();
+}
+
+function reset() {
+    points = [];
+    mode = null;
+    updateSummary();
+}
+
+function updateSummary() {
+    const summaryDiv = document.getElementById('summary');
+    if (mode === 'linear') {
+        summaryDiv.innerHTML = 'Linear Regression: Fits a straight line to predict a continuous output based on input data.';
+    } else if (mode === 'kmeans') {
+        summaryDiv.innerHTML = 'K-Means Clustering: Groups points into 3 clusters by minimizing distance to cluster centers.';
+    } else if (mode === 'tree') {
+        summaryDiv.innerHTML = 'Decision Tree: Splits data into regions using recursive binary splits for classification or regression.';
+    } else if (mode === 'svm') {
+        summaryDiv.innerHTML = 'SVM: Finds a hyperplane to separate classes with maximum margin.';
+    } else if (mode === 'knn') {
+        summaryDiv.innerHTML = 'K-Nearest Neighbors: Classifies points based on the majority class of 5 nearest neighbors.';
+    } else if (mode === 'logistic') {
+        summaryDiv.innerHTML = 'Logistic Regression: Fits a sigmoid curve to predict binary class probabilities.';
+    } else if (mode === 'dbscan') {
+        summaryDiv.innerHTML = 'DBSCAN: Clusters points based on density, marking outliers as noise.';
+    } else {
+        summaryDiv.innerHTML = '';
+    }
+}
+
+function drawLinearRegression() {
+    if (points.length < 2) return;
+    let x = points.map(p => p.x);
+    let y = points.map(p => p.y);
+    let n = x.length;
+    let x_mean = x.reduce((a, b) => a + b) / n;
+    let y_mean = y.reduce((a, b) => a + b) / n;
+    let num = 0, den = 0;
+    for (let i = 0; i < n; i++) {
+        num += (x[i] - x_mean) * (y[i] - y_mean);
+        den += (x[i] - x_mean) ** 2;
+    }
+    let m = num / den;
+    let b = y_mean - m * x_mean;
+    stroke(255, 0, 0);
+    strokeWeight(2);
+    line(0, b, width, m * width + b);
+}
+
+function drawKMeans() {
+    if (points.length < 2) return;
+    let k = 3;
+    let centroids = [];
+    for (let i = 0; i < k; i++) {
+        centroids.push(createVector(random(width), random(height)));
+    }
+    let clusters = Array(k).fill().map(() => []);
+    for (let iter = 0; iter < 10; iter++) {
+        clusters = Array(k).fill().map(() => []);
+        for (let p of points) {
+            let minDist = Infinity;
+            let clusterIdx = 0;
+            for (let i = 0; i < k; i++) {
+                let d = p5.Vector.dist(p, centroids[i]);
+                if (d < minDist) {
+                    minDist = d;
+                    clusterIdx = i;
+                }
+            }
+            clusters[clusterIdx].push(p);
+        }
+        for (let i = 0; i < k; i++) {
+            if (clusters[i].length > 0) {
+                let x = clusters[i].reduce((sum, p) => sum + p.x, 0) / clusters[i].length;
+                let y = clusters[i].reduce((sum, p) => sum + p.y, 0) / clusters[i].length;
+                centroids[i].set(x, y);
+            }
+        }
+    }
+    strokeWeight(1);
+    for (let i = 0; i < k; i++) {
+        stroke(0, 255, 255);
+        fill(0, 255, 255, 150);
+        ellipse(centroids[i].x, centroids[i].y, 15, 15);
+        for (let p of clusters[i]) {
+            stroke(0, 255, 255, 100);
+            line(p.x, p.y, centroids[i].x, centroids[i].y);
+        }
+    }
+}
+
+function drawDecisionTree() {
+    if (points.length < 2) return;
+    let minX = Math.min(...points.map(p => p.x));
+    let maxX = Math.max(...points.map(p => p.x));
+    let minY = Math.min(...points.map(p => p.y));
+    let maxY = Math.max(...points.map(p => p.y));
+    function split(x1, y1, x2, y2, depth) {
+        if (depth === 0) return;
+        stroke(0, 255, 0);
+        strokeWeight(1);
+        let midX = (x1 + x2) / 2;
+        line(midX, y1, midX, y2);
+        split(x1, y1, midX, y2, depth - 1);
+        split(midX, y1, x2, y2, depth - 1);
+        let midY = (y1 + y2) / 2;
+        line(x1, midY, x2, midY);
+        split(x1, y1, x2, midY, depth - 1);
+        split(x1, midY, x2, y2, depth - 1);
+    }
+    split(minX, minY, maxX, maxY, 3);
+}
+
+function drawSVM() {
+    if (points.length < 2) return;
+    let centroids = [];
+    let k = 2;
+    for (let i = 0; i < k; i++) {
+        centroids.push(createVector(random(width), random(height)));
+    }
+    let clusters = Array(k).fill().map(() => []);
+    for (let iter = 0; iter < 10; iter++) {
+        clusters = Array(k).fill().map(() => []);
+        for (let p of points) {
+            let minDist = Infinity;
+            let clusterIdx = 0;
+            for (let i = 0; i < k; i++) {
+                let d = p5.Vector.dist(p, centroids[i]);
+                if (d < minDist) {
+                    minDist = d;
+                    clusterIdx = i;
+                }
+            }
+            clusters[clusterIdx].push(p);
+        }
+        for (let i = 0; i < k; i++) {
+            if (clusters[i].length > 0) {
+                let x = clusters[i].reduce((sum, p) => sum + p.x, 0) / clusters[i].length;
+                let y = clusters[i].reduce((sum, p) => sum + p.y, 0) / clusters[i].length;
+                centroids[i].set(x, y);
+            }
+        }
+    }
+    let midX = (centroids[0].x + centroids[1].x) / 2;
+    let midY = (centroids[0].y + centroids[1].y) / 2;
+    let slope = -(centroids[1].x - centroids[0].x) / (centroids[1].y - centroids[0].y);
+    stroke(255, 165, 0);
+    strokeWeight(2);
+    let x1 = 0;
+    let y1 = midY - slope * (midX - x1);
+    let x2 = width;
+    let y2 = midY - slope * (midX - x2);
+    line(x1, y1, x2, y2);
+}
+
+function drawKNN() {
+    if (points.length < 2) return;
+    let classes = points.map(() => Math.random() > 0.5 ? 0 : 1);
+    let k = 5;
+    for (let i = 0; i < points.length; i++) {
+        let distances = points.map((p, j) => ({
+            dist: p5.Vector.dist(points[i], p),
+            class: classes[j],
+            index: j
+        }));
+        distances.sort((a, b) => a.dist - b.dist);
+        let neighbors = distances.slice(1, k + 1);
+        let class0 = neighbors.filter(n => n.class === 0).length;
+        let class1 = neighbors.filter(n => n.class === 1).length;
+        let predictedClass = class0 > class1 ? 0 : 1;
+        stroke(predictedClass === 0 ? color(255, 0, 255) : color(0, 255, 255));
+        strokeWeight(2);
+        for (let n of neighbors) {
+            line(points[i].x, points[i].y, points[n.index].x, points[n.index].y);
+        }
+    }
+}
+
+function drawLogisticRegression() {
+    if (points.length < 2) return;
+    let classes = points.map(() => Math.random() > 0.5 ? 0 : 1);
+    let x = points.map(p => p.x);
+    let y = points.map(p => p.y);
+    let n = x.length;
+    let x_mean = x.reduce((a, b) => a + b) / n;
+    let y_mean = y.reduce((a, b) => a + b) / n;
+    let num = 0, den = 0;
+    for (let i = 0; i < n; i++) {
+        num += (x[i] - x_mean) * (y[i] - y_mean);
+        den += (x[i] - x_mean) ** 2;
+    }
+    let m = num / den;
+    let b = y_mean - m * x_mean;
+    stroke(255, 255, 0);
+    strokeWeight(2);
+    let x1 = 0;
+    let x2 = width;
+    let y1 = 1 / (1 + Math.exp(-(m * x1 + b)));
+    let y2 = 1 / (1 + Math.exp(-(m * x2 + b)));
+    line(x1, height - y1 * height, x2, height - y2 * height);
+}
+
+function drawDBSCAN() {
+    if (points.length < 2) return;
+    let eps = 50;
+    let minPts = 3;
+    let clusters = [];
+    let visited = new Set();
+    let noise = [];
+    function getNeighbors(point) {
+        let neighbors = [];
+        for (let p of points) {
+            if (p5.Vector.dist(point, p) <= eps) {
+                neighbors.push(p);
+            }
+        }
+        return neighbors;
+    }
+    for (let p of points) {
+        if (visited.has(p)) continue;
+        visited.add(p);
+        let neighbors = getNeighbors(p);
+        if (neighbors.length >= minPts) {
+            let cluster = [p];
+            for (let n of neighbors) {
+                if (!visited.has(n)) {
+                    visited.add(n);
+                    let nNeighbors = getNeighbors(n);
+                    if (nNeighbors.length >= minPts) {
+                        neighbors.push(...nNeighbors);
+                    }
+                    cluster.push(n);
+                }
+            }
+            clusters.push(cluster);
+        } else {
+            noise.push(p);
+        }
+    }
+    let colors = [[255, 0, 255], [0, 255, 255], [255, 165, 0]];
+    for (let i = 0; i < clusters.length; i++) {
+        let c = colors[i % colors.length];
+        stroke(c[0], c[1], c[2]);
+        fill(c[0], c[1], c[2], 150);
+        for (let p of clusters[i]) {
+            ellipse(p.x, p.y, 10, 10);
+        }
+    }
+    stroke(128, 128, 128);
+    fill(128, 128, 128, 100);
+    for (let p of noise) {
+        ellipse(p.x, p.y, 10, 10);
+    }
+}
+</script>
+</body>
+</html>
