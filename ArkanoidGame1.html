@@ -1,0 +1,485 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html>
+<head>
+  <title>Arkanoid Game</title>
+  <style>
+    canvas { border: 1px solid white; display: block; margin: 0 auto; background: black; }
+    #gameInfo { text-align: center; font-family: Arial, sans-serif; color: white; }
+    #skipButton { display: block; margin: 10px auto; padding: 10px 20px; font-size: 16px; cursor: pointer; background: #333; color: white; border: 1px solid white; }
+    body { background: black; }
+  </style>
+</head>
+<body>
+  <div id="gameInfo">
+    <h2>Score: <span id="score">0</span></h2>
+    <h2>Time: <span id="timer">0</span>s</h2>
+    <h2>Level: <span id="level">1</span></h2>
+    <h2>Speed: <span id="speed">5</span></h2>
+    <h2>Lives: <span id="lives">3</span></h2>
+  </div>
+  <button id="skipButton">Skip to Next Level</button>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreDisplay = document.getElementById('score');
+    const timerDisplay = document.getElementById('timer');
+    const levelDisplay = document.getElementById('level');
+    const speedDisplay = document.getElementById('speed');
+    const livesDisplay = document.getElementById('lives');
+    const skipButton = document.getElementById('skipButton');
+
+    let paddle = { x: 150, y: 550, width: 100, height: 10 };
+    let balls = [{ x: 200, y: 300, radius: 10, dx: 5, dy: -5, baseSpeed: 5, isPowerful: false }];
+    let bricks = [];
+    let powerUps = [];
+    let stars = [];
+    let score = 0;
+    let lives = 3;
+    let startTime = Date.now();
+    let gameOver = false;
+    let level = 1;
+    let lastSpeedIncrease = Date.now();
+    let paddleTargetX = 150;
+    let speedMultiplier = 1;
+    let powerfulBallTimeout = null;
+    let speedUpTimeout = null;
+    let showLevelFlash = false;
+    let levelFlashStart = 0;
+
+    const maxLevels = 10;
+    const brickWidth = 70;
+    const brickHeight = 20;
+    const brickPadding = 10;
+    const brickOffsetTop = 30;
+    const brickOffsetLeft = 15;
+    const powerUpSize = 20;
+    const powerUpSpeed = 2;
+
+    const levelConfigs = [
+      { rows: 5, cols: 5, hits: 1, pattern: 'full' },
+      { rows: 6, cols: 6, hits: 1, pattern: 'checkerboard' },
+      { rows: 6, cols: 6, hits: 2, pattern: 'diagonal' },
+      { rows: 7, cols: 7, hits: 2, pattern: 'pyramid' },
+      { rows: 7, cols: 7, hits: 3, pattern: 'cross' },
+      { rows: 8, cols: 8, hits: 3, pattern: 'frame' },
+      { rows: 8, cols: 8, hits: 4, pattern: 'spiral' },
+      { rows: 9, cols: 9, hits: 4, pattern: 'waves' },
+      { rows: 9, cols: 9, hits: 5, pattern: 'dense' },
+      { rows: 10, cols: 10, hits: 5, pattern: 'full' }
+    ];
+
+    const powerUpTypes = [
+      { type: 'powerful', shape: 'square', color: 'yellow' },
+      { type: 'speedUp', shape: 'triangle', color: 'green' },
+      { type: 'extraBall', shape: 'circle', color: 'blue' }
+    ];
+
+    function initStars() {
+      stars = [];
+      for (let i = 0; i < 100; i++) {
+        stars.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          radius: Math.random() * 1.5 + 0.5,
+          speed: Math.random() * 2 + 1
+        });
+      }
+    }
+
+    initStars();
+
+    function initBricks() {
+      bricks = [];
+      const config = levelConfigs[Math.min(level - 1, maxLevels - 1)];
+      for (let c = 0; c < config.cols; c++) {
+        bricks[c] = [];
+        for (let r = 0; r < config.rows; r++) {
+          let status = 0;
+          switch (config.pattern) {
+            case 'full':
+              status = config.hits;
+              break;
+            case 'checkerboard':
+              status = (c + r) % 2 === 0 ? config.hits : 0;
+              break;
+            case 'diagonal':
+              status = c === r ? config.hits : 0;
+              break;
+            case 'pyramid':
+              status = r <= c && r <= config.rows - c - 1 ? config.hits : 0;
+              break;
+            case 'cross':
+              status = (c === Math.floor(config.cols / 2) || r === Math.floor(config.rows / 2)) ? config.hits : 0;
+              break;
+            case 'frame':
+              status = (c === 0 || c === config.cols - 1 || r === 0 || r === config.rows - 1) ? config.hits : 0;
+              break;
+            case 'spiral':
+              status = (c + r) % 3 === 0 ? config.hits : 0;
+              break;
+            case 'waves':
+              status = Math.sin((c + r) / 2) > 0 ? config.hits : 0;
+              break;
+            case 'dense':
+              status = (c + r) % 2 === 0 ? config.hits : Math.floor(config.hits / 2);
+              break;
+          }
+          bricks[c][r] = { x: 0, y: 0, status };
+        }
+      }
+    }
+
+    initBricks();
+
+    function drawStars() {
+      stars.forEach(star => {
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+        ctx.closePath();
+      });
+    }
+
+    function updateStars() {
+      stars.forEach(star => {
+        star.y += star.speed;
+        if (star.y > canvas.height) {
+          star.y = 0;
+          star.x = Math.random() * canvas.width;
+        }
+      });
+    }
+
+    function drawPaddle() {
+      ctx.beginPath();
+      ctx.rect(paddle.x, paddle.y, paddle.width, paddle.height);
+      ctx.fillStyle = 'cyan';
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function drawBalls() {
+      balls.forEach(ball => {
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.fillStyle = ball.isPowerful ? 'orange' : 'white';
+        ctx.fill();
+        ctx.closePath();
+      });
+    }
+
+    function drawBricks() {
+      for (let c = 0; c < bricks.length; c++) {
+        for (let r = 0; r < bricks[c].length; r++) {
+          if (bricks[c][r].status > 0) {
+            let brickX = (c * (brickWidth + brickPadding)) + brickOffsetLeft;
+            let brickY = (r * (brickHeight + brickPadding)) + brickOffsetTop;
+            bricks[c][r].x = brickX;
+            bricks[c][r].y = brickY;
+            ctx.beginPath();
+            ctx.rect(brickX, brickY, brickWidth, brickHeight);
+            ctx.fillStyle = bricks[c][r].status >= 5 ? 'magenta' : bricks[c][r].status === 4 ? 'blue' : bricks[c][r].status === 3 ? 'green' : bricks[c][r].status === 2 ? 'yellow' : 'red';
+            ctx.fill();
+            ctx.closePath();
+          }
+        }
+      }
+    }
+
+    function drawPowerUps() {
+      powerUps.forEach(p => {
+        ctx.beginPath();
+        if (p.shape === 'square') {
+          ctx.rect(p.x - powerUpSize / 2, p.y - powerUpSize / 2, powerUpSize, powerUpSize);
+        } else if (p.shape === 'triangle') {
+          ctx.moveTo(p.x, p.y - powerUpSize / 2);
+          ctx.lineTo(p.x - powerUpSize / 2, p.y + powerUpSize / 2);
+          ctx.lineTo(p.x + powerUpSize / 2, p.y + powerUpSize / 2);
+          ctx.closePath();
+        } else if (p.shape === 'circle') {
+          ctx.arc(p.x, p.y, powerUpSize / 2, 0, Math.PI * 2);
+        }
+        ctx.fillStyle = p.color;
+        ctx.fill();
+        ctx.closePath();
+      });
+    }
+
+    function drawLevelFlash() {
+      if (showLevelFlash && Date.now() - levelFlashStart < 2000) {
+        const elapsed = Date.now() - levelFlashStart;
+        const flash = Math.floor(elapsed / 500) % 2 === 0; // Toggle every 0.5s
+        if (flash) {
+          ctx.font = '40px Arial';
+          ctx.fillStyle = 'white';
+          ctx.textAlign = 'center';
+          ctx.fillText(`Level ${level}`, canvas.width / 2, canvas.height / 2);
+        }
+      } else {
+        showLevelFlash = false;
+      }
+    }
+
+    function spawnPowerUp(x, y) {
+      if (Math.random() < 0.1) {
+        const powerUp = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+        powerUps.push({
+          x,
+          y,
+          type: powerUp.type,
+          shape: powerUp.shape,
+          color: powerUp.color,
+          dy: powerUpSpeed
+        });
+      }
+    }
+
+    function collisionDetection() {
+      balls.forEach(ball => {
+        for (let c = 0; c < bricks.length; c++) {
+          for (let r = 0; r < bricks[c].length; r++) {
+            let b = bricks[c][r];
+            if (b.status > 0) {
+              if (ball.x > b.x && ball.x < b.x + brickWidth && ball.y > b.y && ball.y < b.y + brickHeight) {
+                ball.dy = -ball.dy;
+                b.status = ball.isPowerful ? 0 : b.status - 1;
+                score += 10 * (6 - b.status);
+                scoreDisplay.textContent = score;
+                if (b.status === 0) {
+                  spawnPowerUp(b.x + brickWidth / 2, b.y + brickHeight / 2);
+                }
+                // Check for level completion
+                let bricksLeft = false;
+                for (let i = 0; i < bricks.length; i++) {
+                  for (let j = 0; j < bricks[i].length; j++) {
+                    if (bricks[i][j].status > 0) {
+                      bricksLeft = true;
+                      break;
+                    }
+                  }
+                  if (bricksLeft) break;
+                }
+                if (!bricksLeft) {
+                  showLevelFlash = true;
+                  levelFlashStart = Date.now();
+                  nextLevel();
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function handlePowerUps() {
+      if (showLevelFlash) return; // Pause during level flash
+      powerUps = powerUps.filter(p => p.y < canvas.height);
+      powerUps.forEach(p => {
+        p.y += p.dy;
+        if (p.y + powerUpSize / 2 > paddle.y && p.x > paddle.x && p.x < paddle.x + paddle.width) {
+          if (p.type === 'powerful') {
+            balls.forEach(ball => ball.isPowerful = true);
+            if (powerfulBallTimeout) clearTimeout(powerfulBallTimeout);
+            powerfulBallTimeout = setTimeout(() => {
+              balls.forEach(ball => ball.isPowerful = false);
+            }, 10000);
+          } else if (p.type === 'speedUp') {
+            speedMultiplier = 1.5;
+            if (speedUpTimeout) clearTimeout(speedUpTimeout);
+            speedUpTimeout = setTimeout(() => {
+              speedMultiplier = 1;
+            }, 10000);
+          } else if (p.type === 'extraBall') {
+            balls.push({
+              x: paddle.x + paddle.width / 2,
+              y: paddle.y - 10,
+              radius: 10,
+              dx: Math.random() * 4 - 2,
+              dy: -5,
+              baseSpeed: 5,
+              isPowerful: false
+            });
+          }
+          powerUps = powerUps.filter(powerUp => powerUp !== p);
+        }
+      });
+    }
+
+    function nextLevel() {
+      if (level >= maxLevels) {
+        alert('Congratulations! You completed all levels! Score: ' + score);
+        document.location.reload();
+      } else {
+        level++;
+        levelDisplay.textContent = level;
+        balls = [{
+          x: 200,
+          y: 300,
+          radius: 10,
+          dx: 5,
+          dy: -5,
+          baseSpeed: 5,
+          isPowerful: false
+        }];
+        speedMultiplier = 1;
+        speedDisplay.textContent = balls[0].baseSpeed.toFixed(1);
+        paddle.width = Math.max(50, paddle.width - 5);
+        paddle.x = 150;
+        paddleTargetX = 150;
+        powerUps = [];
+        initBricks();
+      }
+    }
+
+    function updateTimer() {
+      let elapsed = Math.floor((Date.now() - startTime) / 1000);
+      timerDisplay.textContent = elapsed;
+    }
+
+    function increaseSpeed() {
+      if (Date.now() - lastSpeedIncrease > 5000) {
+        balls.forEach(ball => {
+          ball.baseSpeed += 0.5;
+          ball.dx = ball.baseSpeed * (ball.dx > 0 ? 1 : -1) * speedMultiplier;
+          ball.dy = ball.baseSpeed * (ball.dy > 0 ? 1 : -1) * speedMultiplier;
+        });
+        speedDisplay.textContent = balls[0].baseSpeed.toFixed(1);
+        lastSpeedIncrease = Date.now();
+      }
+    }
+
+    function moveBalls() {
+      if (showLevelFlash) return; // Pause during level flash
+      balls.forEach(ball => {
+        ball.x += ball.dx * speedMultiplier;
+        ball.y += ball.dy * speedMultiplier;
+
+        if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) {
+          ball.dx = -ball.dx;
+        }
+        if (ball.y - ball.radius < 0) {
+          ball.dy = -ball.dy;
+        }
+        if (ball.y + ball.radius > paddle.y && ball.x > paddle.x && ball.x < paddle.x + paddle.width) {
+          ball.dy = -ball.dy;
+        }
+        if (ball.y + ball.radius > canvas.height) {
+          balls = balls.filter(b => b !== ball);
+        }
+      });
+
+      if (balls.length === 0) {
+        lives--;
+        livesDisplay.textContent = lives;
+        if (lives <= 0) {
+          gameOver = true;
+          alert('Game Over! Score: ' + score);
+          document.location.reload();
+        } else {
+          balls = [{
+            x: 200,
+            y: 300,
+            radius: 10,
+            dx: 5,
+            dy: -5,
+            baseSpeed: 5,
+            isPowerful: false
+          }];
+          paddle.x = 150;
+          paddleTargetX = 150;
+        }
+      }
+    }
+
+    function movePaddle() {
+      let targetX = (balls[0] || { x: paddle.x + paddle.width / 2 }).x - paddle.width / 2;
+      let closestPowerUp = null;
+      let minDistance = Infinity;
+      powerUps.forEach(p => {
+        if (p.y > paddle.y - 100 && p.y < paddle.y) {
+          const distance = Math.abs(p.y - paddle.y);
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestPowerUp = p;
+          }
+        }
+      });
+      if (closestPowerUp) {
+        targetX = closestPowerUp.x - paddle.width / 2;
+      }
+      paddleTargetX += (targetX - paddleTargetX) * 0.3;
+      paddle.x = Math.min(Math.max(paddleTargetX, 0), canvas.width - paddle.width);
+    }
+
+    function draw() {
+      if (gameOver) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawStars();
+      updateStars();
+      drawBricks();
+      drawBalls();
+      drawPaddle();
+      drawPowerUps();
+      collisionDetection();
+      handlePowerUps();
+      moveBalls();
+      movePaddle();
+      increaseSpeed();
+      updateTimer();
+      drawLevelFlash();
+      requestAnimationFrame(draw);
+    }
+
+    skipButton.addEventListener('click', () => {
+      if (!gameOver) {
+        showLevelFlash = true;
+        levelFlashStart = Date.now();
+        nextLevel();
+      }
+    });
+
+    draw();
+  </script>
+</body>
+</html>
