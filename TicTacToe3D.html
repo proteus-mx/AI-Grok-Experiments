@@ -1,0 +1,503 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Tic-Tac-Toe</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+        const spotlight = new THREE.SpotLight(0xffffff, 1, 20, Math.PI / 4, 0.5);
+        spotlight.position.copy(camera.position);
+        spotlight.target.position.set(0, 0, 0);
+        scene.add(spotlight);
+        scene.add(spotlight.target);
+
+        // Game board (3x3x3)
+        let board = Array(3).fill().map(() => Array(3).fill().map(() => Array(3).fill(null)));
+        const cubes = [];
+        const originalPositions = [];
+
+        // Create grid of cubes
+        const cubeSize = 1;
+        const spacing = 1.5;
+        for (let x = 0; x < 3; x++) {
+            for (let y = 0; y < 3; y++) {
+                for (let z = 0; z < 3; z++) {
+                    const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+                    const material = new THREE.MeshPhongMaterial({ 
+                        color: 0x888888, 
+                        transparent: true, 
+                        opacity: 0.3,
+                        shininess: 100
+                    });
+                    const cube = new THREE.Mesh(geometry, material);
+                    const pos = new THREE.Vector3(
+                        (x - 1) * spacing,
+                        (y - 1) * spacing,
+                        (z - 1) * spacing
+                    );
+                    cube.position.copy(pos);
+                    scene.add(cube);
+                    cubes.push(cube);
+                    originalPositions.push(pos.clone());
+                }
+            }
+        }
+
+        // Camera setup
+        camera.position.set(8, 8, 8);
+        camera.lookAt(0, 0, 0);
+
+        // Game state
+        let currentPlayer = 'X';
+        let gameOver = false;
+        let winner = null;
+        let winningCubes = [];
+        let selectedCube = null;
+        let flashTime = 0;
+
+        // Camera control state
+        let isCameraDragging = false;
+        let isCubeDragging = false;
+        let cameraTheta = Math.PI / 4;
+        let cameraPhi = Math.PI / 4;
+        let cameraRadius = 8;
+        let prevMouse = new THREE.Vector2();
+
+        // Double-tap detection
+        let lastTapTime = 0;
+        let tapTimeout = null;
+
+        // Materials for players
+        const xMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xff0000, 
+            transparent: true, 
+            opacity: 0.7,
+            shininess: 100
+        });
+        const oMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x0000ff, 
+            transparent: true, 
+            opacity: 0.7,
+            shininess: 100
+        });
+        const selectedMaterial = new THREE.MeshPhongMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.7,
+            shininess: 100
+        });
+
+        // Winning line
+        let winningLine = null;
+
+        // Mouse interaction
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let dragOffset = new THREE.Vector3();
+
+        // Check for win and return winning line points and cubes
+        function checkWin(player) {
+            winningCubes = [];
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if (board[i][j][0] === player && board[i][j][1] === player && board[i][j][2] === player) {
+                        winningCubes = [
+                            cubes[i * 9 + j * 3 + 0],
+                            cubes[i * 9 + j * 3 + 1],
+                            cubes[i * 9 + j * 3 + 2]
+                        ];
+                        return {
+                            win: true,
+                            start: new THREE.Vector3((i - 1) * spacing, (j - 1) * spacing, (-1) * spacing),
+                            end: new THREE.Vector3((i - 1) * spacing, (j - 1) * spacing, 1 * spacing)
+                        };
+                    }
+                    if (board[i][0][j] === player && board[i][1][j] === player && board[i][2][j] === player) {
+                        winningCubes = [
+                            cubes[i * 9 + 0 * 3 + j],
+                            cubes[i * 9 + 1 * 3 + j],
+                            cubes[i * 9 + 2 * 3 + j]
+                        ];
+                        return {
+                            win: true,
+                            start: new THREE.Vector3((i - 1) * spacing, (-1) * spacing, (j - 1) * spacing),
+                            end: new THREE.Vector3((i - 1) * spacing, 1 * spacing, (j - 1) * spacing)
+                        };
+                    }
+                    if (board[0][i][j] === player && board[1][i][j] === player && board[2][i][j] === player) {
+                        winningCubes = [
+                            cubes[0 * 9 + i * 3 + j],
+                            cubes[1 * 9 + i * 3 + j],
+                            cubes[2 * 9 + i * 3 + j]
+                        ];
+                        return {
+                            win: true,
+                            start: new THREE.Vector3((-1) * spacing, (i - 1) * spacing, (j - 1) * spacing),
+                            end: new THREE.Vector3(1 * spacing, (i - 1) * spacing, (j - 1) * spacing)
+                        };
+                    }
+                }
+            }
+            if (board[0][0][0] === player && board[1][1][1] === player && board[2][2][2] === player) {
+                winningCubes = [
+                    cubes[0 * 9 + 0 * 3 + 0],
+                    cubes[1 * 9 + 1 * 3 + 1],
+                    cubes[2 * 9 + 2 * 3 + 2]
+                ];
+                return {
+                    win: true,
+                    start: new THREE.Vector3(-1 * spacing, -1 * spacing, -1 * spacing),
+                    end: new THREE.Vector3(1 * spacing, 1 * spacing, 1 * spacing)
+                };
+            }
+            if (board[2][0][0] === player && board[1][1][1] === player && board[0][2][2] === player) {
+                winningCubes = [
+                    cubes[2 * 9 + 0 * 3 + 0],
+                    cubes[1 * 9 + 1 * 3 + 1],
+                    cubes[0 * 9 + 2 * 3 + 2]
+                ];
+                return {
+                    win: true,
+                    start: new THREE.Vector3(1 * spacing, -1 * spacing, -1 * spacing),
+                    end: new THREE.Vector3(-1 * spacing, 1 * spacing, 1 * spacing)
+                };
+            }
+            if (board[0][2][0] === player && board[1][1][1] === player && board[2][0][2] === player) {
+                winningCubes = [
+                    cubes[0 * 9 + 2 * 3 + 0],
+                    cubes[1 * 9 + 1 * 3 + 1],
+                    cubes[2 * 9 + 0 * 3 + 2]
+                ];
+                return {
+                    win: true,
+                    start: new THREE.Vector3(-1 * spacing, 1 * spacing, -1 * spacing),
+                    end: new THREE.Vector3(1 * spacing, -1 * spacing, 1 * spacing)
+                };
+            }
+            if (board[0][0][2] === player && board[1][1][1] === player && board[2][2][0] === player) {
+                winningCubes = [
+                    cubes[0 * 9 + 0 * 3 + 2],
+                    cubes[1 * 9 + 1 * 3 + 1],
+                    cubes[2 * 9 + 2 * 3 + 0]
+                ];
+                return {
+                    win: true,
+                    start: new THREE.Vector3(-1 * spacing, -1 * spacing, 1 * spacing),
+                    end: new THREE.Vector3(1 * spacing, 1 * spacing, -1 * spacing)
+                };
+            }
+            return { win: false };
+        }
+
+        // Draw glowing winning line
+        function drawWinningLine(start, end) {
+            const geometry = new THREE.TubeGeometry(
+                new THREE.LineCurve3(start, end),
+                20,
+                0.1,
+                8,
+                false
+            );
+            const material = new THREE.MeshBasicMaterial({ 
+                color: 0xffff00, 
+                transparent: true, 
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            winningLine = new THREE.Mesh(geometry, material);
+            scene.add(winningLine);
+        }
+
+        // Shake winning cubes
+        function shakeWinningCubes(time) {
+            if (winningCubes.length > 0) {
+                const shakeAmplitude = 0.1;
+                const shakeFrequency = 10;
+                winningCubes.forEach((cube, index) => {
+                    const original = originalPositions[cubes.indexOf(cube)];
+                    cube.position.set(
+                        original.x + Math.sin(time * shakeFrequency + index) * shakeAmplitude,
+                        original.y + Math.cos(time * shakeFrequency + index) * shakeAmplitude,
+                        original.z + Math.sin(time * shakeFrequency + index) * shakeAmplitude
+                    );
+                });
+            }
+        }
+
+        // Flash selected cube
+        function flashSelectedCube(time) {
+            if (selectedCube) {
+                const flashSpeed = 5;
+                const opacity = 0.7 + Math.sin(time * flashSpeed) * 0.2;
+                selectedMaterial.opacity = opacity;
+                selectedCube.material = selectedMaterial;
+            }
+        }
+
+        // Make a move
+        function makeMove() {
+            if (gameOver) return;
+            const emptyCells = [];
+            for (let x = 0; x < 3; x++) {
+                for (let y = 0; y < 3; y++) {
+                    for (let z = 0; z < 3; z++) {
+                        if (!board[x][y][z]) {
+                            emptyCells.push({ x, y, z });
+                        }
+                    }
+                }
+            }
+            if (emptyCells.length === 0) {
+                gameOver = true;
+                winner = 'Draw';
+                return;
+            }
+            const move = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+            board[move.x][move.y][move.z] = currentPlayer;
+            const index = move.x * 9 + move.y * 3 + move.z;
+            cubes[index].material = currentPlayer === 'X' ? xMaterial : oMaterial;
+
+            const winResult = checkWin(currentPlayer);
+            if (winResult.win) {
+                gameOver = true;
+                winner = currentPlayer;
+                drawWinningLine(winResult.start, winResult.end);
+                return;
+            }
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+        }
+
+        // Reset game
+        function resetGame() {
+            board = Array(3).fill().map(() => Array(3).fill().map(() => Array(3).fill(null)));
+            currentPlayer = 'X';
+            gameOver = false;
+            winner = null;
+            winningCubes = [];
+            selectedCube = null;
+
+            cubes.forEach((cube, index) => {
+                cube.position.copy(originalPositions[index]);
+                cube.material = new THREE.MeshPhongMaterial({ 
+                    color: 0x888888, 
+                    transparent: true, 
+                    opacity: 0.3,
+                    shininess: 100
+                });
+            });
+
+            if (winningLine) {
+                scene.remove(winningLine);
+                winningLine = null;
+            }
+        }
+
+        // Update camera position
+        function updateCameraPosition() {
+            camera.position.x = cameraRadius * Math.sin(cameraTheta) * Math.cos(cameraPhi);
+            camera.position.z = cameraRadius * Math.sin(cameraTheta) * Math.sin(cameraPhi);
+            camera.position.y = cameraRadius * Math.cos(cameraTheta);
+            camera.lookAt(0, 0, 0);
+            spotlight.position.copy(camera.position);
+            spotlight.target.position.set(0, 0, 0);
+        }
+
+        // Mouse and touch events
+        function onMouseDown(event) {
+            event.preventDefault();
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            prevMouse.copy(mouse);
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(cubes);
+            if (intersects.length > 0) {
+                selectedCube = intersects[0].object;
+                isCubeDragging = true;
+                const intersectPoint = intersects[0].point;
+                dragOffset.subVectors(selectedCube.position, intersectPoint);
+            } else {
+                isCameraDragging = true;
+            }
+        }
+
+        function onMouseMove(event) {
+            event.preventDefault();
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            if (isCubeDragging && selectedCube) {
+                raycaster.setFromCamera(mouse, camera);
+                const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+                const intersectPoint = new THREE.Vector3();
+                raycaster.ray.intersectPlane(plane, intersectPoint);
+                selectedCube.position.copy(intersectPoint).add(dragOffset);
+            } else if (isCameraDragging) {
+                const deltaX = mouse.x - prevMouse.x;
+                const deltaY = mouse.y - prevMouse.y;
+                cameraTheta += deltaY * Math.PI;
+                cameraPhi -= deltaX * Math.PI;
+                cameraTheta = Math.max(0.1, Math.min(Math.PI - 0.1, cameraTheta));
+                updateCameraPosition();
+                prevMouse.copy(mouse);
+            }
+        }
+
+        function onMouseUp() {
+            if (selectedCube) {
+                const index = cubes.indexOf(selectedCube);
+                selectedCube.position.copy(originalPositions[index]);
+                selectedCube.material = board[Math.floor(index / 9)][Math.floor((index % 9) / 3)][index % 3] === 'X' ? xMaterial : 
+                                        board[Math.floor(index / 9)][Math.floor((index % 9) / 3)][index % 3] === 'O' ? oMaterial : 
+                                        new THREE.MeshPhongMaterial({ color: 0x888888, transparent: true, opacity: 0.3, shininess: 100 });
+                selectedCube = null;
+                isCubeDragging = false;
+            }
+            isCameraDragging = false;
+        }
+
+        function onTouchStart(event) {
+            event.preventDefault();
+            const touch = event.touches[0];
+            const currentTime = Date.now();
+            if (currentTime - lastTapTime < 300) {
+                resetGame();
+                if (tapTimeout) clearTimeout(tapTimeout);
+            } else {
+                tapTimeout = setTimeout(() => {
+                    mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+                    mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+                    prevMouse.copy(mouse);
+                    raycaster.setFromCamera(mouse, camera);
+                    const intersects = raycaster.intersectObjects(cubes);
+                    if (intersects.length > 0) {
+                        selectedCube = intersects[0].object;
+                        isCubeDragging = true;
+                        const intersectPoint = intersects[0].point;
+                        dragOffset.subVectors(selectedCube.position, intersectPoint);
+                    } else {
+                        isCameraDragging = true;
+                    }
+                }, 300);
+            }
+            lastTapTime = currentTime;
+        }
+
+        function onTouchMove(event) {
+            event.preventDefault();
+            const touch = event.touches[0];
+            mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+            if (isCubeDragging && selectedCube) {
+                raycaster.setFromCamera(mouse, camera);
+                const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+                const intersectPoint = new THREE.Vector3();
+                raycaster.ray.intersectPlane(plane, intersectPoint);
+                selectedCube.position.copy(intersectPoint).add(dragOffset);
+            } else if (isCameraDragging) {
+                const deltaX = mouse.x - prevMouse.x;
+                const deltaY = mouse.y - prevMouse.y;
+                cameraTheta += deltaY * Math.PI;
+                cameraPhi -= deltaX * Math.PI;
+                cameraTheta = Math.max(0.1, Math.min(Math.PI - 0.1, cameraTheta));
+                updateCameraPosition();
+                prevMouse.copy(mouse);
+            }
+        }
+
+        function onTouchEnd() {
+            onMouseUp();
+        }
+
+        // Event listeners
+        renderer.domElement.addEventListener('mousedown', onMouseDown);
+        renderer.domElement.addEventListener('mousemove', onMouseMove);
+        renderer.domElement.addEventListener('mouseup', onMouseUp);
+        renderer.domElement.addEventListener('touchstart', onTouchStart);
+        renderer.domElement.addEventListener('touchmove', onTouchMove);
+        renderer.domElement.addEventListener('touchend', onTouchEnd);
+
+        // Animation loop
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.01;
+            if (!isCameraDragging) {
+                cameraTheta += 0.005;
+                cameraPhi += 0.005;
+                updateCameraPosition();
+            }
+            shakeWinningCubes(time);
+            flashSelectedCube(time);
+            renderer.render(scene, camera);
+        }
+
+        // Auto-play
+        setInterval(() => {
+            if (!gameOver) makeMove();
+        }, 300);
+
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
