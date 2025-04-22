@@ -1,0 +1,400 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Periodic Table 3D Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #elementName {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div id="elementName"></div>
+<script>
+    // Scene setup
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0x404040);
+    scene.add(ambientLight);
+    const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+    pointLight.position.set(20, 20, 20);
+    scene.add(pointLight);
+
+    // Periodic table data for all 118 elements
+    const elements = [
+        { name: "Hydrogen", protons: 1, neutrons: 0, electrons: 1, group: 1, period: 1, classification: "nonmetal" },
+        { name: "Helium", protons: 2, neutrons: 2, electrons: 2, group: 18, period: 1, classification: "noble_gas" },
+        { name: "Lithium", protons: 3, neutrons: 4, electrons: 3, group: 1, period: 2, classification: "alkali_metal" },
+        { name: "Beryllium", protons: 4, neutrons: 5, electrons: 4, group: 2, period: 2, classification: "alkaline_earth_metal" },
+        { name: "Boron", protons: 5, neutrons: 6, electrons: 5, group: 13, period: 2, classification: "metalloid" },
+        { name: "Carbon", protons: 6, neutrons: 6, electrons: 6, group: 14, period: 2, classification: "nonmetal" },
+        { name: "Nitrogen", protons: 7, neutrons: 7, electrons: 7, group: 15, period: 2, classification: "nonmetal" },
+        { name: "Oxygen", protons: 8, neutrons: 8, electrons: 8, group: 16, period: 2, classification: "nonmetal" },
+        { name: "Fluorine", protons: 9, neutrons: 10, electrons: 9, group: 17, period: 2, classification: "halogen" },
+        { name: "Neon", protons: 10, neutrons: 10, electrons: 10, group: 18, period: 2, classification: "noble_gas" },
+        { name: "Sodium", protons: 11, neutrons: 12, electrons: 11, group: 1, period: 3, classification: "alkali_metal" },
+        { name: "Magnesium", protons: 12, neutrons: 12, electrons: 12, group: 2, period: 3, classification: "alkaline_earth_metal" },
+        { name: "Aluminum", protons: 13, neutrons: 14, electrons: 13, group: 13, period: 3, classification: "post_transition_metal" },
+        { name: "Silicon", protons: 14, neutrons: 14, electrons: 14, group: 14, period: 3, classification: "metalloid" },
+        { name: "Phosphorus", protons: 15, neutrons: 16, electrons: 15, group: 15, period: 3, classification: "nonmetal" },
+        { name: "Sulfur", protons: 16, neutrons: 16, electrons: 16, group: 16, period: 3, classification: "nonmetal" },
+        { name: "Chlorine", protons: 17, neutrons: 18, electrons: 17, group: 17, period: 3, classification: "halogen" },
+        { name: "Argon", protons: 18, neutrons: 22, electrons: 18, group: 18, period: 3, classification: "noble_gas" },
+        { name: "Potassium", protons: 19, neutrons: 20, electrons: 19, group: 1, period: 4, classification: "alkali_metal" },
+        { name: "Calcium", protons: 20, neutrons: 20, electrons: 20, group: 2, period: 4, classification: "alkaline_earth_metal" },
+        { name: "Scandium", protons: 21, neutrons: 24, electrons: 21, group: 3, period: 4, classification: "transition_metal" },
+        { name: "Titanium", protons: 22, neutrons: 26, electrons: 22, group: 4, period: 4, classification: "transition_metal" },
+        { name: "Vanadium", protons: 23, neutrons: 28, electrons: 23, group: 5, period: 4, classification: "transition_metal" },
+        { name: "Chromium", protons: 24, neutrons: 28, electrons: 24, group: 6, period: 4, classification: "transition_metal" },
+        { name: "Manganese", protons: 25, neutrons: 30, electrons: 25, group: 7, period: 4, classification: "transition_metal" },
+        { name: "Iron", protons: 26, neutrons: 30, electrons: 26, group: 8, period: 4, classification: "transition_metal" },
+        { name: "Cobalt", protons: 27, neutrons: 32, electrons: 27, group: 9, period: 4, classification: "transition_metal" },
+        { name: "Nickel", protons: 28, neutrons: 31, electrons: 28, group: 10, period: 4, classification: "transition_metal" },
+        { name: "Copper", protons: 29, neutrons: 35, electrons: 29, group: 11, period: 4, classification: "transition_metal" },
+        { name: "Zinc", protons: 30, neutrons: 35, electrons: 30, group: 12, period: 4, classification: "post_transition_metal" },
+        { name: "Gallium", protons: 31, neutrons: 39, electrons: 31, group: 13, period: 4, classification: "post_transition_metal" },
+        { name: "Germanium", protons: 32, neutrons: 41, electrons: 32, group: 14, period: 4, classification: "metalloid" },
+        { name: "Arsenic", protons: 33, neutrons: 42, electrons: 33, group: 15, period: 4, classification: "metalloid" },
+        { name: "Selenium", protons: 34, neutrons: 45, electrons: 34, group: 16, period: 4, classification: "nonmetal" },
+        { name: "Bromine", protons: 35, neutrons: 45, electrons: 35, group: 17, period: 4, classification: "halogen" },
+        { name: "Krypton", protons: 36, neutrons: 48, electrons: 36, group: 18, period: 4, classification: "noble_gas" },
+        { name: "Rubidium", protons: 37, neutrons: 48, electrons: 37, group: 1, period: 5, classification: "alkali_metal" },
+        { name: "Strontium", protons: 38, neutrons: 50, electrons: 38, group: 2, period: 5, classification: "alkaline_earth_metal" },
+        { name: "Yttrium", protons: 39, neutrons: 50, electrons: 39, group: 3, period: 5, classification: "transition_metal" },
+        { name: "Zirconium", protons: 40, neutrons: 51, electrons: 40, group: 4, period: 5, classification: "transition_metal" },
+        { name: "Niobium", protons: 41, neutrons: 52, electrons: 41, group: 5, period: 5, classification: "transition_metal" },
+        { name: "Molybdenum", protons: 42, neutrons: 54, electrons: 42, group: 6, period: 5, classification: "transition_metal" },
+        { name: "Technetium", protons: 43, neutrons: 55, electrons: 43, group: 7, period: 5, classification: "transition_metal" },
+        { name: "Ruthenium", protons: 44, neutrons: 57, electrons: 44, group: 8, period: 5, classification: "transition_metal" },
+        { name: "Rhodium", protons: 45, neutrons: 58, electrons: 45, group: 9, period: 5, classification: "transition_metal" },
+        { name: "Palladium", protons: 46, neutrons: 60, electrons: 46, group: 10, period: 5, classification: "transition_metal" },
+        { name: "Silver", protons: 47, neutrons: 61, electrons: 47, group: 11, period: 5, classification: "transition_metal" },
+        { name: "Cadmium", protons: 48, neutrons: 66, electrons: 48, group: 12, period: 5, classification: "post_transition_metal" },
+        { name: "Indium", protons: 49, neutrons: 66, electrons: 49, group: 13, period: 5, classification: "post_transition_metal" },
+        { name: "Tin", protons: 50, neutrons: 69, electrons: 50, group: 14, period: 5, classification: "post_transition_metal" },
+        { name: "Antimony", protons: 51, neutrons: 71, electrons: 51, group: 15, period: 5, classification: "metalloid" },
+        { name: "Tellurium", protons: 52, neutrons: 76, electrons: 52, group: 16, period: 5, classification: "metalloid" },
+        { name: "Iodine", protons: 53, neutrons: 74, electrons: 53, group: 17, period: 5, classification: "halogen" },
+        { name: "Xenon", protons: 54, neutrons: 77, electrons: 54, group: 18, period: 5, classification: "noble_gas" },
+        { name: "Cesium", protons: 55, neutrons: 78, electrons: 55, group: 1, period: 6, classification: "alkali_metal" },
+        { name: "Barium", protons: 56, neutrons: 81, electrons: 56, group: 2, period: 6, classification: "alkaline_earth_metal" },
+        { name: "Lanthanum", protons: 57, neutrons: 82, electrons: 57, group: 3, period: 6, classification: "lanthanide" },
+        { name: "Cerium", protons: 58, neutrons: 82, electrons: 58, group: 3, period: 6, classification: "lanthanide" },
+        { name: "Praseodymium", protons: 59, neutrons: 82, electrons: 59, group: 3, period: 6, classification: "lanthanide" },
+        { name: "Neodymium", protons: 60, neutrons: 84, electrons: 60, group: 3, period: 6, classification: "lanthanide" },
+        { name: "Promethium", protons: 61, neutrons: 86, electrons: 61, group: 3, period: 6, classification: "lanthanide" },
+        { name: "Samarium", protons: 62, neutrons: 88, electrons: 62, group: 3, period: 6, classification: "lanthanide" },
+        { name: "Europium", protons: 63, neutrons: 90, electrons: 63, group: 3, period: 6, classification: "lanthanide" },
+        { name: "Gadolinium", protons: 64, neutrons: 93, electrons: 64, group: 3, period: 6, classification: "lanthanide" },
+        { name: "Terbium", protons: 65, neutrons: 94, electrons: 65, group: 3, period: 6, classification: "lanthanide" },
+        { name: "Dysprosium", protons: 66, neutrons: 97, electrons: 66, group: 3, period: 6, classification: "lanthanide" },
+        { name: "Holmium", protons: 67, neutrons: 98, electrons: 67, group: 3, period: 6, classification: "lanthanide" },
+        { name: "Erbium", protons: 68, neutrons: 99, electrons: 68, group: 3, period: 6, classification: "lanthanide" },
+        { name: "Thulium", protons: 69, neutrons: 100, electrons: 69, group: 3, period: 6, classification: "lanthanide" },
+        { name: "Ytterbium", protons: 70, neutrons: 103, electrons: 70, group: 3, period: 6, classification: "lanthanide" },
+        { name: "Lutetium", protons: 71, neutrons: 104, electrons: 71, group: 3, period: 6, classification: "lanthanide" },
+        { name: "Hafnium", protons: 72, neutrons: 106, electrons: 72, group: 4, period: 6, classification: "transition_metal" },
+        { name: "Tantalum", protons: 73, neutrons: 108, electrons: 73, group: 5, period: 6, classification: "transition_metal" },
+        { name: "Tungsten", protons: 74, neutrons: 110, electrons: 74, group: 6, period: 6, classification: "transition_metal" },
+        { name: "Rhenium", protons: 75, neutrons: 112, electrons: 75, group: 7, period: 6, classification: "transition_metal" },
+        { name: "Osmium", protons: 76, neutrons: 114, electrons: 76, group: 8, period: 6, classification: "transition_metal" },
+        { name: "Iridium", protons: 77, neutrons: 115, electrons: 77, group: 9, period: 6, classification: "transition_metal" },
+        { name: "Platinum", protons: 78, neutrons: 117, electrons: 78, group: 10, period: 6, classification: "transition_metal" },
+        { name: "Gold", protons: 79, neutrons: 118, electrons: 79, group: 11, period: 6, classification: "transition_metal" },
+        { name: "Mercury", protons: 80, neutrons: 121, electrons: 80, group: 12, period: 6, classification: "post_transition_metal" },
+        { name: "Thallium", protons: 81, neutrons: 123, electrons: 81, group: 13, period: 6, classification: "post_transition_metal" },
+        { name: "Lead", protons: 82, neutrons: 125, electrons: 82, group: 14, period: 6, classification: "post_transition_metal" },
+        { name: "Bismuth", protons: 83, neutrons: 126, electrons: 83, group: 15, period: 6, classification: "post_transition_metal" },
+        { name: "Polonium", protons: 84, neutrons: 125, electrons: 84, group: 16, period: 6, classification: "post_transition_metal" },
+        { name: "Astatine", protons: 85, neutrons: 125, electrons: 85, group: 17, period: 6, classification: "halogen" },
+        { name: "Radon", protons: 86, neutrons: 136, electrons: 86, group: 18, period: 6, classification: "noble_gas" },
+        { name: "Francium", protons: 87, neutrons: 136, electrons: 87, group: 1, period: 7, classification: "alkali_metal" },
+        { name: "Radium", protons: 88, neutrons: 138, electrons: 88, group: 2, period: 7, classification: "alkaline_earth_metal" },
+        { name: "Actinium", protons: 89, neutrons: 138, electrons: 89, group: 3, period: 7, classification: "actinide" },
+        { name: "Thorium", protons: 90, neutrons: 142, electrons: 90, group: 3, period: 7, classification: "actinide" },
+        { name: "Protactinium", protons: 91, neutrons: 140, electrons: 91, group: 3, period: 7, classification: "actinide" },
+        { name: "Uranium", protons: 92, neutrons: 146, electrons: 92, group: 3, period: 7, classification: "actinide" },
+        { name: "Neptunium", protons: 93, neutrons: 144, electrons: 93, group: 3, period: 7, classification: "actinide" },
+        { name: "Plutonium", protons: 94, neutrons: 150, electrons: 94, group: 3, period: 7, classification: "actinide" },
+        { name: "Americium", protons: 95, neutrons: 148, electrons: 95, group: 3, period: 7, classification: "actinide" },
+        { name: "Curium", protons: 96, neutrons: 151, electrons: 96, group: 3, period: 7, classification: "actinide" },
+        { name: "Berkelium", protons: 97, neutrons: 150, electrons: 97, group: 3, period: 7, classification: "actinide" },
+        { name: "Californium", protons: 98, neutrons: 153, electrons: 98, group: 3, period: 7, classification: "actinide" },
+        { name: "Einsteinium", protons: 99, neutrons: 153, electrons: 99, group: 3, period: 7, classification: "actinide" },
+        { name: "Fermium", protons: 100, neutrons: 157, electrons: 100, group: 3, period: 7, classification: "actinide" },
+        { name: "Mendelevium", protons: 101, neutrons: 157, electrons: 101, group: 3, period: 7, classification: "actinide" },
+        { name: "Nobelium", protons: 102, neutrons: 157, electrons: 102, group: 3, period: 7, classification: "actinide" },
+        { name: "Lawrencium", protons: 103, neutrons: 159, electrons: 103, group: 3, period: 7, classification: "actinide" },
+        { name: "Rutherfordium", protons: 104, neutrons: 157, electrons: 104, group: 4, period: 7, classification: "transition_metal" },
+        { name: "Dubnium", protons: 105, neutrons: 157, electrons: 105, group: 5, period: 7, classification: "transition_metal" },
+        { name: "Seaborgium", protons: 106, neutrons: 157, electrons: 106, group: 6, period: 7, classification: "transition_metal" },
+        { name: "Bohrium", protons: 107, neutrons: 155, electrons: 107, group: 7, period: 7, classification: "transition_metal" },
+        { name: "Hassium", protons: 108, neutrons: 157, electrons: 108, group: 8, period: 7, classification: "transition_metal" },
+        { name: "Meitnerium", protons: 109, neutrons: 159, electrons: 109, group: 9, period: 7, classification: "transition_metal" },
+        { name: "Darmstadtium", protons: 110, neutrons: 161, electrons: 110, group: 10, period: 7, classification: "transition_metal" },
+        { name: "Roentgenium", protons: 111, neutrons: 161, electrons: 111, group: 11, period: 7, classification: "transition_metal" },
+        { name: "Copernicium", protons: 112, neutrons: 165, electrons: 112, group: 12, period: 7, classification: "post_transition_metal" },
+        { name: "Nihonium", protons: 113, neutrons: 171, electrons: 113, group: 13, period: 7, classification: "post_transition_metal" },
+        { name: "Flerovium", protons: 114, neutrons: 175, electrons: 114, group: 14, period: 7, classification: "post_transition_metal" },
+        { name: "Moscovium", protons: 115, neutrons: 173, electrons: 115, group: 15, period: 7, classification: "post_transition_metal" },
+        { name: "Livermorium", protons: 116, neutrons: 177, electrons: 116, group: 16, period: 7, classification: "post_transition_metal" },
+        { name: "Tennessine", protons: 117, neutrons: 177, electrons: 117, group: 17, period: 7, classification: "halogen" },
+        { name: "Oganesson", protons: 118, neutrons: 176, electrons: 118, group: 18, period: 7, classification: "noble_gas" }
+    ];
+
+    // Color coding by classification
+    const classificationColors = {
+        alkali_metal: 0xff9999,
+        alkaline_earth_metal: 0xffcc99,
+        transition_metal: 0x99ccff,
+        post_transition_metal: 0xccffcc,
+        metalloid: 0xcc99cc,
+        nonmetal: 0xffff99,
+        halogen: 0x99ffff,
+        noble_gas: 0xcccccc,
+        lanthanide: 0xff99ff,
+        actinide: 0x99ff99
+    };
+
+    // Create atom models
+    const atoms = [];
+    elements.forEach((element, index) => {
+        const atomGroup = new THREE.Group();
+
+        // Nucleus (protons and neutrons)
+        const nucleusGeometry = new THREE.SphereGeometry(0.3, 32, 32);
+        const protonMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+        const neutronMaterial = new THREE.MeshPhongMaterial({ color: 0x0000ff });
+
+        for (let i = 0; i < element.protons; i++) {
+            const proton = new THREE.Mesh(nucleusGeometry, protonMaterial);
+            proton.position.set(
+                (Math.random() - 0.5) * 0.1,
+                (Math.random() - 0.5) * 0.1,
+                (Math.random() - 0.5) * 0.1
+            );
+            atomGroup.add(proton);
+        }
+
+        for (let i = 0; i < element.neutrons; i++) {
+            const neutron = new THREE.Mesh(nucleusGeometry, neutronMaterial);
+            neutron.position.set(
+                (Math.random() - 0.5) * 0.1,
+                (Math.random() - 0.5) * 0.1,
+                (Math.random() - 0.5) * 0.1
+            );
+            atomGroup.add(neutron);
+        }
+
+        // Electrons
+        const electronGeometry = new THREE.SphereGeometry(0.05, 16, 16);
+        const electronMaterial = new THREE.MeshPhongMaterial({ color: classificationColors[element.classification] });
+        const electrons = [];
+
+        for (let i = 0; i < Math.min(element.electrons, 18); i++) {
+            const electron = new THREE.Mesh(electronGeometry, electronMaterial);
+            const radius = 0.5 + i * 0.2;
+            const angle = (i / element.electrons) * Math.PI * 2;
+            electron.position.set(
+                Math.cos(angle) * radius,
+                0,
+                Math.sin(angle) * radius
+            );
+            atomGroup.add(electron);
+            electrons.push({ mesh: electron, radius, angle: Math.random() * Math.PI * 2 });
+        }
+
+        // Position atom in periodic table layout
+        let x, y;
+        if (element.classification === "lanthanide" || element.classification === "actinide") {
+            x = ((element.protons - (element.classification === "lanthanide" ? 57 : 89)) * 2) - 13;
+            y = element.classification === "lanthanide" ? -10 : -12;
+        } else {
+            x = (element.group - 1) * 2 - 17;
+            y = -(element.period - 1) * 2 + 6;
+        }
+        atomGroup.position.set(x, y, 0);
+
+        scene.add(atomGroup);
+        atoms.push({ group: atomGroup, electrons, name: element.name });
+    });
+
+    // Camera positioning
+    camera.position.z = 30;
+    let isFrontView = false;
+    let zoomState = 'normal';
+    let zoomTarget = null;
+    let zoomStartTime = 0;
+    let zoomDuration = 1000;
+    let orbitDuration = 5000;
+    let nextZoomTime = performance.now() + 5000;
+    const elementNameDiv = document.getElementById('elementName');
+
+    // Animation loop
+    let time = 0;
+    function animate() {
+        requestAnimationFrame(animate);
+
+        const now = performance.now();
+
+        // Animate electrons
+        atoms.forEach(atom => {
+            atom.electrons.forEach(electron => {
+                electron.angle += 0.05;
+                electron.mesh.position.set(
+                    Math.cos(electron.angle) * electron.radius,
+                    Math.sin(electron.angle) * electron.radius * 0.2,
+                    Math.sin(electron.angle) * electron.radius
+                );
+            });
+        });
+
+        // Camera movement
+        if (isFrontView) {
+            camera.position.set(0, 0, 40);
+            camera.lookAt(0, 0, 0);
+            atoms.forEach(atom => atom.group.visible = true);
+            elementNameDiv.style.display = 'none';
+        } else {
+            if (now >= nextZoomTime && zoomState === 'normal') {
+                zoomTarget = atoms[Math.floor(Math.random() * atoms.length)];
+                zoomState = 'zoomingIn';
+                zoomStartTime = now;
+                nextZoomTime = Infinity;
+            }
+
+            if (zoomState === 'zoomingIn') {
+                const t = Math.min((now - zoomStartTime) / zoomDuration, 1);
+                const targetPos = zoomTarget.group.position;
+                camera.position.lerpVectors(
+                    new THREE.Vector3(Math.sin(time) * 30, Math.cos(time) * 30, 30),
+                    new THREE.Vector3(targetPos.x + 2, targetPos.y + 2, targetPos.z + 2),
+                    t
+                );
+                camera.lookAt(targetPos);
+                if (t === 1) {
+                    zoomState = 'zoomed';
+                    zoomStartTime = now;
+                    atoms.forEach(atom => atom.group.visible = atom === zoomTarget);
+                    elementNameDiv.textContent = zoomTarget.name;
+                    elementNameDiv.style.display = 'block';
+                }
+            } else if (zoomState === 'zoomed') {
+                const t = (now - zoomStartTime) / orbitDuration;
+                const targetPos = zoomTarget.group.position;
+                camera.position.set(
+                    targetPos.x + Math.sin(t * Math.PI * 2) * 2,
+                    targetPos.y + Math.cos(t * Math.PI * 2) * 2,
+                    targetPos.z + 2
+                );
+                camera.lookAt(targetPos);
+                if (now - zoomStartTime >= orbitDuration) {
+                    zoomState = 'zoomingOut';
+                    zoomStartTime = now;
+                    atoms.forEach(atom => atom.group.visible = true);
+                    elementNameDiv.style.display = 'none';
+                }
+            } else if (zoomState === 'zoomingOut') {
+                const t = Math.min((now - zoomStartTime) / zoomDuration, 1);
+                const targetPos = zoomTarget.group.position;
+                camera.position.lerpVectors(
+                    new THREE.Vector3(targetPos.x + 2, targetPos.y + 2, targetPos.z + 2),
+                    new THREE.Vector3(Math.sin(time) * 30, Math.cos(time) * 30, 30),
+                    t
+                );
+                camera.lookAt(0, 0, 0);
+                if (t === 1) {
+                    zoomState = 'normal';
+                    nextZoomTime = now + 5000;
+                }
+            } else {
+                time += 0.01;
+                camera.position.set(
+                    Math.sin(time) * 30,
+                    Math.cos(time) * 30,
+                    30 + Math.sin(time * 0.5) * 10
+                );
+                camera.lookAt(0, 0, 0);
+                atoms.forEach(atom => atom.group.visible = true);
+                elementNameDiv.style.display = 'none';
+            }
+        }
+
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Handle tap to move camera to front
+    window.addEventListener('touchstart', () => {
+        isFrontView = true;
+    });
+    window.addEventListener('touchend', () => {
+        isFrontView = false;
+    });
+</script>
+</body>
+</html>
