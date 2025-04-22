@@ -1,0 +1,536 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html>
+<head>
+  <title>3D Tetris</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #111; }
+    #gameContainer { position: absolute; top: 10px; left: 10px; font-family: 'Courier New', monospace; color: #0f0; }
+    #score, #timer, #speed, #level, #countdown { font-size: 24px; margin: 10px; }
+    #score.flash { color: #ff0; animation: flash 0.5s 3; }
+    @keyframes flash { 50% { opacity: 0; } }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+</head>
+<body>
+<div id="gameContainer">
+  <div id="score">Score: 0</div>
+  <div id="timer">Time: 0</div>
+  <div id="speed">Speed: 1</div>
+  <div id="level">Level: 1</div>
+  <div id="countdown">Next Level: 15</div>
+</div>
+<script>
+let scene, camera, renderer, grid, currentPiece = null, container;
+let placedBlocks = [];
+let score = 0, timer = 0, speed = 1, level = 1, countdown = 15;
+let lastTap = 0, doubleTapThreshold = 300;
+let gameStarted = false, gameOverFlag = false;
+let time = 0;
+let lastColorIndex = null;
+
+const GRID_WIDTH = 10, GRID_HEIGHT = 20, GRID_DEPTH = 10;
+const BLOCK_SIZE = 1;
+
+const SHAPES = [
+  [[1, 1, 1, 1]], // I
+  [[1, 1], [1, 1]], // O
+  [[1, 1, 1], [0, 1, 0]], // T
+  [[1, 1, 1], [1, 0, 0]], // L
+  [[1, 1, 1], [0, 0, 1]], // J
+  [[1, 1, 0], [0, 1, 1]], // S
+  [[0, 1, 1], [1, 1, 0]] // Z
+];
+
+const COLORS = [
+  0x00f0f0, // I - Cyan
+  0xf0f000, // O - Yellow
+  0xa000f0, // T - Purple
+  0xf0a000, // L - Orange
+  0x0000f0, // J - Blue
+  0x00f000, // S - Green
+  0xf00000 // Z - Red
+];
+
+function init() {
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  // Lighting
+  const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+  scene.add(ambientLight);
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7);
+  directionalLight.position.set(10, 20, 10);
+  scene.add(directionalLight);
+  const spotlight = new THREE.SpotLight(0xffffff, 1.5, 50, Math.PI / 4, 0.5);
+  spotlight.position.copy(camera.position);
+  spotlight.target.position.set(GRID_WIDTH / 2, GRID_HEIGHT / 2, GRID_DEPTH / 2);
+  scene.add(spotlight);
+  scene.add(spotlight.target);
+
+  // Transparent green container
+  const containerGeometry = new THREE.BoxGeometry(GRID_WIDTH, GRID_HEIGHT, GRID_DEPTH);
+  const containerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.2 });
+  container = new THREE.Mesh(containerGeometry, containerMaterial);
+  container.position.set(GRID_WIDTH / 2 - 0.5, GRID_HEIGHT / 2 - 0.5, GRID_DEPTH / 2 - 0.5);
+  scene.add(container);
+
+  resetGame();
+  setInterval(() => {
+    if (!gameOverFlag) {
+      timer++;
+      updateTimer();
+      countdown--;
+      updateCountdown();
+      if (countdown <= 0) {
+        level++;
+        speed += 0.2; // Reduced speed increment from 0.5 to 0.2
+        countdown = 15; // Increased from 10 to 15
+        updateLevel();
+        updateSpeed();
+      }
+    }
+  }, 1000);
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  document.addEventListener('touchstart', (e) => {
+    if (!gameOverFlag) {
+      let currentTime = Date.now();
+      if (currentTime - lastTap < doubleTapThreshold) {
+        dropPiece();
+      } else {
+        rotatePiece();
+      }
+      lastTap = currentTime;
+    }
+  });
+
+  animate();
+}
+
+function resetGame() {
+  grid = Array(GRID_HEIGHT).fill().map(() => Array(GRID_WIDTH).fill().map(() => Array(GRID_DEPTH).fill(0)));
+  score = 0;
+  timer = 0;
+  speed = 1;
+  level = 1;
+  countdown = 15;
+  gameStarted = true;
+  gameOverFlag = false;
+  currentPiece = null;
+  lastColorIndex = null;
+  placedBlocks.forEach(block => scene.remove(block));
+  placedBlocks = [];
+  updateScore();
+  updateTimer();
+  updateSpeed();
+  updateLevel();
+  updateCountdown();
+  scene.clear();
+  scene.add(new THREE.AmbientLight(0x404040, 0.5));
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7);
+  directionalLight.position.set(10, 20, 10);
+  scene.add(directionalLight);
+  const spotlight = new THREE.SpotLight(0xffffff, 1.5, 50, Math.PI / 4, 0.5);
+  spotlight.position.copy(camera.position);
+  spotlight.target.position.set(GRID_WIDTH / 2, GRID_HEIGHT / 2, GRID_DEPTH / 2);
+  scene.add(spotlight);
+  scene.add(spotlight.target);
+  const containerGeometry = new THREE.BoxGeometry(GRID_WIDTH, GRID_HEIGHT, GRID_DEPTH);
+  const containerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.2 });
+  container = new THREE.Mesh(containerGeometry, containerMaterial);
+  container.position.set(GRID_WIDTH / 2 - 0.5, GRID_HEIGHT / 2 - 0.5, GRID_DEPTH / 2 - 0.5);
+  scene.add(container);
+  spawnPiece();
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  time += 0.01;
+  camera.position.x = Math.sin(time * 1.0) * 20;
+  camera.position.z = Math.cos(time * 1.0) * 20;
+  camera.position.y = 12;
+  camera.lookAt(GRID_WIDTH / 2, GRID_HEIGHT / 2, GRID_DEPTH / 2);
+  const spotlight = scene.children.find(child => child.isSpotLight);
+  if (spotlight) {
+    spotlight.position.copy(camera.position);
+    spotlight.target.position.set(GRID_WIDTH / 2, GRID_HEIGHT / 2, GRID_DEPTH / 2);
+  }
+
+  if (!gameOverFlag && Math.floor(time * 60) % Math.max(1, Math.floor(60 / speed)) === 0) {
+    movePieceDown();
+  }
+  autoPlay();
+  renderer.render(scene, camera);
+}
+
+function createChamferedBlock() {
+  const shape = new THREE.Shape();
+  const size = BLOCK_SIZE * 0.8, chamfer = BLOCK_SIZE * 0.1;
+  shape.moveTo(-size / 2 + chamfer, -size / 2);
+  shape.lineTo(size / 2 - chamfer, -size / 2);
+  shape.quadraticCurveTo(size / 2, -size / 2, size / 2, -size / 2 + chamfer);
+  shape.lineTo(size / 2, size / 2 - chamfer);
+  shape.quadraticCurveTo(size / 2, size / 2, size / 2 - chamfer, size / 2);
+  shape.lineTo(-size / 2 + chamfer, size / 2);
+  shape.quadraticCurveTo(-size / 2, size / 2, -size / 2, size / 2 - chamfer);
+  shape.lineTo(-size / 2, -size / 2 + chamfer);
+  shape.quadraticCurveTo(-size / 2, -size / 2, -size / 2 + chamfer, -size / 2);
+  const extrudeSettings = { depth: BLOCK_SIZE * 0.8, bevelEnabled: true, bevelThickness: chamfer / 2, bevelSize: chamfer / 2, bevelSegments: 2 };
+  return new THREE.ExtrudeGeometry(shape, extrudeSettings);
+}
+
+function spawnPiece() {
+  if (gameOverFlag) return false;
+  let shapeIndex;
+  if (lastColorIndex !== null && Math.random() < 0.7) {
+    shapeIndex = lastColorIndex;
+  } else {
+    shapeIndex = Math.floor(Math.random() * SHAPES.length);
+    lastColorIndex = shapeIndex;
+  }
+  currentPiece = {
+    shape: SHAPES[shapeIndex],
+    color: COLORS[shapeIndex],
+    x: Math.floor(GRID_WIDTH / 2) - Math.floor(SHAPES[shapeIndex][0].length / 2),
+    y: 0,
+    z: Math.floor(GRID_DEPTH / 2),
+    mesh: new THREE.Group()
+  };
+  updatePieceMesh(currentPiece);
+  if (collides(currentPiece)) {
+    gameOver();
+    return false;
+  }
+  scene.add(currentPiece.mesh);
+  return true;
+}
+
+function updatePieceMesh(piece) {
+  if (!piece || gameOverFlag) return;
+  piece.mesh.children = [];
+  const material = new THREE.MeshPhongMaterial({ color: piece.color, shininess: 50 });
+  for (let y = 0; y < piece.shape.length; y++) {
+    for (let x = 0; x < piece.shape[y].length; x++) {
+      if (piece.shape[y][x]) {
+        const geometry = createChamferedBlock();
+        const cube = new THREE.Mesh(geometry, material);
+        cube.position.set(piece.x + x, GRID_HEIGHT - piece.y - y, piece.z);
+        piece.mesh.add(cube);
+      }
+    }
+  }
+}
+
+function placePiece() {
+  if (!currentPiece || gameOverFlag) return;
+  for (let y = 0; y < currentPiece.shape.length; y++) {
+    for (let x = 0; x < currentPiece.shape[y].length; x++) {
+      if (currentPiece.shape[y][x]) {
+        let gridY = currentPiece.y + y;
+        if (gridY <= 0) {
+          gameOver();
+          return;
+        }
+        grid[gridY][currentPiece.x + x][currentPiece.z] = currentPiece.color;
+        const geometry = createChamferedBlock();
+        const material = new THREE.MeshPhongMaterial({ color: currentPiece.color, shininess: 50 });
+        const cube = new THREE.Mesh(geometry, material);
+        cube.position.set(currentPiece.x + x, GRID_HEIGHT - gridY - 1, currentPiece.z);
+        scene.add(cube);
+        placedBlocks.push(cube);
+      }
+    }
+  }
+  scene.remove(currentPiece.mesh);
+  clearLines();
+}
+
+function movePieceDown() {
+  if (!currentPiece || gameOverFlag) return;
+  currentPiece.y++;
+  if (collides(currentPiece)) {
+    currentPiece.y--;
+    placePiece();
+    if (!gameOverFlag) spawnPiece();
+  } else {
+    updatePieceMesh(currentPiece);
+  }
+}
+
+function dropPiece() {
+  if (!currentPiece || gameOverFlag) return;
+  while (!collides(currentPiece)) {
+    currentPiece.y++;
+  }
+  currentPiece.y--;
+  placePiece();
+  if (!gameOverFlag) spawnPiece();
+}
+
+function collides(piece) {
+  if (!piece || gameOverFlag) return true;
+  for (let y = 0; y < piece.shape.length; y++) {
+    for (let x = 0; x < piece.shape[y].length; x++) {
+      if (piece.shape[y][x]) {
+        let gridX = piece.x + x;
+        let gridY = piece.y + y;
+        let gridZ = piece.z;
+        if (gridX < 0 || gridX >= GRID_WIDTH || gridY >= GRID_HEIGHT || gridZ < 0 || gridZ >= GRID_DEPTH || (gridY >= 0 && grid[gridY][gridX][gridZ])) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+function clearLines() {
+  if (gameOverFlag) return;
+  let linesCleared = 0;
+  for (let y = GRID_HEIGHT - 1; y >= 0; y--) {
+    let full = true;
+    let sameColor = true;
+    let firstColor = grid[y][0][Math.floor(GRID_DEPTH / 2)];
+    for (let x = 0; x < GRID_WIDTH; x++) {
+      for (let z = 0; z < GRID_DEPTH; z++) {
+        if (!grid[y][x][z]) {
+          full = false;
+          break;
+        }
+        if (grid[y][x][z] !== firstColor) {
+          sameColor = false;
+        }
+      }
+      if (!full) break;
+    }
+    if (full) {
+      grid.splice(y, 1);
+      grid.unshift(Array(GRID_WIDTH).fill().map(() => Array(GRID_DEPTH).fill(0)));
+      linesCleared++;
+      y++;
+      placedBlocks = placedBlocks.filter(block => {
+        const yPos = GRID_HEIGHT - block.position.y - 1;
+        if (yPos === y) {
+          scene.remove(block);
+          return false;
+        }
+        return true;
+      });
+      placedBlocks.forEach(block => {
+        const yPos = GRID_HEIGHT - block.position.y - 1;
+        if (yPos < y) {
+          block.position.y -= 1;
+        }
+      });
+    }
+    if (full && sameColor) {
+      score += 500 * speed; // Bonus for same-color line
+    } else if (full) {
+      score += 100 * speed; // Standard score for mixed-color line
+    }
+  }
+  if (linesCleared > 0) {
+    updateScore();
+    flashScore();
+  }
+}
+
+function rotatePiece() {
+  if (!currentPiece || gameOverFlag) return;
+  const newShape = currentPiece.shape[0].map((_, i) => currentPiece.shape.map(row => row[i]).reverse());
+  const oldShape = currentPiece.shape;
+  currentPiece.shape = newShape;
+  if (collides(currentPiece)) {
+    currentPiece.shape = oldShape;
+  } else {
+    updatePieceMesh(currentPiece);
+  }
+}
+
+function movePieceLeft() {
+  if (!currentPiece || gameOverFlag) return;
+  currentPiece.x--;
+  if (collides(currentPiece)) {
+    currentPiece.x++;
+  } else {
+    updatePieceMesh(currentPiece);
+  }
+}
+
+function movePieceRight() {
+  if (!currentPiece || gameOverFlag) return;
+  currentPiece.x++;
+  if (collides(currentPiece)) {
+    currentPiece.x--;
+  } else {
+    updatePieceMesh(currentPiece);
+  }
+}
+
+function autoPlay() {
+  if (Math.floor(time * 60) % 10 !== 0 || gameOverFlag || !currentPiece) return;
+  let bestScore = -Infinity;
+  let bestMove = { x: currentPiece.x, rotation: 0, drop: false };
+  for (let r = 0; r < 4; r++) {
+    let testPiece = { ...currentPiece, shape: currentPiece.shape };
+    for (let i = 0; i < r; i++) {
+      testPiece.shape = testPiece.shape[0].map((_, j) => testPiece.shape.map(row => row[j]).reverse());
+    }
+    for (let x = -5; x < GRID_WIDTH + 5; x++) {
+      testPiece.x = x;
+      testPiece.y = currentPiece.y;
+      while (!collides(testPiece)) {
+        testPiece.y++;
+      }
+      testPiece.y--;
+      if (!collides(testPiece)) {
+        let score = evaluatePosition(testPiece);
+        if (score > bestScore) {
+          bestScore = score;
+          bestMove = { x, rotation: r, drop: Math.random() < 0.1 }; // Reduced from 0.3 to 0.1
+        }
+      }
+    }
+  }
+  for (let i = 0; i < bestMove.rotation; i++) {
+    rotatePiece();
+  }
+  currentPiece.x = bestMove.x;
+  updatePieceMesh(currentPiece);
+  if (bestMove.drop) {
+    dropPiece();
+  }
+}
+
+function evaluatePosition(piece) {
+  let score = 0;
+  let height = 0;
+  let holes = 0;
+  let sameColorPotential = 0;
+  let gridCopy = grid.map(row => row.map(col => [...col]));
+  for (let y = 0; y < piece.shape.length; y++) {
+    for (let x = 0; x < piece.shape[y].length; x++) {
+      if (piece.shape[y][x]) {
+        gridCopy[piece.y + y][piece.x + x][piece.z] = piece.color;
+        height = Math.max(height, GRID_HEIGHT - (piece.y + y));
+      }
+    }
+  }
+  for (let y = 0; y < GRID_HEIGHT; y++) {
+    let colorCount = {};
+    for (let x = 0; x < GRID_WIDTH; x++) {
+      let color = gridCopy[y][x][piece.z];
+      if (color) {
+        colorCount[color] = (colorCount[color] || 0) + 1;
+        if (colorCount[color] >= GRID_WIDTH - 2) {
+          sameColorPotential += 100;
+        }
+      }
+    }
+  }
+  for (let x = 0; x < GRID_WIDTH; x++) {
+    for (let z = 0; z < GRID_DEPTH; z++) {
+      let foundBlock = false;
+      for (let y = 0; y < GRID_HEIGHT; y++) {
+        if (gridCopy[y][x][z]) {
+          foundBlock = true;
+        } else if (foundBlock && !gridCopy[y][x][z]) {
+          holes++;
+        }
+      }
+    }
+  }
+  score -= height * 10;
+  score -= holes * 50;
+  score += sameColorPotential;
+  return score;
+}
+
+function updateScore() {
+  document.getElementById('score').innerText = `Score: ${score}`;
+}
+
+function flashScore() {
+  const scoreElement = document.getElementById('score');
+  scoreElement.classList.add('flash');
+  setTimeout(() => scoreElement.classList.remove('flash'), 1500);
+}
+
+function updateTimer() {
+  document.getElementById('timer').innerText = `Time: ${timer}`;
+}
+
+function updateSpeed() {
+  document.getElementById('speed').innerText = `Speed: ${speed.toFixed(1)}`;
+}
+
+function updateLevel() {
+  document.getElementById('level').innerText = `Level: ${level}`;
+}
+
+function updateCountdown() {
+  document.getElementById('countdown').innerText = `Next Level: ${countdown}`;
+}
+
+function gameOver() {
+  gameOverFlag = true;
+  if (currentPiece) {
+    scene.remove(currentPiece.mesh);
+    currentPiece = null;
+  }
+  setTimeout(() => {
+    resetGame();
+  }, 3000);
+}
+
+init();
+</script>
+</body>
+</html>

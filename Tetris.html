@@ -1,0 +1,409 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html>
+<head>
+  <title>Tetris</title>
+  <style>
+    canvas { border: 2px solid black; background: #000; }
+    #gameContainer { text-align: center; font-family: 'Courier New', monospace; color: #fff; background: #111; padding: 20px; }
+    #score, #timer, #speed, #level, #countdown { font-size: 24px; margin: 10px; color: #0f0; }
+    #score.flash { color: #ff0; animation: flash 0.5s 3; }
+    @keyframes flash { 50% { opacity: 0; } }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+</head>
+<body>
+<div id="gameContainer">
+  <div id="score">Score: 0</div>
+  <div id="timer">Time: 0</div>
+  <div id="speed">Speed: 1</div>
+  <div id="level">Level: 1</div>
+  <div id="countdown">Next Level: 10</div>
+</div>
+<script>
+let grid;
+let currentPiece = null;
+let score = 0;
+let timer = 0;
+let speed = 1;
+let level = 1;
+let countdown = 10;
+let lastTap = 0;
+let doubleTapThreshold = 300;
+let gameStarted = false;
+let gameOverFlag = false;
+
+const GRID_WIDTH = 10;
+const GRID_HEIGHT = 20;
+const BLOCK_SIZE = 30;
+
+const SHAPES = [
+  [[1, 1, 1, 1]], // I
+  [[1, 1], [1, 1]], // O
+  [[1, 1, 1], [0, 1, 0]], // T
+  [[1, 1, 1], [1, 0, 0]], // L
+  [[1, 1, 1], [0, 0, 1]], // J
+  [[1, 1, 0], [0, 1, 1]], // S
+  [[0, 1, 1], [1, 1, 0]] // Z
+];
+
+const COLORS = [
+  '#00f0f0', // I - Cyan
+  '#f0f000', // O - Yellow
+  '#a000f0', // T - Purple
+  '#f0a000', // L - Orange
+  '#0000f0', // J - Blue
+  '#00f000', // S - Green
+  '#f00000' // Z - Red
+];
+
+function setup() {
+  createCanvas(GRID_WIDTH * BLOCK_SIZE, GRID_HEIGHT * BLOCK_SIZE);
+  resetGame();
+  setInterval(() => {
+    if (!gameOverFlag) {
+      timer++;
+      updateTimer();
+      countdown--;
+      updateCountdown();
+      if (countdown <= 0) {
+        level++;
+        speed += 0.5;
+        countdown = 10;
+        updateLevel();
+        updateSpeed();
+      }
+    }
+  }, 1000);
+}
+
+function resetGame() {
+  grid = Array(GRID_HEIGHT).fill().map(() => Array(GRID_WIDTH).fill(0));
+  score = 0;
+  timer = 0;
+  speed = 1;
+  level = 1;
+  countdown = 10;
+  gameStarted = true;
+  gameOverFlag = false;
+  currentPiece = null;
+  updateScore();
+  updateTimer();
+  updateSpeed();
+  updateLevel();
+  updateCountdown();
+  spawnPiece();
+  loop();
+}
+
+function draw() {
+  background(0);
+  drawGrid();
+  drawPiece(currentPiece);
+  if (gameOverFlag) {
+    textAlign(CENTER, CENTER);
+    textSize(32);
+    fill('#ff0000');
+    text(`Game Over! Score: ${score}`, width / 2, height / 2);
+  } else if (gameStarted && frameCount % Math.max(1, Math.floor(60 / speed)) === 0) {
+    movePieceDown();
+  }
+  autoPlay();
+}
+
+function touchStarted() {
+  if (!gameOverFlag) {
+    let currentTime = millis();
+    if (currentTime - lastTap < doubleTapThreshold) {
+      dropPiece();
+    } else {
+      rotatePiece();
+    }
+    lastTap = currentTime;
+  }
+  return false;
+}
+
+function spawnPiece() {
+  if (gameOverFlag) return false;
+  const shapeIndex = floor(random(SHAPES.length));
+  currentPiece = {
+    shape: SHAPES[shapeIndex],
+    color: COLORS[shapeIndex],
+    x: floor(GRID_WIDTH / 2) - floor(SHAPES[shapeIndex][0].length / 2),
+    y: 0
+  };
+  if (collides(currentPiece)) {
+    gameOver();
+    return false;
+  }
+  return true;
+}
+
+function drawGrid() {
+  for (let y = 0; y < GRID_HEIGHT; y++) {
+    for (let x = 0; x < GRID_WIDTH; x++) {
+      if (grid[y][x]) {
+        fill(grid[y][x]);
+        rect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+      }
+    }
+  }
+}
+
+function drawPiece(piece) {
+  if (!piece || gameOverFlag) return;
+  fill(piece.color);
+  for (let y = 0; y < piece.shape.length; y++) {
+    for (let x = 0; x < piece.shape[y].length; x++) {
+      if (piece.shape[y][x]) {
+        rect((piece.x + x) * BLOCK_SIZE, (piece.y + y) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+      }
+    }
+  }
+}
+
+function movePieceDown() {
+  if (!currentPiece || gameOverFlag) return;
+  currentPiece.y++;
+  if (collides(currentPiece)) {
+    currentPiece.y--;
+    placePiece();
+    if (!gameOverFlag) spawnPiece();
+  }
+}
+
+function dropPiece() {
+  if (!currentPiece || gameOverFlag) return;
+  while (!collides(currentPiece)) {
+    currentPiece.y++;
+  }
+  currentPiece.y--;
+  placePiece();
+  if (!gameOverFlag) spawnPiece();
+}
+
+function collides(piece) {
+  if (!piece || gameOverFlag) return true;
+  for (let y = 0; y < piece.shape.length; y++) {
+    for (let x = 0; x < piece.shape[y].length; x++) {
+      if (piece.shape[y][x]) {
+        let gridX = piece.x + x;
+        let gridY = piece.y + y;
+        if (gridX < 0 || gridX >= GRID_WIDTH || gridY >= GRID_HEIGHT || (gridY >= 0 && grid[gridY][gridX])) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+function placePiece() {
+  if (!currentPiece || gameOverFlag) return;
+  // Check if placing would cause a game over (blocks at or above top)
+  for (let y = 0; y < currentPiece.shape.length; y++) {
+    for (let x = 0; x < currentPiece.shape[y].length; x++) {
+      if (currentPiece.shape[y][x]) {
+        let gridY = currentPiece.y + y;
+        if (gridY <= 0) {
+          gameOver();
+          return;
+        }
+      }
+    }
+  }
+  // Place the piece
+  for (let y = 0; y < currentPiece.shape.length; y++) {
+    for (let x = 0; x < currentPiece.shape[y].length; x++) {
+      if (currentPiece.shape[y][x]) {
+        let gridY = currentPiece.y + y;
+        grid[gridY][currentPiece.x + x] = currentPiece.color;
+      }
+    }
+  }
+  clearLines();
+}
+
+function clearLines() {
+  if (gameOverFlag) return;
+  let linesCleared = 0;
+  for (let y = GRID_HEIGHT - 1; y >= 0; y--) {
+    if (grid[y].every(cell => cell !== 0)) {
+      grid.splice(y, 1);
+      grid.unshift(Array(GRID_WIDTH).fill(0));
+      linesCleared++;
+      y++;
+    }
+  }
+  if (linesCleared > 0) {
+    score += linesCleared * 100 * speed;
+    updateScore();
+    flashScore();
+  }
+}
+
+function rotatePiece() {
+  if (!currentPiece || gameOverFlag) return;
+  const newShape = currentPiece.shape[0].map((_, i) => currentPiece.shape.map(row => row[i]).reverse());
+  const oldShape = currentPiece.shape;
+  currentPiece.shape = newShape;
+  if (collides(currentPiece)) {
+    currentPiece.shape = oldShape;
+  }
+}
+
+function movePieceLeft() {
+  if (!currentPiece || gameOverFlag) return;
+  currentPiece.x--;
+  if (collides(currentPiece)) {
+    currentPiece.x++;
+  }
+}
+
+function movePieceRight() {
+  if (!currentPiece || gameOverFlag) return;
+  currentPiece.x++;
+  if (collides(currentPiece)) {
+    currentPiece.x--;
+  }
+}
+
+function autoPlay() {
+  if (frameCount % 10 === 0 && !gameOverFlag && currentPiece) {
+    let bestScore = -Infinity;
+    let bestMove = { x: currentPiece.x, rotation: 0, drop: false };
+    for (let r = 0; r < 4; r++) {
+      let testPiece = { ...currentPiece, shape: currentPiece.shape };
+      for (let i = 0; i < r; i++) {
+        testPiece.shape = testPiece.shape[0].map((_, j) => testPiece.shape.map(row => row[j]).reverse());
+      }
+      for (let x = -5; x < GRID_WIDTH + 5; x++) {
+        testPiece.x = x;
+        testPiece.y = currentPiece.y;
+        while (!collides(testPiece)) {
+          testPiece.y++;
+        }
+        testPiece.y--;
+        if (!collides(testPiece)) {
+          let score = evaluatePosition(testPiece);
+          if (score > bestScore) {
+            bestScore = score;
+            bestMove = { x, rotation: r, drop: random() < 0.3 };
+          }
+        }
+      }
+    }
+    for (let i = 0; i < bestMove.rotation; i++) {
+      rotatePiece();
+    }
+    currentPiece.x = bestMove.x;
+    if (bestMove.drop) {
+      dropPiece();
+    }
+  }
+}
+
+function evaluatePosition(piece) {
+  let score = 0;
+  let height = 0;
+  let holes = 0;
+  let gridCopy = grid.map(row => [...row]);
+  for (let y = 0; y < piece.shape.length; y++) {
+    for (let x = 0; x < piece.shape[y].length; x++) {
+      if (piece.shape[y][x]) {
+        gridCopy[piece.y + y][piece.x + x] = 1;
+        height = Math.max(height, GRID_HEIGHT - (piece.y + y));
+      }
+    }
+  }
+  for (let x = 0; x < GRID_WIDTH; x++) {
+    let foundBlock = false;
+    for (let y = 0; y < GRID_HEIGHT; y++) {
+      if (gridCopy[y][x]) {
+        foundBlock = true;
+      } else if (foundBlock && !gridCopy[y][x]) {
+        holes++;
+      }
+    }
+  }
+  score -= height * 10;
+  score -= holes * 50;
+  return score;
+}
+
+function updateScore() {
+  document.getElementById('score').innerText = `Score: ${score}`;
+}
+
+function flashScore() {
+  const scoreElement = document.getElementById('score');
+  scoreElement.classList.add('flash');
+  setTimeout(() => scoreElement.classList.remove('flash'), 1500);
+}
+
+function updateTimer() {
+  document.getElementById('timer').innerText = `Time: ${timer}`;
+}
+
+function updateSpeed() {
+  document.getElementById('speed').innerText = `Speed: ${speed.toFixed(1)}`;
+}
+
+function updateLevel() {
+  document.getElementById('level').innerText = `Level: ${level}`;
+}
+
+function updateCountdown() {
+  document.getElementById('countdown').innerText = `Next Level: ${countdown}`;
+}
+
+function gameOver() {
+  gameOverFlag = true;
+  currentPiece = null;
+  noLoop();
+  setTimeout(() => {
+    resetGame();
+  }, 3000);
+}
+</script>
+</body>
+</html>
