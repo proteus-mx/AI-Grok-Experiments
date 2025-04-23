@@ -1,0 +1,427 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar System Simulation</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: black; }
+        canvas { display: block; }
+        #planetLabel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="planetLabel"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Sun with enhanced graphics
+        const sunGeometry = new THREE.SphereGeometry(5, 128, 128);
+        const sunTextureLoader = new THREE.TextureLoader();
+        const sunTexture = sunTextureLoader.load('https://threejs.org/examples/textures/planets/sun_4k.jpg');
+        const normalMap = sunTextureLoader.load('https://threejs.org/examples/textures/planets/sun_normal_4k.jpg');
+        const displacementMap = sunTextureLoader.load('https://threejs.org/examples/textures/planets/sun_displacement.jpg');
+        const sunMaterial = new THREE.MeshStandardMaterial({
+            map: sunTexture,
+            normalMap: normalMap,
+            displacementMap: displacementMap,
+            displacementScale: 0.15,
+            emissive: 0xffaa00,
+            emissiveIntensity: 0.7,
+            metalness: 0.1,
+            roughness: 0.8
+        });
+        const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+        scene.add(sun);
+
+        // Sun glow effect
+        const glowGeometry = new THREE.SphereGeometry(5.7, 32, 32);
+        const glowMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                time: { value: 0 },
+                glowColor: { value: new THREE.Color(0xffff99) }
+            },
+            vertexShader: `
+                varying vec3 vNormal;
+                void main() {
+                    vNormal = normalize(normalMatrix * normal);
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform float time;
+                uniform vec3 glowColor;
+                varying vec3 vNormal;
+                void main() {
+                    float intensity = pow(0.8 - dot(vNormal, vec3(0, 0, 1.0)), 2.0);
+                    float pulse = 0.3 + 0.1 * sin(time * 2.0);
+                    gl_FragColor = vec4(glowColor, intensity * pulse);
+                }
+            `,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            side: THREE.BackSide
+        });
+        const sunGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+        scene.add(sunGlow);
+
+        const pointLight = new THREE.PointLight(0xffffff, 2.0, 1000);
+        sun.add(pointLight);
+
+        // Planet data
+        const baseSpeed = (2 * Math.PI) / 15; // Earth completes orbit in 15s
+        const planets = [
+            { name: 'Mercury', distance: 10, size: 0.2, speed: baseSpeed * (365 / 88), color: 0x8c8c8c },
+            { name: 'Venus', distance: 15, size: 0.4, speed: baseSpeed * (365 / 225), color: 0xffb347 },
+            { name: 'Earth', distance: 20, size: 0.5, speed: baseSpeed, color: 0x00ff00 },
+            { name: 'Mars', distance: 25, size: 0.3, speed: baseSpeed * (365 / 687), color: 0xff4500 },
+            { name: 'Jupiter', distance: 35, size: 1.5, speed: baseSpeed * (365 / 4333), color: 0xffa500 },
+            { name: 'Saturn', distance: 45, size: 1.2, speed: baseSpeed * (365 / 10759), color: 0xdeb887 },
+            { name: 'Uranus', distance: 55, size: 0.8, speed: baseSpeed * (365 / 30687), color: 0x00b7eb },
+            { name: 'Neptune', distance: 65, size: 0.7, speed: baseSpeed * (365 / 59800), color: 0x0000ff }
+        ];
+
+        // Create planets, Earth's moon, Saturn's rings, and trail data
+        const planetMeshes = [];
+        const trails = [];
+        let moonMesh = null;
+        planets.forEach(planet => {
+            const geometry = new THREE.SphereGeometry(planet.size, 32, 32);
+            let material;
+            if (planet.name === 'Earth') {
+                const earthTexture = sunTextureLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
+                material = new THREE.MeshLambertMaterial({ map: earthTexture });
+            } else {
+                material = new THREE.MeshLambertMaterial({ color: planet.color });
+            }
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.x = planet.distance;
+            planetMeshes.push({ mesh, ...planet });
+
+            // Add Earth's moon
+            if (planet.name === 'Earth') {
+                const moonGeometry = new THREE.SphereGeometry(0.15, 32, 32);
+                const moonMaterial = new THREE.MeshLambertMaterial({ color: 0xaaaaaa });
+                moonMesh = new THREE.Mesh(moonGeometry, moonMaterial);
+                moonMesh.position.set(planet.distance + 1.5, 0, 0);
+                scene.add(moonMesh);
+            }
+
+            // Add Saturn's rings
+            if (planet.name === 'Saturn') {
+                const ringGeometry = new THREE.RingGeometry(1.5, 2.5, 64);
+                const ringMaterial = new THREE.MeshLambertMaterial({
+                    color: 0xaaaaaa,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+                ringMesh.rotation.x = Math.PI / 2;
+                mesh.add(ringMesh);
+            }
+
+            // Trail as a circular ring
+            const trailGeometry = new THREE.BufferGeometry();
+            const trailMaterial = new THREE.LineBasicMaterial({
+                color: planet.color,
+                transparent: true,
+                opacity: 0.1,
+                blending: THREE.AdditiveBlending
+            });
+            const points = [];
+            const segments = 360;
+            for (let i = 0; i <= segments; i++) {
+                const theta = (i / segments) * 2 * Math.PI;
+                points.push(new THREE.Vector3(
+                    planet.distance * Math.cos(theta),
+                    0,
+                    planet.distance * Math.sin(theta)
+                ));
+            }
+            trailGeometry.setFromPoints(points);
+            const trail = new THREE.Line(trailGeometry, trailMaterial);
+            trails.push({ trail, orbitCount: 0, planet });
+            scene.add(mesh);
+            scene.add(trail);
+        });
+
+        // Enhanced star field
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 15000;
+        const starPositions = new Float32Array(starCount * 3);
+        const starColors = new Float32Array(starCount * 3);
+        const starSizes = new Float32Array(starCount);
+        const starAlphas = new Float32Array(starCount);
+        const starTwinkle = new Float32Array(starCount);
+        for (let i = 0; i < starCount; i++) {
+            const theta = Math.random() * 2 * Math.PI;
+            const phi = Math.acos(2 * Math.random() - 1);
+            const radius = 1000 * Math.cbrt(Math.random() * 0.8 + 0.2);
+            starPositions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+            starPositions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+            starPositions[i * 3 + 2] = radius * Math.cos(phi);
+            const hue = Math.random();
+            const color = hue > 0.85 ? [1, 0.85, 0.85] : hue > 0.65 ? [0.85, 0.85, 1] : hue > 0.45 ? [1, 1, 0.85] : [1, 1, 1];
+            starColors[i * 3] = color[0];
+            starColors[i * 3 + 1] = color[1];
+            starColors[i * 3 + 2] = color[2];
+            starSizes[i] = Math.random() * 4 + 0.7;
+            starAlphas[i] = Math.random() * 0.6 + 0.4;
+            starTwinkle[i] = Math.random() * 2 + 1;
+        }
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        starGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+        starGeometry.setAttribute('size', new THREE.BufferAttribute(starSizes, 1));
+        starGeometry.setAttribute('alpha', new THREE.BufferAttribute(starAlphas, 1));
+        starGeometry.setAttribute('twinkle', new THREE.BufferAttribute(starTwinkle, 1));
+        const starMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                time: { value: 0 }
+            },
+            vertexShader: `
+                attribute float size;
+                attribute float alpha;
+                attribute float twinkle;
+                varying float vAlpha;
+                varying float vTwinkle;
+                void main() {
+                    vAlpha = alpha;
+                    vTwinkle = twinkle;
+                    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                    gl_PointSize = size * (400.0 / -mvPosition.z);
+                    gl_Position = projectionMatrix * mvPosition;
+                }
+            `,
+            fragmentShader: `
+                uniform float time;
+                varying float vAlpha;
+                varying float vTwinkle;
+                void main() {
+                    if (length(gl_PointCoord - vec2(0.5, 0.5)) > 0.5) discard;
+                    float twinkle = 0.7 + 0.3 * sin(time * vTwinkle);
+                    gl_FragColor = vec4(1.0, 1.0, 1.0, vAlpha * twinkle);
+                }
+            `,
+            transparent: true,
+            vertexColors: true
+        });
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+
+        // Planet label
+        const planetLabel = document.getElementById('planetLabel');
+
+        // Camera animation states
+        let currentPlanetIndex = 2; // Start at Earth
+        let cameraState = 'orbit';
+        let targetPosition = new THREE.Vector3();
+        let startPosition = new THREE.Vector3();
+        let transitionTime = 0;
+        const transitionDuration = 2;
+        let orbitTime = 0;
+        let overviewTime = 0;
+        let tourIndex = -1; // For touring planets after overview
+        const overviewDuration = 5; // Time spent in overview before tour
+
+        // Initial camera position
+        camera.position.set(20, 5, 5);
+        camera.lookAt(planetMeshes[currentPlanetIndex].mesh.position);
+
+        // Handle screen tap
+        window.addEventListener('click', () => {
+            if (cameraState === 'orbit' && tourIndex === -1) {
+                currentPlanetIndex++;
+                if (currentPlanetIndex < planetMeshes.length) {
+                    cameraState = 'fly';
+                    startPosition.copy(camera.position);
+                    const nextPlanet = planetMeshes[currentPlanetIndex].mesh.position;
+                    targetPosition.set(nextPlanet.x, nextPlanet.y + 5, nextPlanet.z + 5);
+                    transitionTime = 0;
+                } else {
+                    cameraState = 'fly';
+                    startPosition.copy(camera.position);
+                    targetPosition.set(0, 100, 100);
+                    transitionTime = 0;
+                }
+            }
+        });
+
+        // Animation loop
+        function animate(time) {
+            requestAnimationFrame(animate);
+
+            // Update planet positions, moon, and trails
+            planetMeshes.forEach((planet, index) => {
+                const angle = time * 0.001 * planet.speed;
+                planet.mesh.position.x = planet.distance * Math.cos(angle);
+                planet.mesh.position.z = planet.distance * Math.sin(angle);
+
+                // Update Earth's moon orbit
+                if (planet.name === 'Earth' && moonMesh) {
+                    const moonOrbitSpeed = (2 * Math.PI) / 4.5;
+                    const moonAngle = time * 0.001 * moonOrbitSpeed;
+                    moonMesh.position.x = planet.mesh.position.x + 1.5 * Math.cos(moonAngle);
+                    moonMesh.position.z = planet.mesh.position.z + 1.5 * Math.sin(moonAngle);
+                    moonMesh.position.y = planet.mesh.position.y;
+                }
+
+                // Update trail opacity
+                const trail = trails[index];
+                const currentAngle = angle % (2 * Math.PI);
+                if (trail.orbitCount === 0 || currentAngle < (trail.orbitCount * 2 * Math.PI) % (2 * Math.PI)) {
+                    trail.orbitCount++;
+                    const newOpacity = Math.min(0.1 + trail.orbitCount * 0.05, 0.6);
+                    trail.trail.material.opacity = newOpacity;
+                    trail.trail.material.needsUpdate = true;
+                }
+            });
+
+            // Update sun glow and starfield
+            glowMaterial.uniforms.time.value = time * 0.001;
+            starMaterial.uniforms.time.value = time * 0.001;
+
+            // Randomly dim starfield
+            if (Math.random() < 0.1) {
+                for (let i = 0; i < starCount; i++) {
+                    if (Math.random() < 0.05) {
+                        starAlphas[i] = Math.random() * 0.6 + 0.4;
+                    }
+                }
+                starGeometry.attributes.alpha.needsUpdate = true;
+            }
+
+            // Camera movement and planet label
+            if (cameraState === 'orbit') {
+                const planetPos = planetMeshes[currentPlanetIndex].mesh.position;
+                const planetSize = planetMeshes[currentPlanetIndex].size;
+                orbitTime += 0.016;
+                const orbitCycle = Math.sin(orbitTime * 0.2);
+                const radius = 5 - orbitCycle * 2;
+                const angle = time * 0.0002;
+                camera.position.x = planetPos.x + Math.cos(angle) * radius;
+                camera.position.z = planetPos.z + Math.sin(angle) * radius;
+                camera.position.y = planetPos.y + 1 + orbitCycle * 0.5;
+                camera.lookAt(planetPos);
+                planetLabel.style.display = 'block';
+                planetLabel.textContent = planetMeshes[currentPlanetIndex].name;
+
+                // Auto-transition during tour
+                if (tourIndex !== -1 && orbitTime > 5) { // 5 seconds per planet
+                    currentPlanetIndex = (tourIndex + 1) % planetMeshes.length;
+                    tourIndex = currentPlanetIndex;
+                    cameraState = 'fly';
+                    startPosition.copy(camera.position);
+                    const nextPlanet = planetMeshes[currentPlanetIndex].mesh.position;
+                    targetPosition.set(nextPlanet.x, nextPlanet.y + 5, nextPlanet.z + 5);
+                    transitionTime = 0;
+                    orbitTime = 0;
+                }
+            } else if (cameraState === 'fly') {
+                transitionTime += 0.016;
+                const t = Math.min(transitionTime / transitionDuration, 1);
+                camera.position.lerpVectors(startPosition, targetPosition, t);
+                if (t < 1) {
+                    camera.lookAt(planetMeshes[currentPlanetIndex - 1].mesh.position);
+                    planetLabel.style.display = 'block';
+                    planetLabel.textContent = planetMeshes[currentPlanetIndex - 1].name;
+                } else {
+                    if (currentPlanetIndex < planetMeshes.length || tourIndex !== -1) {
+                        cameraState = 'orbit';
+                        orbitTime = 0;
+                        camera.lookAt(planetMeshes[currentPlanetIndex].mesh.position);
+                        planetLabel.style.display = 'block';
+                        planetLabel.textContent = planetMeshes[currentPlanetIndex].name;
+                    } else {
+                        cameraState = 'overview';
+                        camera.lookAt(sun.position);
+                        planetLabel.style.display = 'none';
+                        overviewTime = 0;
+                    }
+                }
+            } else if (cameraState === 'overview') {
+                overviewTime += 0.016;
+                camera.lookAt(sun.position);
+                planetLabel.style.display = 'none';
+                // Start tour after overview duration
+                if (overviewTime > overviewDuration) {
+                    cameraState = 'fly';
+                    tourIndex = 0;
+                    currentPlanetIndex = 0;
+                    startPosition.copy(camera.position);
+                    const nextPlanet = planetMeshes[currentPlanetIndex].mesh.position;
+                    targetPosition.set(nextPlanet.x, nextPlanet.y + 5, nextPlanet.z + 5);
+                    transitionTime = 0;
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate(0);
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
