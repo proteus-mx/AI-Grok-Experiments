@@ -1,0 +1,707 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html>
+<head>
+  <title>Blastar Enhanced</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <style>
+    body { display: flex; flex-direction: column; align-items: center; background: #000; color: #fff; font-family: Arial; }
+    canvas { border: 2px solid #fff; box-shadow: 0 0 20px rgba(255,255,255,0.5); }
+    button { margin: 10px; padding: 10px 20px; font-size: 16px; cursor: pointer; background: #222; color: #fff; border: 2px solid #fff; border-radius: 5px; }
+    button:hover { background: #444; }
+  </style>
+</head>
+<body>
+<script>
+let player, bullets, freighters, bombs, beams, particles, pointFlashes, powerUps, autoPlay = true, gameOver = false, gameOverTime;
+let buddy = null;
+let starfield = [];
+let stats = { freightersDestroyed: 0, shotsFired: 0, gamesPlayed: 0, level: 1, levelTime: 0, levelFlash: 0, points: 0 };
+let shakeTime = 0, shakeIntensity = 0, slowTime = 0, lightningTime = 0;
+let powerUpStatus = { firepower: false, shield: false, firepowerTime: 0, shieldTime: 0 };
+
+function setup() {
+  createCanvas(800, 600);
+  resetGame();
+  let toggleButton = createButton('Toggle Auto-Play');
+  toggleButton.mousePressed(() => autoPlay = !autoPlay);
+}
+
+function resetGame() {
+  for (let i = 0; i < 100; i++) starfield.push({x: random(width), y: random(height), size: random(1, 4)});
+  player = new Player();
+  buddy = null;
+  bullets = [];
+  freighters = [];
+  bombs = [];
+  beams = [];
+  particles = [];
+  pointFlashes = [];
+  powerUps = [];
+  for (let i = 0; i < 5; i++) freighters.push(new Freighter());
+  for (let i = 0; i < 3; i++) bombs.push(new Bomb());
+  for (let i = 0; i < 2; i++) beams.push(new Beam());
+  gameOver = false;
+  stats.gamesPlayed++;
+  stats.level = 1;
+  stats.levelTime = millis();
+  stats.levelFlash = 0;
+  stats.points = 0;
+  shakeTime = 0;
+  shakeIntensity = 0;
+  slowTime = 0;
+  lightningTime = 0;
+  powerUpStatus = { firepower: false, shield: false, firepowerTime: 0, shieldTime: 0 };
+  loop();
+}
+
+function draw() {
+  background(0);
+  
+  // Apply screen shake
+  let shakeX = 0, shakeY = 0;
+  if (millis() - shakeTime < 500) {
+    shakeX = random(-shakeIntensity, shakeIntensity);
+    shakeY = random(-shakeIntensity, shakeIntensity);
+    translate(shakeX, shakeY);
+  }
+  
+  // Apply slow motion
+  let speedFactor = (millis() - slowTime < 500) ? 0.3 : 1;
+  
+  for (let star of starfield) {
+    fill(255, 255, 255, 180);
+    ellipse(star.x, star.y, star.size);
+    star.y += star.size * 0.5 * speedFactor;
+    if (star.y > height) star.y = 0;
+  }
+  
+  if (!gameOver) {
+    // Level progression
+    if (millis() - stats.levelTime > 10000) {
+      stats.level++;
+      stats.levelTime = millis();
+      stats.levelFlash = millis();
+    }
+    
+    // Power-up timers
+    if (powerUpStatus.firepower && millis() - powerUpStatus.firepowerTime > 10000) {
+      powerUpStatus.firepower = false;
+    }
+    if (powerUpStatus.shield && millis() - powerUpStatus.shieldTime > 10000) {
+      powerUpStatus.shield = false;
+    }
+    
+    player.show();
+    if (buddy) {
+      buddy.show();
+      buddy.move(player.x, player.y, speedFactor);
+      if (frameCount % 20 === 0) {
+        bullets.push(new Bullet(buddy.x, buddy.y));
+        stats.shotsFired++;
+      }
+    }
+    if (!autoPlay) player.move(speedFactor);
+    
+    if (autoPlay) {
+      if (frameCount % Math.max(10 - stats.level, 5) === 0) {
+        bullets.push(new Bullet(player.x, player.y));
+        if (powerUpStatus.firepower) {
+          bullets.push(new Bullet(player.x - 15, player.y));
+          bullets.push(new Bullet(player.x + 15, player.y));
+        }
+        stats.shotsFired++;
+      }
+      let nearestFreighter = freighters.reduce((n, f) => !n || dist(player.x, player.y, f.x, f.y) < dist(player.x, player.y, n.x, n.y) ? f : n, null);
+      let danger = bombs.concat(beams).reduce((d, obj) => {
+        let distance = dist(player.x, player.y, obj.x, obj.y);
+        return (!d || distance < dist(player.x, player.y, d.x, d.y)) && distance < 150 ? obj : d;
+      }, null);
+      
+      if (danger) {
+        let dx = player.x - danger.x;
+        player.x += (dx > 0 ? 6 : -6) * speedFactor;
+      } else if (nearestFreighter) {
+        player.x += (nearestFreighter.x > player.x ? 5 : -5) * speedFactor;
+      }
+      player.x = constrain(player.x, 0, width);
+    }
+    
+    // Handle bullet collisions
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      let bullet = bullets[i];
+      bullet.show();
+      bullet.move(speedFactor);
+      
+      // Check freighter collisions
+      for (let j = freighters.length - 1; j >= 0; j--) {
+        let freighter = freighters[j];
+        if (bullet.hits(freighter)) {
+          freighter.destroyed = true;
+          bullet.destroyed = true;
+          stats.freightersDestroyed++;
+          stats.points += 100 * stats.level;
+          pointFlashes.push(new PointFlash(freighter.x, freighter.y, 100 * stats.level));
+          for (let k = 0; k < 15; k++) particles.push(new Particle(freighter.x, freighter.y));
+          if (stats.level > 3 && random() < 0.2) {
+            powerUps.push(new PowerUp(freighter.x, freighter.y));
+          }
+        }
+      }
+      
+      // Check bomb collisions
+      for (let j = bombs.length - 1; j >= 0; j--) {
+        let bomb = bombs[j];
+        if (bullet.hits(bomb)) {
+          bomb.destroyed = true;
+          bullet.destroyed = true;
+          shakeTime = millis();
+          shakeIntensity = 15;
+          for (let k = 0; k < 50; k++) particles.push(new Particle(bomb.x, bomb.y, true));
+        }
+      }
+      
+      // Check beam collisions
+      for (let j = beams.length - 1; j >= 0; j--) {
+        let beam = beams[j];
+        if (bullet.hits(beam)) {
+          beam.destroyed = true;
+          bullet.destroyed = true;
+          slowTime = millis();
+          lightningTime = millis();
+        }
+      }
+    }
+    
+    for (let i = freighters.length - 1; i >= 0; i--) {
+      freighters[i].show();
+      freighters[i].move(speedFactor);
+      if (stats.level > 3) freighters[i].avoidBullets(bullets, speedFactor);
+      if (stats.level > 10 && frameCount % 60 === 0 && random() < 0.1) {
+        bombs.push(new Bomb(freighters[i].x, freighters[i].y));
+      }
+      if (freighters[i].destroyed) freighters.splice(i, 1);
+    }
+    
+    for (let i = bombs.length - 1; i >= 0; i--) {
+      bombs[i].show();
+      bombs[i].move(speedFactor);
+      if (bombs[i].destroyed || bombs[i].hits(player)) {
+        if (bombs[i].hits(player)) {
+          if (!powerUpStatus.shield) {
+            player.destroyed = true;
+          }
+          shakeTime = millis();
+          shakeIntensity = 15;
+          for (let k = 0; k < 50; k++) particles.push(new Particle(bombs[i].x, bombs[i].y, true));
+        }
+        bombs.splice(i, 1);
+      }
+    }
+    
+    for (let i = beams.length - 1; i >= 0; i--) {
+      beams[i].show();
+      beams[i].move(speedFactor);
+      if (beams[i].destroyed || beams[i].hits(player)) {
+        if (beams[i].hits(player) && !powerUpStatus.shield) player.destroyed = true;
+        beams.splice(i, 1);
+      }
+    }
+    
+    for (let i = powerUps.length - 1; i >= 0; i--) {
+      powerUps[i].show();
+      powerUps[i].move(speedFactor);
+      if (powerUps[i].hits(player)) {
+        powerUps[i].applyPowerUp();
+        powerUps.splice(i, 1);
+      } else if (powerUps[i].y > height) {
+        powerUps.splice(i, 1);
+      }
+    }
+    
+    for (let i = particles.length - 1; i >= 0; i--) {
+      particles[i].show();
+      particles[i].move(speedFactor);
+      if (particles[i].alpha <= 0) particles.splice(i, 1);
+    }
+    
+    for (let i = pointFlashes.length - 1; i >= 0; i--) {
+      pointFlashes[i].show();
+      pointFlashes[i].move(speedFactor);
+      if (pointFlashes[i].alpha <= 0) pointFlashes.splice(i, 1);
+    }
+    
+    bullets = bullets.filter(b => !b.destroyed && !b.offscreen());
+    if (frameCount % (100 - stats.level * 5) === 0) freighters.push(new Freighter());
+    if (frameCount % (150 - stats.level * 5) === 0) bombs.push(new Bomb());
+    if (frameCount % (200 - stats.level * 5) === 0) beams.push(new Beam());
+    
+    // Display stats
+    textSize(16);
+    fill(255, 255, 255, 220);
+    textAlign(LEFT);
+    text(`Level: ${stats.level}`, 10, 20);
+    text(`Points: ${stats.points}`, 10, 40);
+    text(`Freighters Destroyed: ${stats.freightersDestroyed}`, 10, 60);
+    text(`Shots Fired: ${stats.shotsFired}`, 10, 80);
+    text(`Games Played: ${stats.gamesPlayed}`, 10, 100);
+    
+    // Flash level and score
+    if (millis() - stats.levelFlash < 2000) {
+      textSize(60);
+      fill(255, 255, 0, 220 * (1 - sin(millis() * 0.005)));
+      textAlign(CENTER);
+      text(`Level ${stats.level}`, width / 2, height / 2);
+      textSize(30);
+      fill(255, 255, 255, 220 * (1 - sin(millis() * 0.005)));
+      text(`Score: ${stats.points}`, width / 2, height / 2 + 50);
+    }
+    
+    // Flash enhanced lightning strike
+    if (millis() - lightningTime < 200) {
+      let alpha = 220 * (1 - (millis() - lightningTime) / 200);
+      stroke(0, 255, 255, alpha);
+      strokeWeight(12);
+      let x = random(width * 0.2, width * 0.8);
+      let points = [];
+      points.push({x: x, y: 0});
+      for (let i = 1; i < 5; i++) {
+        points.push({x: points[i-1].x + random(-80, 80), y: (height / 5) * i});
+      }
+      for (let i = 0; i < points.length - 1; i++) {
+        line(points[i].x, points[i].y, points[i+1].x, points[i+1].y);
+      }
+      stroke(255, 255, 255, alpha * 0.5);
+      strokeWeight(4);
+      for (let i = 0; i < points.length - 1; i++) {
+        line(points[i].x, points[i].y, points[i+1].x, points[i+1].y);
+      }
+      noStroke();
+      fill(0, 255, 255, alpha * 0.3);
+      rect(0, 0, width, height);
+    }
+    
+    if (player.destroyed) {
+      gameOver = true;
+      gameOverTime = millis();
+      noLoop();
+    }
+  } else {
+    textSize(40);
+    fill(255, 0, 0, 220);
+    textAlign(CENTER);
+    text("Game Over", width / 2, height / 2);
+    textSize(20);
+    fill(255, 255, 255, 220);
+    text("Restarting...", width / 2, height / 2 + 50);
+    text(`Level: ${stats.level}`, width / 2, height / 2 + 80);
+    text(`Points: ${stats.points}`, width / 2, height / 2 + 100);
+    text(`Freighters Destroyed: ${stats.freightersDestroyed}`, width / 2, height / 2 + 120);
+    text(`Shots Fired: ${stats.shotsFired}`, width / 2, height / 2 + 140);
+    if (millis() - gameOverTime > 3000) resetGame();
+  }
+}
+
+function keyPressed() {
+  if (key === ' ') {
+    bullets.push(new Bullet(player.x, player.y));
+    if (powerUpStatus.firepower) {
+      bullets.push(new Bullet(player.x - 15, player.y));
+      bullets.push(new Bullet(player.x + 15, player.y));
+    }
+    stats.shotsFired++;
+  }
+}
+
+class Player {
+  constructor() {
+    this.x = width / 2;
+    this.y = height - 50;
+    this.size = 20;
+    this.destroyed = false;
+  }
+  show() {
+    push();
+    translate(this.x, this.y);
+    fill(0, 255, 0, 220);
+    stroke(255, 255, 255, 255);
+    strokeWeight(3);
+    beginShape();
+    vertex(0, -this.size * 1.5);
+    vertex(-this.size * 0.8, this.size * 0.8);
+    vertex(-this.size * 0.3, this.size * 0.5);
+    vertex(this.size * 0.3, this.size * 0.5);
+    vertex(this.size * 0.8, this.size * 0.8);
+    endShape(CLOSE);
+    fill(0, 0, 255, 220);
+    ellipse(0, -this.size * 0.7, 12, 12);
+    fill(255, 255, 0, 220);
+    beginShape();
+    vertex(-this.size * 0.5, this.size * 0.8);
+    vertex(-this.size * 0.7, this.size * 1.3);
+    vertex(-this.size * 0.3, this.size * 1.3);
+    endShape(CLOSE);
+    beginShape();
+    vertex(this.size * 0.5, this.size * 0.8);
+    vertex(this.size * 0.7, this.size * 1.3);
+    vertex(this.size * 0.3, this.size * 1.3);
+    endShape(CLOSE);
+    fill(0, 255, 255, 150);
+    beginShape();
+    vertex(-this.size * 1.2, this.size * 0.4);
+    vertex(-this.size * 1.5, this.size * 0.6);
+    vertex(-this.size * 0.8, this.size * 0.6);
+    endShape(CLOSE);
+    beginShape();
+    vertex(this.size * 1.2, this.size * 0.4);
+    vertex(this.size * 1.5, this.size * 0.6);
+    vertex(this.size * 0.8, this.size * 0.6);
+    endShape(CLOSE);
+    noStroke();
+    fill(255, 255, 0, 100);
+    ellipse(0, this.size * 1.3, 20, 10);
+    if (powerUpStatus.shield) {
+      noFill();
+      stroke(0, 255, 255, 150);
+      strokeWeight(3);
+      ellipse(0, 0, this.size * 2.5);
+    }
+    pop();
+  }
+  move(speedFactor) {
+    if (keyIsDown(LEFT_ARROW)) this.x -= (5 + stats.level * 0.5) * speedFactor;
+    if (keyIsDown(RIGHT_ARROW)) this.x += (5 + stats.level * 0.5) * speedFactor;
+    this.x = constrain(this.x, 0, width);
+  }
+}
+
+class Buddy {
+  constructor() {
+    this.x = width / 2;
+    this.y = height - 50;
+    this.size = 12;
+  }
+  show() {
+    push();
+    translate(this.x, this.y);
+    fill(0, 200, 0, 220);
+    stroke(255, 255, 255, 255);
+    strokeWeight(2);
+    beginShape();
+    vertex(0, -this.size * 1.5);
+    vertex(-this.size * 0.8, this.size * 0.8);
+    vertex(-this.size * 0.3, this.size * 0.5);
+    vertex(this.size * 0.3, this.size * 0.5);
+    vertex(this.size * 0.8, this.size * 0.8);
+    endShape(CLOSE);
+    fill(0, 0, 200, 220);
+    ellipse(0, -this.size * 0.7, 8, 8);
+    noStroke();
+    fill(255, 255, 0, 100);
+    ellipse(0, this.size * 1.3, 12, 6);
+    pop();
+  }
+  move(playerX, playerY, speedFactor) {
+    let targetX = playerX - 30;
+    let targetY = playerY - 20;
+    this.x += (targetX - this.x) * 0.1 * speedFactor;
+    this.y += (targetY - this.y) * 0.1 * speedFactor;
+  }
+}
+
+class Bullet {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.size = 6;
+    this.destroyed = false;
+  }
+  show() {
+    push();
+    translate(this.x, this.y);
+    fill(255, 255, 0, 220);
+    stroke(255, 255, 255, 255);
+    strokeWeight(2);
+    ellipse(0, 0, this.size);
+    noStroke();
+    for (let i = 0; i < 3; i++) {
+      fill(255, 255, 0, 220 - i * 50);
+      ellipse(0, i * 4, this.size * (1 - i * 0.2), this.size * 1.5 * (1 - i * 0.2));
+    }
+    fill(255, 165, 0, 100);
+    ellipse(0, 0, this.size * 2);
+    pop();
+  }
+  move(speedFactor) {
+    this.y -= (12 + stats.level * 0.5) * speedFactor;
+  }
+  offscreen() {
+    return this.y < 0;
+  }
+  hits(target) {
+    let d = dist(this.x, this.y, target.x, target.y);
+    return d < this.size + target.size;
+  }
+}
+
+class Freighter {
+  constructor() {
+    this.x = random(width);
+    this.y = 0;
+    this.size = 30;
+    this.destroyed = false;
+  }
+  show() {
+    push();
+    translate(this.x, this.y);
+    fill(200, 0, 0, 220);
+    stroke(255, 255, 255, 255);
+    strokeWeight(3);
+    beginShape();
+    vertex(-this.size * 0.5, -this.size * 0.6);
+    vertex(this.size * 0.5, -this.size * 0.6);
+    vertex(this.size * 0.4, this.size * 0.4);
+    vertex(-this.size * 0.4, this.size * 0.4);
+    endShape(CLOSE);
+    fill(0, 0, 255, 220);
+    arc(0, -this.size * 0.3, this.size * 0.6, this.size * 0.6, PI, TWO_PI);
+    fill(255, 255, 0, 220);
+    beginShape();
+    vertex(-this.size * 0.3, this.size * 0.4);
+    vertex(-this.size * 0.4, this.size * 0.7);
+    vertex(-this.size * 0.2, this.size * 0.7);
+    endShape(CLOSE);
+    beginShape();
+    vertex(this.size * 0.3, this.size * 0.4);
+    vertex(this.size * 0.4, this.size * 0.7);
+    vertex(this.size * 0.2, this.size * 0.7);
+    endShape(CLOSE);
+    fill(0, 255, 255, 150);
+    rect(-this.size * 0.1, -this.size * 0.9, this.size * 0.2, this.size * 0.3);
+    rect(this.size * 0.2, -this.size * 0.8, this.size * 0.1, this.size * 0.2);
+    noStroke();
+    fill(255, 255, 0, 100);
+    ellipse(0, this.size * 0.7, 24, 12);
+    fill(255, 255, 255, 150);
+    ellipse(-this.size * 0.2, 0, 6, 6);
+    ellipse(this.size * 0.2, 0, 6, 6);
+    pop();
+  }
+  move(speedFactor) {
+    this.y += (3 + stats.level * 0.3) * speedFactor;
+  }
+  avoidBullets(bullets, speedFactor) {
+    let nearestBullet = bullets.reduce((n, b) => {
+      let d = dist(this.x, this.y, b.x, b.y);
+      return (!n || d < dist(this.x, this.y, n.x, n.y)) && d < 100 ? b : n;
+    }, null);
+    
+    if (nearestBullet) {
+      let dx = this.x - nearestBullet.x;
+      this.x += dx > 0 ? 3 * speedFactor : -3 * speedFactor;
+      this.x = constrain(this.x, 0, width);
+    }
+  }
+}
+
+class Bomb {
+  constructor(x = random(width), y = 0) {
+    this.x = x;
+    this.y = y;
+    this.size = 15;
+    this.destroyed = false;
+  }
+  show() {
+    push();
+    translate(this.x, this.y);
+    fill(128, 128, 128, 220);
+    stroke(255, 0, 0, 255);
+    strokeWeight(3);
+    ellipse(0, 0, this.size);
+    strokeWeight(2);
+    for (let i = 0; i < 8; i++) {
+      let angle = i * PI / 4;
+      line(this.size * 0.5 * cos(angle), this.size * 0.5 * sin(angle), this.size * 0.8 * cos(angle), this.size * 0.8 * sin(angle));
+    }
+    noStroke();
+    fill(255, 0, 0, 150);
+    ellipse(0, 0, this.size * 1.3);
+    fill(255, 0, 0, 220);
+    ellipse(0, -this.size * 0.4, 6);
+    pop();
+  }
+  move(speedFactor) {
+    this.y += (4 + stats.level * 0.3) * speedFactor;
+  }
+  hits(target) {
+    let d = dist(this.x, this.y, target.x, target.y);
+    return d < this.size + target.size;
+  }
+}
+
+class Beam {
+  constructor() {
+    this.x = random(width);
+    this.y = 0;
+    this.size = 10;
+    this.destroyed = false;
+  }
+  show() {
+    push();
+    stroke(0, 255, 255, 220);
+    strokeWeight(10);
+    line(this.x, this.y, this.x, this.y + 50);
+    stroke(255, 255, 255, 150);
+    strokeWeight(4);
+    line(this.x, this.y, this.x, this.y + 50);
+    noStroke();
+    fill(0, 255, 255, 200);
+    ellipse(this.x, this.y, 14, 14);
+    ellipse(this.x, this.y + 50, 14, 14);
+    fill(0, 255, 255, 100);
+    ellipse(this.x, this.y, 20, 20);
+    ellipse(this.x, this.y + 50, 20, 20);
+    pop();
+  }
+  move(speedFactor) {
+    this.y += (5 + stats.level * 0.3) * speedFactor;
+  }
+  hits(target) {
+    return target.x > this.x - target.size && target.x < this.x + target.size && target.y > this.y && target.y < this.y + 50;
+  }
+}
+
+class PowerUp {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.size = 15;
+    this.type = random(['firepower', 'buddy', 'shield']);
+  }
+  show() {
+    push();
+    translate(this.x, this.y);
+    if (this.type === 'firepower') {
+      fill(255, 165, 0, 220);
+      ellipse(0, 0, this.size);
+      fill(255, 255, 0, 220);
+      ellipse(0, 0, this.size * 0.6);
+    } else if (this.type === 'buddy') {
+      fill(0, 200, 0, 220);
+      beginShape();
+      vertex(0, -this.size * 0.7);
+      vertex(-this.size * 0.5, this.size * 0.5);
+      vertex(this.size * 0.5, this.size * 0.5);
+      endShape(CLOSE);
+    } else if (this.type === 'shield') {
+      noFill();
+      stroke(0, 255, 255, 220);
+      strokeWeight(3);
+      ellipse(0, 0, this.size);
+      strokeWeight(1);
+      ellipse(0, 0, this.size * 0.7);
+    }
+    pop();
+  }
+  move(speedFactor) {
+    this.y += 2 * speedFactor;
+  }
+  hits(target) {
+    let d = dist(this.x, this.y, target.x, target.y);
+    return d < this.size + target.size;
+  }
+  applyPowerUp() {
+    if (this.type === 'firepower') {
+      powerUpStatus.firepower = true;
+      powerUpStatus.firepowerTime = millis();
+    } else if (this.type === 'buddy') {
+      buddy = new Buddy();
+    } else if (this.type === 'shield') {
+      powerUpStatus.shield = true;
+      powerUpStatus.shieldTime = millis();
+    }
+  }
+}
+
+class Particle {
+  constructor(x, y, isExplosion = false) {
+    this.x = x;
+    this.y = y;
+    this.vx = random(-5, 5) * (isExplosion ? 2 : 1);
+    this.vy = random(-5, 5) * (isExplosion ? 2 : 1);
+    this.alpha = 255;
+    this.size = isExplosion ? random(8, 20) : random(4, 10);
+    this.isExplosion = isExplosion;
+  }
+  show() {
+    fill(this.isExplosion ? [255, random(100, 255), 0, this.alpha] : [255, 255, 0, this.alpha]);
+    ellipse(this.x, this.y, this.size);
+  }
+  move(speedFactor) {
+    this.x += this.vx * (this.isExplosion ? 1.5 : 1) * speedFactor;
+    this.y += this.vy * (this.isExplosion ? 1.5 : 1) * speedFactor;
+    this.alpha -= (this.isExplosion ? 10 : 5) * speedFactor;
+    this.size *= this.isExplosion ? 0.9 : 0.95;
+  }
+}
+
+class PointFlash {
+  constructor(x, y, points) {
+    this.x = x;
+    this.y = y;
+    this.points = points;
+    this.alpha = 255;
+    this.time = millis();
+  }
+  show() {
+    textSize(20);
+    fill(255, 255, 0, this.alpha);
+    textAlign(CENTER);
+    text(`+${this.points}`, this.x, this.y - 20);
+  }
+  move(speedFactor) {
+    this.y -= 1 * speedFactor;
+    this.alpha -= 5 * speedFactor;
+  }
+}
+</script>
+</body>
+</html>
