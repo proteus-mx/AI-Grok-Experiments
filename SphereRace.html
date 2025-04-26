@@ -1,0 +1,474 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hexagon Sphere Game</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: radial-gradient(circle, #0d0d1a, #1a1a2e); }
+        canvas { display: block; }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #e6e6fa;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 22px;
+            text-shadow: 0 0 10px #00ffcc, 0 0 15px #00ffcc;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #00ffcc;
+        }
+        #level {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffd700;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 36px;
+            text-shadow: 0 0 20px #ff4500, 0 0 25px #ff4500;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px 30px;
+            border-radius: 15px;
+            border: 2px solid #ffd700;
+            animation: pulse 1.2s infinite;
+        }
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffd700;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 48px;
+            text-shadow: 0 0 20px #ff4500, 0 0 30px #ff4500;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px 50px;
+            border-radius: 20px;
+            border: 3px solid #00ffcc;
+            text-align: center;
+            display: none;
+        }
+        @keyframes pulse {
+            0% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.08); }
+            100% { transform: translateX(-50%) scale(1); }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="ui"></div>
+    <div id="level"></div>
+    <div id="gameOver"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x606060, 0.7);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+        directionalLight.position.set(15, 15, 10);
+        directionalLight.castShadow = true;
+        scene.add(directionalLight);
+        const hemisphereLight = new THREE.HemisphereLight(0x87ceeb, 0x228b22, 0.5);
+        scene.add(hemisphereLight);
+
+        // Sphere geometry
+        const radius = 5;
+        const hexagons = [];
+        const edges = [];
+
+        // Generate hexagonal tiles using icosahedron subdivision
+        const icoGeometry = new THREE.IcosahedronGeometry(radius, 3);
+        const icoVertices = icoGeometry.attributes.position.array;
+        const hexPositions = new Set();
+
+        for (let i = 0; i < icoVertices.length; i += 3) {
+            const v = new THREE.Vector3(icoVertices[i], icoVertices[i + 1], icoVertices[i + 2]).normalize().multiplyScalar(radius);
+            const key = `${v.x.toFixed(4)},${v.y.toFixed(4)},${v.z.toFixed(4)}`;
+            if (!hexPositions.has(key)) {
+                hexPositions.add(key);
+                hexagons.push({ position: v, visits: { red: 0, blue: 0 }, edgeWidth: 4 });
+            }
+        }
+
+        // Create wireframe edges with dynamic linewidth
+        hexagons.forEach((hex, index) => {
+            const neighbors = hexagons
+                .map((h, i) => ({ index: i, dist: h.position.distanceTo(hex.position) }))
+                .filter(n => n.dist > 0 && n.dist < 2)
+                .sort((a, b) => a.dist - b.dist)
+                .slice(0, 6);
+            neighbors.forEach(n => {
+                const key = [index, n.index].sort().join('-');
+                if (!edges.includes(key)) {
+                    edges.push(key);
+                    const geometry = new THREE.BufferGeometry().setFromPoints([hex.position, hexagons[n.index].position]);
+                    const material = new THREE.LineBasicMaterial({
+                        color: hex.visits.red > 0 ? 0xff5050 : hex.visits.blue > 0 ? 0x5050ff : 0x00e6b8,
+                        transparent: true,
+                        opacity: 0.75 + Math.min((hex.visits.red + hex.visits.blue) * 0.25, 0.25),
+                        linewidth: hex.edgeWidth
+                    });
+                    scene.add(new THREE.Line(geometry, material));
+                }
+            });
+        });
+
+        // Permanent marks for player visits
+        const markGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+        const redMarkMaterial = new THREE.MeshBasicMaterial({ color: 0xff5050, transparent: true, opacity: 0.7 });
+        const blueMarkMaterial = new THREE.MeshBasicMaterial({ color: 0x5050ff, transparent: true, opacity: 0.7 });
+
+        // Players with smooth transitions
+        const players = {
+            red: { pos: new THREE.Vector3(), targetPos: new THREE.Vector3(), color: new THREE.Color(1, 0, 0), hexIndex: 0, speed: 0.1, covered: 0, moving: false },
+            blue: { pos: new THREE.Vector3(), targetPos: new THREE.Vector3(), color: new THREE.Color(0, 0, 1), hexIndex: 0, speed: 0.1, covered: 0, moving: false }
+        };
+
+        // Start players on opposite sides
+        function setOppositePositions() {
+            let redIndex, blueIndex;
+            redIndex = Math.floor(Math.random() * hexagons.length);
+            players.red.hexIndex = redIndex;
+            players.red.pos.copy(hexagons[redIndex].position);
+            players.red.targetPos.copy(hexagons[redIndex].position);
+
+            // Find the farthest hexagon for blue
+            let maxDist = 0;
+            hexagons.forEach((hex, i) => {
+                const dist = hex.position.distanceTo(players.red.pos);
+                if (dist > maxDist) {
+                    maxDist = dist;
+                    blueIndex = i;
+                }
+            });
+            players.blue.hexIndex = blueIndex;
+            players.blue.pos.copy(hexagons[blueIndex].position);
+            players.blue.targetPos.copy(hexagons[blueIndex].position);
+        }
+
+        setOppositePositions();
+
+        // Player meshes with advanced materials
+        const playerGeometry = new THREE.SphereGeometry(0.2, 64, 64);
+        const redMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xff5050, 
+            emissive: 0x990000, 
+            metalness: 0.4, 
+            roughness: 0.3, 
+            transparent: true, 
+            opacity: 0.9 
+        });
+        const blueMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x5050ff, 
+            emissive: 0x000099, 
+            metalness: 0.4, 
+            roughness: 0.3, 
+            transparent: true, 
+            opacity: 0.9 
+        });
+        const redPlayer = new THREE.Mesh(playerGeometry, redMaterial);
+        const bluePlayer = new THREE.Mesh(playerGeometry, blueMaterial);
+        redPlayer.castShadow = true;
+        bluePlayer.castShadow = true;
+        scene.add(redPlayer, bluePlayer);
+
+        // Add glowing point lights for players
+        const redGlow = new THREE.PointLight(0xff5050, 1.2, 5, 2);
+        const blueGlow = new THREE.PointLight(0x5050ff, 1.2, 5, 2);
+        scene.add(redGlow, blueGlow);
+
+        // Discrete particle system for player trails (only when moving)
+        const particleGeometry = new THREE.BufferGeometry();
+        const particleCount = 100;
+        const posArray = new Float32Array(particleCount * 3);
+        const colorsArray = new Float32Array(particleCount * 3);
+        const sizesArray = new Float32Array(particleCount);
+        const lifetimes = new Array(particleCount).fill(0);
+        for (let i = 0; i < particleCount; i++) {
+            posArray[i * 3] = 0;
+            posArray[i * 3 + 1] = 0;
+            posArray[i * 3 + 2] = 0;
+            colorsArray[i * 3] = 1;
+            colorsArray[i * 3 + 1] = 1;
+            colorsArray[i * 3 + 2] = 1;
+            sizesArray[i] = 0.06;
+        }
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        particleGeometry.setAttribute('color', new THREE.BufferAttribute(colorsArray, 3));
+        particleGeometry.setAttribute('size', new THREE.BufferAttribute(sizesArray, 1));
+        const particleMaterial = new THREE.PointsMaterial({
+            vertexColors: true,
+            size: 0.06,
+            transparent: true,
+            opacity: 0.9,
+            blending: THREE.AdditiveBlending
+        });
+        const particles = new THREE.Points(particleGeometry, particleMaterial);
+        scene.add(particles);
+
+        // Background stars
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 1000;
+        const starPos = new Float32Array(starCount * 3);
+        for (let i = 0; i < starCount * 3; i++) starPos[i] = (Math.random() - 0.5) * 200;
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1 });
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+
+        // Cameras
+        const cameras = [
+            { name: 'Birds Eye', pos: new THREE.Vector3(0, 15, 0), lookAt: new THREE.Vector3(0, 0, 0) },
+            { name: 'Red Player', pos: new THREE.Vector3(), lookAt: players.red.pos },
+            { name: 'Blue Player', pos: new THREE.Vector3(), lookAt: players.blue.pos },
+            { name: 'Fly Around', pos: new THREE.Vector3(10, 0, 0), lookAt: new THREE.Vector3(0, 0, 0) }
+        ];
+        let currentCamera = 0;
+
+        // Game state
+        let gameOver = false;
+        let timeLeft = 120;
+        let level = 1;
+        let levelTimer = 10;
+        let lastTime = performance.now();
+
+        // UI
+        const ui = document.getElementById('ui');
+        const levelDisplay = document.getElementById('level');
+        const gameOverDisplay = document.getElementById('gameOver');
+
+        // Event listener for camera switch
+        document.addEventListener('click', () => {
+            if (!gameOver) currentCamera = (currentCamera + 1) % cameras.length;
+        });
+
+        function getNeighbors(index) {
+            const neighbors = [];
+            const pos = hexagons[index].position;
+            for (let i = 0; i < hexagons.length; i++) {
+                if (i !== index && hexagons[i].position.distanceTo(pos) < 2) {
+                    neighbors.push(i);
+                }
+            }
+            return neighbors;
+        }
+
+        function movePlayer(player) {
+            if (gameOver || player.moving) return;
+            const neighbors = getNeighbors(player.hexIndex);
+            if (neighbors.length === 0) return;
+            const nextIndex = neighbors[Math.floor(Math.random() * neighbors.length)];
+            player.moving = true;
+            player.hexIndex = nextIndex;
+            player.targetPos.copy(hexagons[nextIndex].position);
+            hexagons[nextIndex].visits[player === players.red ? 'red' : 'blue']++;
+            hexagons[nextIndex].edgeWidth = Math.min(hexagons[nextIndex].edgeWidth + 1, 8);
+
+            // Add permanent mark
+            const mark = new THREE.Mesh(markGeometry, player === players.red ? redMarkMaterial : blueMarkMaterial);
+            mark.position.copy(hexagons[nextIndex].position);
+            mark.scale.setScalar(1 + hexagons[nextIndex].visits[player === players.red ? 'red' : 'blue'] * 0.2);
+            scene.add(mark);
+
+            player.covered++;
+            updateHexagonColors();
+        }
+
+        function updateHexagonColors() {
+            scene.children = scene.children.filter(child => !(child instanceof THREE.Line));
+            scene.add(redPlayer, bluePlayer, ambientLight, directionalLight, redGlow, blueGlow, particles, stars);
+            scene.children.forEach(child => {
+                if (child instanceof THREE.Mesh && child.geometry === markGeometry) scene.add(child);
+            });
+            const edgeSet = new Set();
+            hexagons.forEach((hex, index) => {
+                const neighbors = hexagons
+                    .map((h, i) => ({ index: i, dist: h.position.distanceTo(hex.position) }))
+                    .filter(n => n.dist > 0 && n.dist < 2)
+                    .sort((a, b) => a.dist - b.dist)
+                    .slice(0, 6);
+                neighbors.forEach(n => {
+                    const key = [index, n.index].sort().join('-');
+                    if (!edgeSet.has(key)) {
+                        edgeSet.add(key);
+                        const geometry = new THREE.BufferGeometry().setFromPoints([hex.position, hexagons[n.index].position]);
+                        const color = hex.visits.red > 0 ? 0xff5050 : hex.visits.blue > 0 ? 0x5050ff : 0x00e6b8;
+                        const opacity = 0.75 + Math.min((hex.visits.red + hex.visits.blue) * 0.25, 0.25);
+                        const material = new THREE.LineBasicMaterial({ 
+                            color, 
+                            transparent: true, 
+                            opacity, 
+                            linewidth: hex.edgeWidth 
+                        });
+                        scene.add(new THREE.Line(geometry, material));
+                    }
+                });
+            });
+        }
+
+        function checkCollision() {
+            if (players.red.hexIndex === players.blue.hexIndex) {
+                gameOver = true;
+                const winner = players.red.covered > players.blue.covered ? 'Red' : 'Blue';
+                gameOverDisplay.innerHTML = `Game Over!<br>${winner} Wins!<br>Red: ${players.red.covered} hexes<br>Blue: ${players.blue.covered} hexes<br>Level: ${level}`;
+                gameOverDisplay.style.display = 'block';
+                ui.style.display = 'none';
+            }
+        }
+
+        function update() {
+            const now = performance.now();
+            const delta = (now - lastTime) / 1000;
+            lastTime = now;
+
+            if (!gameOver) {
+                timeLeft -= delta;
+                levelTimer -= delta;
+
+                if (timeLeft <= 0) {
+                    gameOver = true;
+                    gameOverDisplay.innerHTML = `Time's Up!<br>Red: ${players.red.covered} hexes<br>Blue: ${players.blue.covered} hexes<br>Level: ${level}`;
+                    gameOverDisplay.style.display = 'block';
+                    ui.style.display = 'none';
+                } else {
+                    ui.innerHTML = `Time: ${Math.ceil(timeLeft)}s<br>Red: ${players.red.covered} hexes<br>Blue: ${players.blue.covered} hexes<br>Level: ${level}`;
+                }
+
+                if (levelTimer <= 0) {
+                    level++;
+                    levelTimer = 10;
+                    players.red.speed *= 1.2;
+                    players.blue.speed *= 1.2;
+                    levelDisplay.innerHTML = `Level ${level}`;
+                    setTimeout(() => levelDisplay.innerHTML = '', 2000);
+                }
+
+                // Smooth player movement
+                ['red', 'blue'].forEach(key => {
+                    const player = players[key];
+                    if (player.pos.distanceTo(player.targetPos) > 0.01) {
+                        player.pos.lerp(player.targetPos, 0.15);
+                    } else {
+                        player.moving = false;
+                    }
+                });
+
+                if (Math.random() < players.red.speed * delta * 10) movePlayer(players.red);
+                if (Math.random() < players.blue.speed * delta * 10) movePlayer(players.blue);
+                checkCollision();
+            }
+
+            // Update player positions and glow
+            redPlayer.position.copy(players.red.pos);
+            bluePlayer.position.copy(players.blue.pos);
+            redGlow.position.copy(players.red.pos);
+            blueGlow.position.copy(players.blue.pos);
+
+            // Update discrete particles for trails (only when moving)
+            const positions = particles.geometry.attributes.position.array;
+            const colors = particles.geometry.attributes.color.array;
+            const sizes = particles.geometry.attributes.size.array;
+            for (let i = 0; i < particleCount; i++) {
+                const idx = i * 3;
+                if (lifetimes[i] <= 0 && Math.random() < 0.05) {
+                    const player = Math.random() < 0.5 ? players.red : players.blue;
+                    if (player.moving) {
+                        positions[idx] = player.pos.x;
+                        positions[idx + 1] = player.pos.y;
+                        positions[idx + 2] = player.pos.z;
+                        colors[idx] = player === players.red ? 1 : 0;
+                        colors[idx + 1] = 0;
+                        colors[idx + 2] = player === players.red ? 0 : 1;
+                        sizes[i] = 0.06;
+                        lifetimes[i] = 1;
+                    }
+                } else if (lifetimes[i] > 0) {
+                    lifetimes[i] -= delta * 2;
+                    sizes[i] *= 0.95;
+                    positions[idx + 1] -= 0.05;
+                    if (lifetimes[i] <= 0 || sizes[i] < 0.01) {
+                        positions[idx] = 0;
+                        positions[idx + 1] = 0;
+                        positions[idx + 2] = 0;
+                        sizes[i] = 0;
+                        lifetimes[i] = 0;
+                    }
+                }
+            }
+            particles.geometry.attributes.position.needsUpdate = true;
+            particles.geometry.attributes.color.needsUpdate = true;
+            particles.geometry.attributes.size.needsUpdate = true;
+
+            // Update cameras with smooth transitions
+            const cam = cameras[currentCamera];
+            if (cam.name === 'Red Player') {
+                cam.pos.copy(players.red.pos).normalize().multiplyScalar(7);
+                cam.lookAt = players.red.pos;
+            } else if (cam.name === 'Blue Player') {
+                cam.pos.copy(players.blue.pos).normalize().multiplyScalar(7);
+                cam.lookAt = players.blue.pos;
+            } else if (cam.name === 'Fly Around') {
+                cam.pos.applyAxisAngle(new THREE.Vector3(0, 1, 0), delta * 0.8);
+            }
+            camera.position.lerp(cam.pos, 0.2);
+            camera.lookAt(cam.lookAt);
+
+            renderer.render(scene, camera);
+            requestAnimationFrame(update);
+        }
+
+        update();
+    </script>
+</body>
+</html>
