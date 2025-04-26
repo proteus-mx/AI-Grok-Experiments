@@ -1,0 +1,1264 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hexagon Sphere Game</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000000; }
+        canvas { display: block; }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #e6e6fa;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 22px;
+            text-shadow: 0 0 10px #00ffcc, 0 0 15px #00ffcc;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #00ffcc;
+        }
+        #redStats { color: #ff5050; text-shadow: 0 0 10px #ff5050; }
+        #blueStats { color: #5050ff; text-shadow: 0 0 10px #5050ff; }
+        #neutralStats { color: #e6e6fa; text-shadow: 0 0 10px #00ffcc; }
+        #level {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffd700;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 36px;
+            text-shadow: 0 0 20px #ff4500, 0 0 25px #ff4500;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px 30px;
+            border-radius: 15px;
+            border: 2px solid #ffd700;
+            animation: pulse 1.2s infinite;
+            z-index: 10;
+        }
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffd700;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 24px;
+            text-shadow: 0 0 10px #ff4500, 0 0 15px #ff4500;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px 30px;
+            border-radius: 10px;
+            border: 2px solid #00ffcc;
+            text-align: center;
+            display: none;
+            z-index: 20;
+        }
+        #pointsFlash {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ffcc;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 28px;
+            text-shadow: 0 0 15px #00ffcc;
+            animation: flash 1s ease-out;
+            pointer-events: none;
+            z-index: 15;
+        }
+        #cameraDisplay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #ffd700;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            text-shadow: 0 0 10px #ff4500, 0 0 15px #ff4500;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid #00ffcc;
+            z-index: 10;
+        }
+        #introMessage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00ffcc;
+            font-family: 'Orbitron', sans-serif;
+            text-align: center;
+            text-shadow: 0 0 15px #00ffcc, 0 0 20px #00ffcc;
+            z-index: 30;
+            animation: introFlash 1s ease-in-out;
+        }
+        #introMessage h1 {
+            font-size: 48px;
+            margin: 0;
+        }
+        #introMessage p {
+            font-size: 24px;
+            margin: 10px 0;
+        }
+        #countdown {
+            font-size: 72px;
+            color: #ffd700;
+            text-shadow: 0 0 20px #ff4500;
+        }
+        #progressBar {
+            position: absolute;
+            bottom: 140px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 15px;
+            background: linear-gradient(90deg, #111, #333);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #00ffcc;
+            box-shadow: 0 0 8px #00ffcc;
+            z-index: 10;
+        }
+        #redProgress {
+            height: 100%;
+            background: linear-gradient(90deg, #ff5050, #cc4040);
+            float: left;
+            transition: width 0.5s;
+            position: relative;
+        }
+        #blueProgress {
+            height: 100%;
+            background: linear-gradient(90deg, #5050ff, #4040cc);
+            float: left;
+            transition: width 0.5s;
+            position: relative;
+        }
+        #remainingProgress {
+            height: 100%;
+            background: linear-gradient(90deg, #00e6b8, #00b38f);
+            float: left;
+            transition: width 0.5s;
+            position: relative;
+        }
+        #redProgress::after {
+            content: attr(data-percentage) '%';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffffff;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            text-shadow: 0 0 5px #000;
+        }
+        #blueProgress::after {
+            content: attr(data-percentage) '%';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffffff;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            text-shadow: 0 0 5px #000;
+        }
+        #remainingProgress::after {
+            content: attr(data-percentage) '%';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffffff;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            text-shadow: 0 0 5px #000;
+        }
+        .flashTimer {
+            animation: flashTimer 0.5s infinite alternate;
+        }
+        @keyframes pulse {
+            0% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.08); }
+            100% { transform: translateX(-50%) scale(1); }
+        }
+        @keyframes flash {
+            0% { opacity: 1; transform: translateX(-50%) scale(1); }
+            100% { opacity: 0; transform: translateX(-50%) scale(1.5); }
+        }
+        @keyframes flashTimer {
+            0% { color: #e6e6fa; }
+            100% { color: #ff4500; }
+        }
+        @keyframes introFlash {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="ui"></div>
+    <div id="level"></div>
+    <div id="gameOver"></div>
+    <div id="pointsFlash"></div>
+    <div id="cameraDisplay"></div>
+    <div id="introMessage">
+        <h1>Welcome to SphereTronics</h1>
+        <p>Starting in...</p>
+        <div id="countdown">5</div>
+    </div>
+    <div id="progressBar">
+        <div id="redProgress" data-percentage="0"></div>
+        <div id="blueProgress" data-percentage="0"></div>
+        <div id="remainingProgress" data-percentage="100"></div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x606060, 0.7);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+        directionalLight.position.set(15, 15, 10);
+        directionalLight.castShadow = true;
+        scene.add(directionalLight);
+        const hemisphereLight = new THREE.HemisphereLight(0x87ceeb, 0x228b22, 0.5);
+        scene.add(hemisphereLight);
+
+        // Central sphere
+        const centralSphereGeometry = new THREE.SphereGeometry(0.5, 64, 64);
+        const centralSphereMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x000a0a, 
+            emissive: 0x000303, 
+            transparent: true, 
+            opacity: 0.18,
+            metalness: 0.3,
+            roughness: 0.2,
+            wireframe: true
+        });
+        const centralSphere = new THREE.Mesh(centralSphereGeometry, centralSphereMaterial);
+        centralSphere.userData = { time: 0 };
+        scene.add(centralSphere);
+
+        // Laser lines from center to players
+        const redLaserGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1, 32);
+        const redLaserMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xff5050, 
+            transparent: true, 
+            opacity: 0.8, 
+            blending: THREE.AdditiveBlending 
+        });
+        const redLaser = new THREE.Mesh(redLaserGeometry, redLaserMaterial);
+        scene.add(redLaser);
+
+        const blueLaserGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1, 32);
+        const blueLaserMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x5050ff, 
+            transparent: true, 
+            opacity: 0.8, 
+            blending: THREE.AdditiveBlending 
+        });
+        const blueLaser = new THREE.Mesh(blueLaserGeometry, blueLaserMaterial);
+        scene.add(blueLaser);
+
+        // Laser glow effect
+        const redLaserGlow = new THREE.PointLight(0xff5050, 2, 3, 2);
+        const blueLaserGlow = new THREE.PointLight(0x5050ff, 2, 3, 2);
+        scene.add(redLaserGlow, blueLaserGlow);
+
+        // Laser particle effects
+        const laserParticleGeometry = new THREE.BufferGeometry();
+        const laserParticleCount = 50;
+        const laserPosArray = new Float32Array(laserParticleCount * 3);
+        const laserColorsArray = new Float32Array(laserParticleCount * 3);
+        const laserSizesArray = new Float32Array(laserParticleCount);
+        const laserLifetimes = new Array(laserParticleCount).fill(0);
+        for (let i = 0; i < laserParticleCount; i++) {
+            laserPosArray[i * 3] = 0;
+            laserPosArray[i * 3 + 1] = 0;
+            laserPosArray[i * 3 + 2] = 0;
+            laserColorsArray[i * 3] = 1;
+            laserColorsArray[i * 3 + 1] = 1;
+            laserColorsArray[i * 3 + 2] = 1;
+            laserSizesArray[i] = 0.1;
+        }
+        laserParticleGeometry.setAttribute('position', new THREE.BufferAttribute(laserPosArray, 3));
+        laserParticleGeometry.setAttribute('color', new THREE.BufferAttribute(laserColorsArray, 3));
+        laserParticleGeometry.setAttribute('size', new THREE.BufferAttribute(laserSizesArray, 1));
+        const laserParticleMaterial = new THREE.PointsMaterial({
+            vertexColors: true,
+            size: 0.1,
+            transparent: true,
+            opacity: 0.9,
+            blending: THREE.AdditiveBlending
+        });
+        const laserParticles = new THREE.Points(laserParticleGeometry, laserParticleMaterial);
+        scene.add(laserParticles);
+
+        // Sphere geometry
+        const radius = 5;
+        const hexagons = [];
+        const edges = [];
+        const hexagonSphereGroup = new THREE.Group();
+        scene.add(hexagonSphereGroup);
+
+        // Generate hexagonal tiles
+        const icoGeometry = new THREE.IcosahedronGeometry(radius, 3);
+        const icoVertices = icoGeometry.attributes.position.array;
+        const hexPositions = new Set();
+
+        for (let i = 0; i < icoVertices.length; i += 3) {
+            const v = new THREE.Vector3(icoVertices[i], icoVertices[i + 1], icoVertices[i + 2]).normalize().multiplyScalar(radius);
+            const key = `${v.x.toFixed(4)},${v.y.toFixed(4)},${v.z.toFixed(4)}`;
+            if (!hexPositions.has(key)) {
+                hexPositions.add(key);
+                hexagons.push({ position: v, visits: { red: 0, blue: 0 }, edgeWidth: 4, owner: null, velocity: new THREE.Vector3() });
+            }
+        }
+
+        // Create wireframe edges
+        hexagons.forEach((hex, index) => {
+            const neighbors = hexagons
+                .map((h, i) => ({ index: i, dist: h.position.distanceTo(hex.position) }))
+                .filter(n => n.dist > 0 && n.dist < 2)
+                .sort((a, b) => a.dist - b.dist)
+                .slice(0, 6);
+            neighbors.forEach(n => {
+                const key = [index, n.index].sort().join('-');
+                if (!edges.includes(key)) {
+                    edges.push(key);
+                    const geometry = new THREE.BufferGeometry().setFromPoints([hex.position, hexagons[n.index].position]);
+                    const material = new THREE.LineBasicMaterial({
+                        color: hex.visits.red > 0 ? 0xff5050 : hex.visits.blue > 0 ? 0x5050ff : 0x00e6b8,
+                        transparent: true,
+                        opacity: 0.75 + Math.min((hex.visits.red + hex.visits.blue) * 0.25, 0.25),
+                        linewidth: hex.edgeWidth
+                    });
+                    const line = new THREE.Line(geometry, material);
+                    line.userData = { hex1: index, hex2: n.index };
+                    hexagonSphereGroup.add(line);
+                }
+            });
+        });
+
+        // Permanent marks
+        const markGeometry = new THREE.TetrahedronGeometry(0.15, 0);
+        const redMarkMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xff5050, 
+            emissive: 0x660000, 
+            metalness: 0.5, 
+            roughness: 0.2, 
+            transparent: true, 
+            opacity: 0.8 
+        });
+        const blueMarkMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x5050ff, 
+            emissive: 0x000066, 
+            metalness: 0.5, 
+            roughness: 0.2, 
+            transparent: true, 
+            opacity: 0.8 
+        });
+
+        // Players
+        const players = {
+            red: { pos: new THREE.Vector3(), targetPos: new THREE.Vector3(), color: new THREE.Color(1, 0, 0), hexIndex: 0, speed: 0.1, covered: 0, moving: false, points: 0 },
+            blue: { pos: new THREE.Vector3(), targetPos: new THREE.Vector3(), color: new THREE.Color(0, 0, 1), hexIndex: 0, speed: 0.1, covered: 0, moving: false, points: 0 }
+        };
+
+        // Start players on opposite sides
+        function setOppositePositions() {
+            let redIndex, blueIndex;
+            redIndex = Math.floor(Math.random() * hexagons.length);
+            players.red.hexIndex = redIndex;
+            players.red.pos.copy(hexagons[redIndex].position);
+            players.red.targetPos.copy(hexagons[redIndex].position);
+
+            let maxDist = 0;
+            hexagons.forEach((hex, i) => {
+                const dist = hex.position.distanceTo(players.red.pos);
+                if (dist > maxDist) {
+                    maxDist = dist;
+                    blueIndex = i;
+                }
+            });
+            players.blue.hexIndex = blueIndex;
+            players.blue.pos.copy(hexagons[blueIndex].position);
+            players.blue.targetPos.copy(hexagons[blueIndex].position);
+        }
+
+        setOppositePositions();
+
+        // Player meshes
+        const playerGeometry = new THREE.SphereGeometry(0.2, 64, 64);
+        const redMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xff5050, 
+            emissive: 0x990000, 
+            metalness: 0.4, 
+            roughness: 0.3, 
+            transparent: true, 
+            opacity: 0.9 
+        });
+        const blueMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x5050ff, 
+            emissive: 0x000099, 
+            metalness: 0.4, 
+            roughness: 0.3, 
+            transparent: true, 
+            opacity: 0.9 
+        });
+        const redPlayer = new THREE.Mesh(playerGeometry, redMaterial);
+        const bluePlayer = new THREE.Mesh(playerGeometry, blueMaterial);
+        redPlayer.castShadow = true;
+        bluePlayer.castShadow = true;
+        scene.add(redPlayer, bluePlayer);
+
+        // Player glow
+        const redGlow = new THREE.PointLight(0xff5050, 0.6, 5, 2);
+        const blueGlow = new THREE.PointLight(0x5050ff, 0.6, 5, 2);
+        scene.add(redGlow, blueGlow);
+
+        // Trail particles
+        const particleGeometry = new THREE.BufferGeometry();
+        const particleCount = 100;
+        const posArray = new Float32Array(particleCount * 3);
+        const colorsArray = new Float32Array(particleCount * 3);
+        const sizesArray = new Float32Array(particleCount);
+        const lifetimes = new Array(particleCount).fill(0);
+        for (let i = 0; i < particleCount; i++) {
+            posArray[i * 3] = 0;
+            posArray[i * 3 + 1] = 0;
+            posArray[i * 3 + 2] = 0;
+            colorsArray[i * 3] = 1;
+            colorsArray[i * 3 + 1] = 1;
+            colorsArray[i * 3 + 2] = 1;
+            sizesArray[i] = 0.06;
+        }
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        particleGeometry.setAttribute('color', new THREE.BufferAttribute(colorsArray, 3));
+        particleGeometry.setAttribute('size', new THREE.BufferAttribute(sizesArray, 1));
+        const particleMaterial = new THREE.PointsMaterial({
+            vertexColors: true,
+            size: 0.06,
+            transparent: true,
+            opacity: 0.9,
+            blending: THREE.AdditiveBlending
+        });
+        const particles = new THREE.Points(particleGeometry, particleMaterial);
+        scene.add(particles);
+
+        // Explosion particles
+        const explosionGeometry = new THREE.BufferGeometry();
+        const explosionCount = 500;
+        const expPosArray = new Float32Array(explosionCount * 3);
+        const expColorsArray = new Float32Array(explosionCount * 3);
+        const expSizesArray = new Float32Array(explosionCount);
+        const expVelocities = new Array(explosionCount).fill().map(() => new THREE.Vector3());
+        const expLifetimes = new Array(explosionCount).fill(0);
+        for (let i = 0; i < explosionCount; i++) {
+            expPosArray[i * 3] = 0;
+            expPosArray[i * 3 + 1] = 0;
+            expPosArray[i * 3 + 2] = 0;
+            expColorsArray[i * 3] = 1;
+            expColorsArray[i * 3 + 1] = 1;
+            expColorsArray[i * 3 + 2] = 1;
+            expSizesArray[i] = 0.1;
+        }
+        explosionGeometry.setAttribute('position', new THREE.BufferAttribute(expPosArray, 3));
+        explosionGeometry.setAttribute('color', new THREE.BufferAttribute(expColorsArray, 3));
+        explosionGeometry.setAttribute('size', new THREE.BufferAttribute(expSizesArray, 1));
+        const explosionMaterial = new THREE.PointsMaterial({
+            vertexColors: true,
+            size: 0.1,
+            transparent: true,
+            opacity: 0.9,
+            blending: THREE.AdditiveBlending
+        });
+        const explosionParticles = new THREE.Points(explosionGeometry, explosionMaterial);
+        scene.add(explosionParticles);
+
+        // Marker explosion particles
+        const markerExplosionGeometry = new THREE.BufferGeometry();
+        const markerExplosionCount = 200;
+        const markerExpPosArray = new Float32Array(markerExplosionCount * 3);
+        const markerExpColorsArray = new Float32Array(markerExplosionCount * 3);
+        const markerExpSizesArray = new Float32Array(markerExplosionCount);
+        const markerExpVelocities = new Array(markerExplosionCount).fill().map(() => new THREE.Vector3());
+        const markerExpLifetimes = new Array(markerExplosionCount).fill(0);
+        for (let i = 0; i < markerExplosionCount; i++) {
+            markerExpPosArray[i * 3] = 0;
+            markerExpPosArray[i * 3 + 1] = 0;
+            markerExpPosArray[i * 3 + 2] = 0;
+            markerExpColorsArray[i * 3] = 1;
+            markerExpColorsArray[i * 3 + 1] = 1;
+            markerExpColorsArray[i * 3 + 2] = 1;
+            markerExpSizesArray[i] = 0.08;
+        }
+        markerExplosionGeometry.setAttribute('position', new THREE.BufferAttribute(markerExpPosArray, 3));
+        markerExplosionGeometry.setAttribute('color', new THREE.BufferAttribute(markerExpColorsArray, 3));
+        markerExplosionGeometry.setAttribute('size', new THREE.BufferAttribute(markerExpSizesArray, 1));
+        const markerExplosionMaterial = new THREE.PointsMaterial({
+            vertexColors: true,
+            size: 0.08,
+            transparent: true,
+            opacity: 0.9,
+            blending: THREE.AdditiveBlending
+        });
+        const markerExplosionParticles = new THREE.Points(markerExplosionGeometry, markerExplosionMaterial);
+        scene.add(markerExplosionParticles);
+
+        // Starfield
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 5000;
+        const starPos = new Float32Array(starCount * 3);
+        const starColors = new Float32Array(starCount * 3);
+        const starSizes = new Float32Array(starCount);
+        const starTwinkle = new Float32Array(starCount);
+        for (let i = 0; i < starCount; i++) {
+            starPos[i * 3] = (Math.random() - 0.5) * 400;
+            starPos[i * 3 + 1] = (Math.random() - 0.5) * 400;
+            starPos[i * 3 + 2] = (Math.random() - 0.5) * 400;
+            const color = Math.random() < 0.2 ? [1, 0.6, 0.6] : Math.random() < 0.2 ? [0.6, 0.6, 1] : Math.random() < 0.1 ? [1, 1, 0.6] : [1, 1, 1];
+            starColors[i * 3] = color[0];
+            starColors[i * 3 + 1] = color[1];
+            starColors[i * 3 + 2] = color[2];
+            starSizes[i] = 0.05 + Math.random() * 0.2;
+            starTwinkle[i] = Math.random() * Math.PI * 2;
+        }
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        starGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+        starGeometry.setAttribute('size', new THREE.BufferAttribute(starSizes, 1));
+        const starMaterial = new THREE.PointsMaterial({ 
+            vertexColors: true, 
+            size: 0.15, 
+            transparent: true, 
+            blending: THREE.AdditiveBlending,
+            sizeAttenuation: true
+        });
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+
+        // Cameras
+        const cameras = [
+            { name: 'Birds Eye', pos: new THREE.Vector3(0, 15, 0), lookAt: new THREE.Vector3(0, 0, 0) },
+            { name: 'Red Player', pos: new THREE.Vector3(), lookAt: players.red.pos },
+            { name: 'Blue Player', pos: new THREE.Vector3(), lookAt: players.blue.pos },
+            { name: 'Fly Around', pos: new THREE.Vector3(12, 0, 0), lookAt: new THREE.Vector3(0, 0, 0) },
+            { name: 'Center to Red', pos: new THREE.Vector3(0, 0, 0), lookAt: players.red.pos, targetLookAt: players.red.pos.clone() },
+            { name: 'Center to Blue', pos: new THREE.Vector3(0, 0, 0), lookAt: players.blue.pos, targetLookAt: players.blue.pos.clone() }
+        ];
+        let currentCamera = 0;
+
+        // Intro animation
+        let introTime = 5;
+        let introActive = true;
+        const introMessage = document.getElementById('introMessage');
+        const countdownDisplay = document.getElementById('countdown');
+        const initialCameraPos = new THREE.Vector3(0, 20, 20);
+        const targetCameraPos = new THREE.Vector3(0, 15, 0);
+        camera.position.copy(initialCameraPos);
+        camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+        // Game state
+        let gameOver = false;
+        let timeLeft = 120;
+        let level = 1;
+        let levelTimer = 10;
+        let lastTime = performance.now();
+        let explosionTime = 0;
+        let explosionTriggered = false;
+        let markerExplosionTriggered = false;
+
+        // UI
+        const ui = document.getElementById('ui');
+        const levelDisplay = document.getElementById('level');
+        const gameOverDisplay = document.getElementById('gameOver');
+        const pointsFlash = document.getElementById('pointsFlash');
+        const cameraDisplay = document.getElementById('cameraDisplay');
+        const redProgress = document.getElementById('redProgress');
+        const blueProgress = document.getElementById('blueProgress');
+        const remainingProgress = document.getElementById('remainingProgress');
+
+        // Marks animation data
+        const marks = [];
+
+        // Event listener for camera switch
+        document.addEventListener('click', () => {
+            if (!gameOver && !introActive) currentCamera = (currentCamera + 1) % cameras.length;
+        });
+
+        function getNeighbors(index) {
+            const neighbors = [];
+            const pos = hexagons[index].position;
+            for (let i = 0; i < hexagons.length; i++) {
+                if (i !== index && hexagons[i].position.distanceTo(pos) < 2) {
+                    neighbors.push(i);
+                }
+            }
+            return neighbors;
+        }
+
+        function flashPoints(player, points, hexIndex) {
+            pointsFlash.innerHTML = `+${points} Points!`;
+            pointsFlash.style.color = player === players.red ? '#ff5050' : '#5050ff';
+            pointsFlash.style.display = 'block';
+            setTimeout(() => pointsFlash.style.display = 'none', 1000);
+        }
+
+        function updateProgressBar() {
+            const total = hexagons.length;
+            const redCount = players.red.covered;
+            const blueCount = players.blue.covered;
+            const remainingCount = total - redCount - blueCount;
+            const redPercent = (redCount / total * 100).toFixed(1);
+            const bluePercent = (blueCount / total * 100).toFixed(1);
+            const remainingPercent = (remainingCount / total * 100).toFixed(1);
+            redProgress.style.width = `${redPercent}%`;
+            blueProgress.style.width = `${bluePercent}%`;
+            remainingProgress.style.width = `${remainingPercent}%`;
+            redProgress.setAttribute('data-percentage', redPercent);
+            blueProgress.setAttribute('data-percentage', bluePercent);
+            remainingProgress.setAttribute('data-percentage', remainingPercent);
+        }
+
+        function updateCentralSphereColor() {
+            const redPoints = players.red.points;
+            const bluePoints = players.blue.points;
+            if (redPoints > bluePoints) {
+                centralSphereMaterial.color.setHex(0xff5050);
+                centralSphereMaterial.emissive.setHex(0x660000);
+            } else if (bluePoints > redPoints) {
+                centralSphereMaterial.color.setHex(0x5050ff);
+                centralSphereMaterial.emissive.setHex(0x000066);
+            } else {
+                centralSphereMaterial.color.setHex(0x000a0a);
+                centralSphereMaterial.emissive.setHex(0x000303);
+            }
+        }
+
+        function triggerExplosion() {
+            explosionTriggered = true;
+            explosionTime = 0;
+
+            // Initialize explosion particles
+            const positions = explosionGeometry.attributes.position.array;
+            const colors = explosionGeometry.attributes.color.array;
+            const sizes = explosionGeometry.attributes.size.array;
+            for (let i = 0; i < explosionCount; i++) {
+                const idx = i * 3;
+                positions[idx] = 0;
+                positions[idx + 1] = 0;
+                positions[idx + 2] = 0;
+                const color = Math.random() < 0.5 ? [1, 0.5, 0.5] : [0.5, 0.5, 1];
+                colors[idx] = color[0];
+                colors[idx + 1] = color[1];
+                colors[idx + 2] = color[2];
+                sizes[i] = 0.1 + Math.random() * 0.2;
+                expVelocities[i].set(
+                    (Math.random() - 0.5) * 20,
+                    (Math.random() - 0.5) * 20,
+                    (Math.random() - 0.5) * 20
+                );
+                expLifetimes[i] = 2 + Math.random() * 2;
+            }
+            explosionGeometry.attributes.position.needsUpdate = true;
+            explosionGeometry.attributes.color.needsUpdate = true;
+            explosionGeometry.attributes.size.needsUpdate = true;
+
+            // Set hexagon velocities
+            hexagons.forEach(hex => {
+                const dir = hex.position.clone().normalize();
+                hex.velocity.set(dir.x * (5 + Math.random() * 10), dir.y * (5 + Math.random() * 10), dir.z * (5 + Math.random() * 10));
+            });
+        }
+
+        function triggerMarkerExplosion(collisionPos) {
+            markerExplosionTriggered = true;
+            explosionTime = 0;
+
+            // Initialize marker explosion particles
+            const positions = markerExplosionGeometry.attributes.position.array;
+            const colors = markerExplosionGeometry.attributes.color.array;
+            const sizes = markerExplosionGeometry.attributes.size.array;
+            for (let i = 0; i < markerExplosionCount; i++) {
+                const idx = i * 3;
+                positions[idx] = collisionPos.x;
+                positions[idx + 1] = collisionPos.y;
+                positions[idx + 2] = collisionPos.z;
+                const color = Math.random() < 0.5 ? [1, 0, 0] : [0, 0, 1];
+                colors[idx] = color[0];
+                colors[idx + 1] = color[1];
+                colors[idx + 2] = color[2];
+                sizes[i] = 0.08 + Math.random() * 0.1;
+                markerExpVelocities[i].set(
+                    (Math.random() - 0.5) * 15,
+                    (Math.random() - 0.5) * 15,
+                    (Math.random() - 0.5) * 15
+                );
+                markerExpLifetimes[i] = 1 + Math.random() * 1.5;
+            }
+            markerExplosionGeometry.attributes.position.needsUpdate = true;
+            markerExplosionGeometry.attributes.color.needsUpdate = true;
+            markerExplosionGeometry.attributes.size.needsUpdate = true;
+        }
+
+        function updateLasers(delta) {
+            const center = new THREE.Vector3(0, 0, 0);
+            const redDist = center.distanceTo(players.red.pos);
+            const blueDist = center.distanceTo(players.blue.pos);
+
+            // Update red laser
+            redLaser.scale.set(1, redDist, 1);
+            redLaser.position.copy(center).lerp(players.red.pos, 0.5);
+            redLaser.lookAt(players.red.pos);
+            redLaser.rotateX(Math.PI / 2);
+            redLaserGlow.position.copy(redLaser.position);
+            redLaserGlow.intensity = 2 + Math.sin(Date.now() * 0.005) * 0.5;
+
+            // Update blue laser
+            blueLaser.scale.set(1, blueDist, 1);
+            blueLaser.position.copy(center).lerp(players.blue.pos, 0.5);
+            blueLaser.lookAt(players.blue.pos);
+            blueLaser.rotateX(Math.PI / 2);
+            blueLaserGlow.position.copy(blueLaser.position);
+            blueLaserGlow.intensity = 2 + Math.sin(Date.now() * 0.005) * 0.5;
+
+            // Update laser particles
+            const laserPositions = laserParticleGeometry.attributes.position.array;
+            const laserColors = laserParticleGeometry.attributes.color.array;
+            const laserSizes = laserParticleGeometry.attributes.size.array;
+            for (let i = 0; i < laserParticleCount; i++) {
+                const idx = i * 3;
+                if (laserLifetimes[i] <= 0 && Math.random() < 0.1) {
+                    const player = Math.random() < 0.5 ? players.red : players.blue;
+                    const t = Math.random();
+                    const pos = center.clone().lerp(player.pos, t);
+                    laserPositions[idx] = pos.x + (Math.random() - 0.5) * 0.1;
+                    laserPositions[idx + 1] = pos.y + (Math.random() - 0.5) * 0.1;
+                    laserPositions[idx + 2] = pos.z + (Math.random() - 0.5) * 0.1;
+                    laserColors[idx] = player === players.red ? 1 : 0;
+                    laserColors[idx + 1] = 0;
+                    laserColors[idx + 2] = player === players.red ? 0 : 1;
+                    laserSizes[i] = 0.1;
+                    laserLifetimes[i] = 0.5;
+                } else if (laserLifetimes[i] > 0) {
+                    laserLifetimes[i] -= delta;
+                    laserSizes[i] *= 0.95;
+                    laserPositions[idx + 1] += 0.05;
+                    if (laserLifetimes[i] <= 0 || laserSizes[i] < 0.01) {
+                        laserPositions[idx] = 0;
+                        laserPositions[idx + 1] = 0;
+                        laserPositions[idx + 2] = 0;
+                        laserSizes[i] = 0;
+                        laserLifetimes[i] = 0;
+                    }
+                }
+            }
+            laserParticleGeometry.attributes.position.needsUpdate = true;
+            laserParticleGeometry.attributes.color.needsUpdate = true;
+            laserParticleGeometry.attributes.size.needsUpdate = true;
+        }
+
+        function movePlayer(player) {
+            if (gameOver || player.moving || introActive) return;
+            const neighbors = getNeighbors(player.hexIndex);
+            if (neighbors.length === 0) return;
+            const unvisitedNeighbors = neighbors.filter(i => 
+                hexagons[i].visits[player === players.red ? 'red' : 'blue'] === 0 && 
+                hexagons[i].owner !== (player === players.red ? 'blue' : 'red')
+            );
+            const validNeighbors = unvisitedNeighbors.length > 0 ? unvisitedNeighbors : neighbors.filter(i => 
+                hexagons[i].owner !== (player === players.red ? 'blue' : 'red')
+            );
+            if (validNeighbors.length === 0) return;
+            const nextIndex = validNeighbors[Math.floor(Math.random() * validNeighbors.length)];
+            player.moving = true;
+            player.hexIndex = nextIndex;
+            player.targetPos.copy(hexagons[nextIndex].position);
+            const visitCount = hexagons[nextIndex].visits[player === players.red ? 'red' : 'blue'] + 1;
+            hexagons[nextIndex].visits[player === players.red ? 'red' : 'blue'] = visitCount;
+            hexagons[nextIndex].edgeWidth = Math.min(hexagons[nextIndex].edgeWidth + 1, 8);
+            hexagons[nextIndex].owner = player === players.red ? 'red' : 'blue';
+
+            // Add permanent mark
+            const mark = new THREE.Mesh(markGeometry, player === players.red ? redMarkMaterial : blueMarkMaterial);
+            mark.position.copy(hexagons[nextIndex].position);
+            const scale = 1 + visitCount * 0.3;
+            mark.scale.setScalar(scale);
+            mark.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            mark.userData = { baseScale: scale, time: 0 };
+            scene.add(mark);
+            marks.push(mark);
+
+            // Award points
+            const points = 10 + (visitCount - 1) * 5;
+            player.points += points;
+            flashPoints(player, points, nextIndex);
+
+            player.covered++;
+            updateHexagonColors();
+            updateProgressBar();
+            updateCentralSphereColor();
+        }
+
+        function updateHexagonColors() {
+            hexagonSphereGroup.children = [];
+            const edgeSet = new Set();
+            hexagons.forEach((hex, index) => {
+                const neighbors = hexagons
+                    .map((h, i) => ({ index: i, dist: h.position.distanceTo(hex.position) }))
+                    .filter(n => n.dist > 0 && n.dist < 2)
+                    .sort((a, b) => a.dist - b.dist)
+                    .slice(0, 6);
+                neighbors.forEach(n => {
+                    const key = [index, n.index].sort().join('-');
+                    if (!edgeSet.has(key)) {
+                        edgeSet.add(key);
+                        const geometry = new THREE.BufferGeometry().setFromPoints([hex.position, hexagons[n.index].position]);
+                        const color = hex.visits.red > 0 ? 0xff5050 : hex.visits.blue > 0 ? 0x5050ff : 0x00e6b8;
+                        const opacity = 0.75 + Math.min((hex.visits.red + hex.visits.blue) * 0.25, 0.25);
+                        const material = new THREE.LineBasicMaterial({ 
+                            color, 
+                            transparent: true, 
+                            opacity, 
+                            linewidth: hex.edgeWidth 
+                        });
+                        const line = new THREE.Line(geometry, material);
+                        line.userData = { hex1: index, hex2: n.index };
+                        hexagonSphereGroup.add(line);
+                    }
+                });
+            });
+        }
+
+        function checkCollision() {
+            if (players.red.hexIndex === players.blue.hexIndex) {
+                gameOver = true;
+                const collisionPos = players.red.pos.clone();
+                const winner = players.red.points > players.blue.points ? 'Red' : 'Blue';
+                const coverage = ((players.red.covered + players.blue.covered) / hexagons.length * 100).toFixed(1);
+                gameOverDisplay.innerHTML = `Game Over!<br>${winner} Wins!<br><span style="color: #ff5050;">Red: ${players.red.covered} hexes, ${players.red.points} pts</span><br><span style="color: #5050ff;">Blue: ${players.blue.covered} hexes, ${players.blue.points} pts</span><br><span style="color: #e6e6fa;">Level: ${level}<br>Sphere Coverage: ${coverage}%</span>`;
+                gameOverDisplay.style.display = 'block';
+                ui.style.display = 'none';
+                triggerExplosion();
+                triggerMarkerExplosion(collisionPos);
+            }
+        }
+
+        function updateDimmingAndBrightening() {
+            const cameraPos = camera.position;
+            const minDist = 5;
+            const maxDist = 20;
+            const isPlayerCamera = cameras[currentCamera].name === 'Red Player' || cameras[currentCamera].name === 'Blue Player';
+            const brightnessFactor = isPlayerCamera ? 0.7 : 1.0; // Reduce brightness by 30% for player cameras
+
+            // Lines
+            hexagonSphereGroup.children.forEach(child => {
+                if (child instanceof THREE.Line && child.userData.hex1 !== undefined) {
+                    const hex1 = hexagons[child.userData.hex1].position;
+                    const hex2 = hexagons[child.userData.hex2].position;
+                    const midPoint = hex1.clone().add(hex2).multiplyScalar(0.5);
+                    const dist = cameraPos.distanceTo(midPoint);
+                    const factor = Math.max(0.5, Math.min(1.5, 1 + (minDist - dist) / (maxDist - minDist)));
+                    child.material.opacity = (0.75 + Math.min((hexagons[child.userData.hex1].visits.red + hexagons[child.userData.hex1].visits.blue) * 0.25, 0.25)) * factor * brightnessFactor;
+                }
+            });
+
+            // Lasers
+            const redLaserDist = cameraPos.distanceTo(redLaser.position);
+            const blueLaserDist = cameraPos.distanceTo(blueLaser.position);
+            const redLaserFactor = Math.max(0.5, Math.min(1.5, 1 + (minDist - redLaserDist) / (maxDist - minDist)));
+            const blueLaserFactor = Math.max(0.5, Math.min(1.5, 1 + (minDist - blueLaserDist) / (maxDist - minDist)));
+            redLaser.material.opacity = 0.8 * redLaserFactor * brightnessFactor;
+            blueLaser.material.opacity = 0.8 * blueLaserFactor * brightnessFactor;
+            redLaserGlow.intensity = (2 + Math.sin(Date.now() * 0.005) * 0.5) * redLaserFactor * brightnessFactor;
+            blueLaserGlow.intensity = (2 + Math.sin(Date.now() * 0.005) * 0.5) * blueLaserFactor * brightnessFactor;
+
+            // Laser particles
+            const laserPositions = laserParticleGeometry.attributes.position.array;
+            const laserSizes = laserParticleGeometry.attributes.size.array;
+            for (let i = 0; i < laserParticleCount; i++) {
+                const idx = i * 3;
+                if (laserLifetimes[i] > 0) {
+                    const pos = new THREE.Vector3(laserPositions[idx], laserPositions[idx + 1], laserPositions[idx + 2]);
+                    const dist = cameraPos.distanceTo(pos);
+                    const factor = Math.max(0.5, Math.min(1.5, 1 + (minDist - dist) / (maxDist - minDist)));
+                    laserSizes[i] = 0.1 * factor * brightnessFactor;
+                }
+            }
+            laserParticleGeometry.attributes.size.needsUpdate = true;
+
+            // Marks
+            marks.forEach(mark => {
+                const dist = cameraPos.distanceTo(mark.position);
+                const factor = Math.max(0.5, Math.min(1.5, 1 + (minDist - dist) / (maxDist - minDist)));
+                mark.material.opacity = 0.8 * factor * brightnessFactor;
+                mark.material.emissiveIntensity = factor * brightnessFactor;
+            });
+
+            // Players
+            const redDist = cameraPos.distanceTo(players.red.pos);
+            const blueDist = cameraPos.distanceTo(players.blue.pos);
+            const redFactor = Math.max(0.5, Math.min(1.5, 1 + (minDist - redDist) / (maxDist - minDist)));
+            const blueFactor = Math.max(0.5, Math.min(1.5, 1 + (minDist - blueDist) / (maxDist - minDist)));
+            redPlayer.material.opacity = 0.9 * redFactor * brightnessFactor;
+            bluePlayer.material.opacity = 0.9 * blueFactor * brightnessFactor;
+            redPlayer.material.emissiveIntensity = redFactor * brightnessFactor;
+            bluePlayer.material.emissiveIntensity = blueFactor * brightnessFactor;
+            redGlow.intensity = 0.6 * redFactor * brightnessFactor;
+            blueGlow.intensity = 0.6 * blueFactor * brightnessFactor;
+
+            // Trail particles
+            const trailPositions = particles.geometry.attributes.position.array;
+            const trailSizes = particles.geometry.attributes.size.array;
+            for (let i = 0; i < particleCount; i++) {
+                const idx = i * 3;
+                if (lifetimes[i] > 0) {
+                    const pos = new THREE.Vector3(trailPositions[idx], trailPositions[idx + 1], trailPositions[idx + 2]);
+                    const dist = cameraPos.distanceTo(pos);
+                    const factor = Math.max(0.5, Math.min(1.5, 1 + (minDist - dist) / (maxDist - minDist)));
+                    trailSizes[i] = 0.06 * factor * brightnessFactor;
+                }
+            }
+            particles.geometry.attributes.size.needsUpdate = true;
+
+            // Explosion particles
+            const expPositions = explosionGeometry.attributes.position.array;
+            const expSizes = explosionGeometry.attributes.size.array;
+            for (let i = 0; i < explosionCount; i++) {
+                const idx = i * 3;
+                if (expLifetimes[i] > 0) {
+                    const pos = new THREE.Vector3(expPositions[idx], expPositions[idx + 1], expPositions[idx + 2]);
+                    const dist = cameraPos.distanceTo(pos);
+                    const factor = Math.max(0.5, Math.min(1.5, 1 + (minDist - dist) / (maxDist - minDist)));
+                    expSizes[i] = (0.1 + Math.random() * 0.2) * factor * brightnessFactor;
+                }
+            }
+            explosionGeometry.attributes.size.needsUpdate = true;
+
+            // Marker explosion particles
+            const markerExpPositions = markerExplosionGeometry.attributes.position.array;
+            const markerExpSizes = markerExplosionGeometry.attributes.size.array;
+            for (let i = 0; i < markerExplosionCount; i++) {
+                const idx = i * 3;
+                if (markerExpLifetimes[i] > 0) {
+                    const pos = new THREE.Vector3(markerExpPositions[idx], markerExpPositions[idx + 1], markerExpPositions[idx + 2]);
+                    const dist = cameraPos.distanceTo(pos);
+                    const factor = Math.max(0.5, Math.min(1.5, 1 + (minDist - dist) / (maxDist - minDist)));
+                    markerExpSizes[i] = (0.08 + Math.random() * 0.1) * factor * brightnessFactor;
+                }
+            }
+            markerExplosionGeometry.attributes.size.needsUpdate = true;
+
+            // Central sphere
+            const centralDist = cameraPos.distanceTo(centralSphere.position);
+            const centralFactor = Math.max(0.5, Math.min(1.5, 1 + (minDist - centralDist) / (maxDist - minDist)));
+            centralSphere.material.opacity = 0.18 * centralFactor * brightnessFactor;
+            centralSphere.material.emissiveIntensity = centralFactor * brightnessFactor;
+
+            // Starfield
+            const starSizes = starGeometry.attributes.size.array;
+            for (let i = 0; i < starCount; i++) {
+                starSizes[i] = (0.05 + Math.random() * 0.2) * brightnessFactor;
+            }
+            starGeometry.attributes.size.needsUpdate = true;
+        }
+
+        function updateIntro(delta) {
+            introTime -= delta;
+            const countdown = Math.ceil(introTime);
+            countdownDisplay.innerHTML = countdown;
+            if (introTime <= 0) {
+                introActive = false;
+                introMessage.style.display = 'none';
+                currentCamera = 0; // Set to Birds Eye after intro
+            }
+
+            // Camera zoom and rotate
+            const t = 1 - introTime / 5;
+            camera.position.lerpVectors(initialCameraPos, targetCameraPos, t);
+            const lookAtPos = new THREE.Vector3(0, 0, 0);
+            camera.lookAt(lookAtPos);
+            camera.rotateY(t * Math.PI * 0.5); // Rotate during zoom
+        }
+
+        function update() {
+            const now = performance.now();
+            const delta = Math.min((now - lastTime) / 1000, 0.1);
+            lastTime = now;
+
+            if (introActive) {
+                updateIntro(delta);
+            } else {
+                if (!gameOver) {
+                    timeLeft -= delta;
+                    levelTimer -= delta;
+
+                    // Update central sphere
+                    const totalTime = 120;
+                    const progress = 1 - (timeLeft / totalTime);
+                    const minScale = 0.5;
+                    const maxScale = radius / 0.5;
+                    const baseScale = minScale + (maxScale - minScale) * progress;
+                    centralSphere.userData.time += delta;
+                    const throb = 0.05 * Math.sin(centralSphere.userData.time * 3);
+                    const scale = baseScale * (1 + throb);
+                    centralSphere.scale.setScalar(scale);
+                    centralSphere.rotation.y += delta * 0.2;
+
+                    // Throb the hexagon sphere
+                    const hexThrob = 1 + 0.05 * Math.sin(centralSphere.userData.time * 2);
+                    hexagonSphereGroup.scale.setScalar(hexThrob);
+
+                    if (timeLeft <= 0) {
+                        gameOver = true;
+                        const coverage = ((players.red.covered + players.blue.covered) / hexagons.length * 100).toFixed(1);
+                        const winner = players.red.points > players.blue.points ? 'Red' : 'Blue';
+                        gameOverDisplay.innerHTML = `Time's Up!<br>${winner} Wins!<br><span style="color: #ff5050;">Red: ${players.red.covered} hexes, ${players.red.points} pts</span><br><span style="color: #5050ff;">Blue: ${players.blue.covered} hexes, ${players.blue.points} pts</span><br><span style="color: #e6e6fa;">Level: ${level}<br>Sphere Coverage: ${coverage}%</span>`;
+                        gameOverDisplay.style.display = 'block';
+                        ui.style.display = 'none';
+                        triggerExplosion();
+                    } else {
+                        const coverage = ((players.red.covered + players.blue.covered) / hexagons.length * 100).toFixed(1);
+                        ui.innerHTML = `<span id="neutralStats">Time: ${Math.ceil(timeLeft)}s</span><br>` +
+                                       `<span id="redStats">Red: ${players.red.covered} hexes, ${players.red.points} pts</span><br>` +
+                                       `<span id="blueStats">Blue: ${players.blue.covered} hexes, ${players.blue.points} pts</span><br>` +
+                                       `<span id="neutralStats">Level: ${level}<br>Coverage: ${coverage}%</span>`;
+                        if (timeLeft <= 10) {
+                            ui.classList.add('flashTimer');
+                        } else {
+                            ui.classList.remove('flashTimer');
+                        }
+                    }
+
+                    if (levelTimer <= 0) {
+                        level++;
+                        levelTimer = 10;
+                        players.red.speed = Math.min(players.red.speed * 1.2, 0.5);
+                        players.blue.speed = Math.min(players.blue.speed * 1.2, 0.5);
+                        levelDisplay.innerHTML = `Level ${level}`;
+                        setTimeout(() => levelDisplay.innerHTML = '', 2000);
+                    }
+
+                    // Smooth player movement
+                    ['red', 'blue'].forEach(key => {
+                        const player = players[key];
+                        if (player.pos.distanceTo(player.targetPos) > 0.01) {
+                            player.pos.lerp(player.targetPos, 0.15);
+                        } else {
+                            player.moving = false;
+                        }
+                    });
+
+                    if (Math.random() < players.red.speed * delta * 10) movePlayer(players.red);
+                    if (Math.random() < players.blue.speed * delta * 10) movePlayer(players.blue);
+                    checkCollision();
+                }
+
+                // Animate marks
+                marks.forEach(mark => {
+                    mark.userData.time += delta;
+                    const scale = mark.userData.baseScale * (1 + 0.1 * Math.sin(mark.userData.time * 2));
+                    mark.scale.setScalar(scale);
+                    mark.rotation.y += delta * 0.5;
+                });
+
+                // Update player positions and glow
+                redPlayer.position.copy(players.red.pos);
+                bluePlayer.position.copy(players.blue.pos);
+                redGlow.position.copy(players.red.pos);
+                blueGlow.position.copy(players.blue.pos);
+
+                // Update lasers
+                updateLasers(delta);
+
+                // Update trail particles
+                const trailPositions = particles.geometry.attributes.position.array;
+                const trailColors = particles.geometry.attributes.color.array;
+                const trailSizes = particles.geometry.attributes.size.array;
+                for (let i = 0; i < particleCount; i++) {
+                    const idx = i * 3;
+                    if (lifetimes[i] <= 0 && Math.random() < 0.05) {
+                        const player = Math.random() < 0.5 ? players.red : players.blue;
+                        if (player.moving) {
+                            trailPositions[idx] = player.pos.x;
+                            trailPositions[idx + 1] = player.pos.y;
+                            trailPositions[idx + 2] = player.pos.z;
+                            trailColors[idx] = player === players.red ? 1 : 0;
+                            trailColors[idx + 1] = 0;
+                            trailColors[idx + 2] = player === players.red ? 0 : 1;
+                            trailSizes[i] = 0.06;
+                            lifetimes[i] = 1;
+                        }
+                    } else if (lifetimes[i] > 0) {
+                        lifetimes[i] -= delta * 2;
+                        trailSizes[i] *= 0.95;
+                        trailPositions[idx + 1] -= 0.05;
+                        if (lifetimes[i] <= 0 || trailSizes[i] < 0.01) {
+                            trailPositions[idx] = 0;
+                            trailPositions[idx + 1] = 0;
+                            trailPositions[idx + 2] = 0;
+                            trailSizes[i] = 0;
+                            lifetimes[i] = 0;
+                        }
+                    }
+                }
+                particles.geometry.attributes.position.needsUpdate = true;
+                particles.geometry.attributes.color.needsUpdate = true;
+                particles.geometry.attributes.size.needsUpdate = true;
+
+                // Update explosion particles and hexagon positions
+                if (explosionTriggered) {
+                    explosionTime += delta;
+                    const expPositions = explosionGeometry.attributes.position.array;
+                    const expSizes = explosionGeometry.attributes.size.array;
+                    for (let i = 0; i < explosionCount; i++) {
+                        const idx = i * 3;
+                        if (expLifetimes[i] > 0) {
+                            expLifetimes[i] -= delta;
+                            expPositions[idx] += expVelocities[i].x * delta;
+                            expPositions[idx + 1] += expVelocities[i].y * delta;
+                            expPositions[idx + 2] += expVelocities[i].z * delta;
+                            expSizes[i] *= 0.95;
+                            if (expLifetimes[i] <= 0) {
+                                expPositions[idx] = 0;
+                                expPositions[idx + 1] = 0;
+                                expPositions[idx + 2] = 0;
+                                expSizes[i] = 0;
+                            }
+                        }
+                    }
+                    explosionGeometry.attributes.position.needsUpdate = true;
+                    explosionGeometry.attributes.size.needsUpdate = true;
+
+                    // Update hexagon positions
+                    hexagons.forEach(hex => {
+                        hex.position.add(hex.velocity.clone().multiplyScalar(delta));
+                        hex.velocity.multiplyScalar(0.98);
+                    });
+                    updateHexagonColors();
+
+                    if (explosionTime > 4) {
+                        explosionTriggered = false;
+                        hexagons.forEach(hex => hex.position.copy(new THREE.Vector3(0, 0, 0)));
+                        updateHexagonColors();
+                    }
+                }
+
+                // Update marker explosion particles
+                if (markerExplosionTriggered) {
+                    explosionTime += delta;
+                    const markerExpPositions = markerExplosionGeometry.attributes.position.array;
+                    const markerExpSizes = markerExplosionGeometry.attributes.size.array;
+                    for (let i = 0; i < markerExplosionCount; i++) {
+                        const idx = i * 3;
+                        if (markerExpLifetimes[i] > 0) {
+                            markerExpLifetimes[i] -= delta;
+                            markerExpPositions[idx] += markerExpVelocities[i].x * delta;
+                            markerExpPositions[idx + 1] += markerExpVelocities[i].y * delta;
+                            markerExpPositions[idx + 2] += markerExpVelocities[i].z * delta;
+                            markerExpSizes[i] *= 0.95;
+                            if (markerExpLifetimes[i] <= 0) {
+                                markerExpPositions[idx] = 0;
+                                markerExpPositions[idx + 1] = 0;
+                                markerExpPositions[idx + 2] = 0;
+                                markerExpSizes[i] = 0;
+                            }
+                        }
+                    }
+                    markerExplosionGeometry.attributes.position.needsUpdate = true;
+                    markerExplosionGeometry.attributes.size.needsUpdate = true;
+
+                    if (explosionTime > 2.5) {
+                        markerExplosionTriggered = false;
+                    }
+                }
+
+                // Update starfield twinkling
+                for (let i = 0; i < starCount; i++) {
+                    starTwinkle[i] += delta * (0.5 + Math.random());
+                    starSizes[i] = 0.05 + Math.random() * 0.2 * (1 + 0.5 * Math.sin(starTwinkle[i]));
+                }
+                starGeometry.attributes.size.needsUpdate = true;
+
+                // Update cameras
+                const cam = cameras[currentCamera];
+                cameraDisplay.innerHTML = `Camera: ${cam.name}`;
+                if (cam.name === 'Red Player') {
+                    cam.pos.copy(players.red.pos).normalize().multiplyScalar(7);
+                    cam.lookAt = players.red.pos;
+                } else if (cam.name === 'Blue Player') {
+                    cam.pos.copy(players.blue.pos).normalize().multiplyScalar(7);
+                    cam.lookAt = players.blue.pos;
+                } else if (cam.name === 'Fly Around') {
+                    cam.pos.applyAxisAngle(new THREE.Vector3(0, 1, 0), delta * 0.8);
+                } else if (cam.name === 'Center to Red' || cam.name === 'Center to Blue') {
+                    const targetPlayer = cam.name === 'Center to Red' ? players.red : players.blue;
+                    cam.targetLookAt.copy(targetPlayer.pos);
+                    cam.lookAt.lerp(cam.targetLookAt, 0.05);
+                }
+                camera.position.lerp(cam.pos, 0.2);
+                camera.lookAt(cam.lookAt);
+            }
+
+            // Update dimming and brightening
+            updateDimmingAndBrightening();
+
+            renderer.render(scene, camera);
+            requestAnimationFrame(update);
+        }
+
+        update();
+    </script>
+</body>
+</html>
