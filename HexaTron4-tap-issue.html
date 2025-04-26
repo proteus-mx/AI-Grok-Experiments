@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hex Grid Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        #toggleButton, #speedUpButton {
+            position: absolute;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        #toggleButton { left: 10px; top: 10px; }
+        #speedUpButton { left: 120px; top: 10px; }
+        #levelDisplay, #wallDisplay, #probabilityBar {
+            position: absolute;
+            top: 90%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: white;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            white-space: pre-wrap;
+        }
+        #probabilityBar {
+            font-size: 16px;
+            padding: 10px;
+            top: 95%;
+            width: 200px;
+        }
+        #gameOverDisplay, #countdownDisplay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 72px;
+            color: #00ff00;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            white-space: pre-wrap;
+        }
+        #gameOverDisplay {
+            font-size: 36px;
+            color: white;
+        }
+        #statsDisplay {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 16px;
+            color: white;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            width: 200px;
+        }
+        #timerDisplay {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 16px;
+            color: white;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+        }
+        .red-stat { color: #ff0000; }
+        .blue-stat { color: #0000ff; }
+        .progress-bar {
+            width: 100%;
+            background: #333;
+            height: 10px;
+            border-radius: 5px;
+            margin: 5px 0;
+            display: flex;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+            display: inline-block;
+        }
+        .red-progress { background: #ff0000; }
+        .blue-progress { background: #0000ff; }
+        .probability-label {
+            position: absolute;
+            top: 0;
+            color: white;
+            font-size: 12px;
+            line-height: 10px;
+            transform: translateX(-50%);
+            text-shadow: 0 0 2px black;
+        }
+    </style>
+</head>
+<body>
+    <button id="toggleButton">Toggle Autoplay</button>
+    <button id="speedUpButton">Speed Up</button>
+    <div id="levelDisplay"></div>
+    <div id="gameOverDisplay"></div>
+    <div id="wallDisplay"></div>
+    <div id="countdownDisplay"></div>
+    <div id="statsDisplay"></div>
+    <div id="timerDisplay"></div>
+    <div id="probabilityBar"></div>
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        const starCount = 5000;
+        const starGeometry = new THREE.BufferGeometry();
+        const starPositions = new Float32Array(starCount * 3);
+        const starColors = new Float32Array(starCount * 3);
+        const starSizes = new Float32Array(starCount);
+        const starPhases = new Float32Array(starCount);
+        for (let i = 0; i < starCount; i++) {
+            starPositions[i * 3] = (Math.random() - 0.5) * 500;
+            starPositions[i * 3 + 1] = (Math.random() - 0.5) * 500;
+            starPositions[i * 3 + 2] = (Math.random() - 0.5) * 500;
+            const color = Math.random() < 0.5 ? 
+                [1, 1, 0.8 + Math.random() * 0.2] : 
+                [0.8 + Math.random() * 0.2, 0.8 + Math.random() * 0.2, 1];
+            starColors[i * 3] = color[0];
+            starColors[i * 3 + 1] = color[1];
+            starColors[i * 3 + 2] = color[2];
+            starSizes[i] = 0.05 + Math.random() * 0.15;
+            starPhases[i] = Math.random() * Math.PI * 2;
+        }
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        starGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+        starGeometry.setAttribute('size', new THREE.BufferAttribute(starSizes, 1));
+        const starMaterial = new THREE.PointsMaterial({
+            vertexColors: true,
+            sizeAttenuation: true,
+            transparent: true,
+            map: new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/circle.png')
+        });
+        const starfield = new THREE.Points(starGeometry, starMaterial);
+        scene.add(starfield);
+
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
+        directionalLight.position.set(10, 20, 10);
+        directionalLight.castShadow = true;
+        scene.add(directionalLight);
+
+        const spotlights = {
+            fly: new THREE.SpotLight(0xffffff, 0.5, 0, Math.PI / 4, 0.5, 2),
+            red: new THREE.SpotLight(0xff0000, 0.2, 0, Math.PI / 6, 0.5, 2),
+            blue: new THREE.SpotLight(0x0000ff, 0.2, 0, Math.PI / 6, 0.5, 2)
+        };
+        Object.values(spotlights).forEach(spotlight => {
+            spotlight.castShadow = true;
+            spotlight.visible = false;
+            scene.add(spotlight);
+            scene.add(spotlight.target);
+        });
+
+        const gridSize = 16;
+        const hexRadius = 1;
+        const hexHeight = 0.2;
+        const hexGeometry = new THREE.CylinderGeometry(hexRadius, hexRadius, hexHeight, 6);
+        const hexMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x00ff00, 
+            transparent: true, 
+            opacity: 0.2, 
+            shininess: 100,
+            emissive: 0x00ff00,
+            emissiveIntensity: 0.5
+        });
+        const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff });
+        const grid = [];
+        let trails = {};
+        let miniTrails = {};
+        let playerSphereTrails = {};
+        let walls = new Map();
+        let collisionParticles = [];
+
+        for (let x = 0; x < gridSize; x++) {
+            grid[x] = [];
+            for (let y = 0; y < gridSize; y++) {
+                const hex = new THREE.Mesh(hexGeometry, hexMaterial);
+                hex.receiveShadow = true;
+                const offset = y % 2 ? hexRadius * Math.sqrt(3) / 2 : 0;
+                hex.position.set(x * hexRadius * Math.sqrt(3) + offset, 0, y * hexRadius * 1.5);
+                scene.add(hex);
+
+                const edges = new THREE.EdgesGeometry(hexGeometry);
+                const line = new THREE.LineSegments(edges, edgeMaterial);
+                line.position.copy(hex.position);
+                scene.add(line);
+
+                grid[x][y] = { mesh: hex, visits: { red: 0, blue: 0 } };
+            }
+        }
+
+        const playerGeometry = new THREE.SphereGeometry(0.3, 32, 32);
+        const miniSphereGeometry = new THREE.SphereGeometry(0.05, 16, 16);
+        const miniTrailGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.05, 6);
+        const playerSphereTrailGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.1, 6);
+        const playerMaterialConfig = (color) => ({
+            color,
+            shininess: 100,
+            emissive: color,
+            emissiveIntensity: 0.5,
+            roughness: 0.4,
+            metalness: 0.2
+        });
+        const miniSphereMaterialConfig = () => ({
+            color: 0xffffff,
+            emissive: 0xffffff,
+            emissiveIntensity: 0.7,
+            transparent: true,
+            opacity: 0.2
+        });
+        let players = {
+            red: { 
+                x: 0, y: 0, 
+                color: 0xff0000, 
+                speed: 0.3,
+                mesh: new THREE.Mesh(playerGeometry, new THREE.MeshStandardMaterial(playerMaterialConfig(0xff0000))),
+                moves: 0,
+                wallsCreated: 0,
+                score: 0,
+                targetPosition: null,
+                transitionStart: null,
+                transitionDuration: 1800,
+                lastDirection: { dx: 0, dy: 0 },
+                moveHistory: [],
+                orbitingSpheres: []
+            },
+            blue: { 
+                x: gridSize - 1, y: gridSize - 1,
+                color: 0x0000ff, 
+                speed: 0.3,
+                mesh: new THREE.Mesh(playerGeometry, new THREE.MeshStandardMaterial(playerMaterialConfig(0x0000ff))),
+                moves: 0,
+                wallsCreated: 0,
+                score: 0,
+                targetPosition: null,
+                transitionStart: null,
+                transitionDuration: 1800,
+                lastDirection: { dx: 0, dy: 0 },
+                moveHistory: [],
+                orbitingSpheres: []
+            }
+        };
+
+        Object.values(players).forEach(player => {
+            const { x, y } = player;
+            player.mesh.position.copy(grid[x][y].mesh.position);
+            player.mesh.position.y = hexHeight + 0.3;
+            player.mesh.castShadow = true;
+            player.mesh.receiveShadow = true;
+            scene.add(player.mesh);
+            for (let i = 0; i < 15; i++) {
+                const sphere = new THREE.Mesh(
+                    miniSphereGeometry,
+                    new THREE.MeshStandardMaterial(miniSphereMaterialConfig())
+                );
+                sphere.position.copy(player.mesh.position);
+                sphere.thetaOffset = Math.random() * Math.PI * 2;
+                sphere.phiOffset = Math.random() * Math.PI;
+                player.orbitingSpheres.push(sphere);
+                scene.add(sphere);
+            }
+        });
+
+        const gridWidth = gridSize * hexRadius * Math.sqrt(3);
+        const gridHeight = gridSize * hexRadius * 1.5;
+        const maxDim = Math.max(gridWidth, gridHeight);
+        const fullViewPosition = new THREE.Vector3(gridWidth / 2, maxDim * 1.5, gridHeight / 2);
+        const fullViewTarget = new THREE.Vector3(gridWidth / 2, 0, gridHeight / 2);
+
+        let cameraView = 'full';
+        let cameraViews = ['full', 'red', 'redFollow', 'blue', 'blueFollow', 'fly'];
+        let cameraViewIndex = 0;
+        let flyAngle = 0;
+        let shakeTime = 0;
+        let shakeDuration = 500;
+        let shakeAmplitude = 0.5;
+
+        const startViewPosition = fullViewPosition.clone().multiplyScalar(10);
+        camera.position.copy(startViewPosition);
+        camera.lookAt(fullViewTarget);
+
+        let gameStarted = false;
+        let gameOver = false;
+        const countdownDisplay = document.getElementById('countdownDisplay');
+        const gameDuration = 120000;
+        let startTime;
+
+        function startCountdown() {
+            let countdown = 8;
+            countdownDisplay.style.display = 'block';
+            const countdownStartTime = Date.now();
+            function updateCountdown() {
+                const elapsed = Date.now() - countdownStartTime;
+                const t = Math.min(elapsed / 8000, 1);
+                if (elapsed < 1000) {
+                    countdownDisplay.textContent = `HexaTron\n8`;
+                } else if (elapsed < 2000) {
+                    countdownDisplay.textContent = `HexaTron\n7`;
+                } else if (elapsed < 3000) {
+                    countdownDisplay.textContent = `HexaTron\n6`;
+                } else if (elapsed < 4000) {
+                    countdownDisplay.textContent = `HexaTron\n5`;
+                } else if (elapsed < 5000) {
+                    countdownDisplay.textContent = `HexaTron\n4`;
+                } else if (elapsed < 6000) {
+                    countdownDisplay.textContent = `HexaTron\n3`;
+                } else if (elapsed < 7000) {
+                    countdownDisplay.textContent = `HexaTron\n2`;
+                } else if (elapsed < 8000) {
+                    countdownDisplay.textContent = `HexaTron\n1`;
+                } else {
+                    countdownDisplay.textContent = `HexaTron\nStart!`;
+                    setTimeout(() => {
+                        countdownDisplay.style.display = 'none';
+                        gameStarted = true;
+                        startTime = Date.now() + gameDuration;
+                    }, 500);
+                    return;
+                }
+                const angle = t * Math.PI * 2;
+                const radius = maxDim * 1.5 * (1 - t) + maxDim * 0.5;
+                const camPos = new THREE.Vector3(
+                    fullViewTarget.x + Math.cos(angle) * radius,
+                    fullViewPosition.y * (1 - t) + fullViewPosition.y * t,
+                    fullViewTarget.z + Math.sin(angle) * radius
+                );
+                camera.position.lerpVectors(startViewPosition, camPos, t);
+                camera.lookAt(fullViewTarget);
+                renderer.render(scene, camera);
+                requestAnimationFrame(updateCountdown);
+            }
+            updateCountdown();
+        }
+
+        function handleInputEvent() {
+            if (gameOver) {
+                resetGame();
+                return;
+            }
+            if (!gameStarted) return;
+            cameraViewIndex = (cameraViewIndex + 1) % cameraViews.length;
+            cameraView = cameraViews[cameraViewIndex];
+            Object.keys(spotlights).forEach(key => {
+                spotlights[key].visible = cameraView === key || cameraView === `${key}Follow`;
+            });
+        }
+
+        document.addEventListener('touchstart', handleInputEvent);
+        document.addEventListener('click', handleInputEvent);
+
+        const timerDisplay = document.getElementById('timerDisplay');
+        function updateTimer() {
+            if (!gameStarted || gameOver) return;
+            const remaining = Math.max(0, Math.floor((startTime - Date.now()) / 1000));
+            const minutes = Math.floor(remaining / 60);
+            const seconds = remaining % 60;
+            timerDisplay.textContent = `Time: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            return remaining;
+        }
+
+        function createScoreText(text, position, color) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.font = 'bold 60px Arial';
+            ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, 128, 64);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+            const sprite = new THREE.Sprite(material);
+            sprite.position.set(position.x, -gridHeight / 2 + 2, position.z);
+            sprite.scale.set(2, 1, 1);
+            scene.add(sprite);
+
+            const startTime = Date.now();
+            function animateText() {
+                const elapsed = Date.now() - startTime;
+                if (elapsed < 1000) {
+                    sprite.position.y += 0.02;
+                    material.opacity = 1 - elapsed / 1000;
+                    requestAnimationFrame(animateText);
+                } else {
+                    scene.remove(sprite);
+                    texture.dispose();
+                    material.dispose();
+                }
+            }
+            animateText();
+        }
+
+        function createCollisionEffect(position) {
+            const particleCount = 50;
+            const particleGeometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const velocities = new Float32Array(particleCount * 3);
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3] = position.x;
+                positions[i * 3 + 1] = position.y + hexHeight;
+                positions[i * 3 + 2] = position.z;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI;
+                const speed = 0.5 + Math.random() * 0.5;
+                velocities[i * 3] = speed * Math.sin(phi) * Math.cos(theta);
+                velocities[i * 3 + 1] = speed * Math.sin(phi) * Math.sin(theta);
+                velocities[i * 3 + 2] = speed * Math.cos(phi);
+            }
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const particleMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.2,
+                sizeAttenuation: true,
+                transparent: true,
+                map: new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/circle.png'),
+                blending: THREE.AdditiveBlending
+            });
+            const particles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particles);
+            collisionParticles.push({ particles, velocities, startTime: Date.now() });
+        }
+
+        function updateCollisionParticles() {
+            collisionParticles = collisionParticles.filter(p => {
+                const elapsed = Date.now() - p.startTime;
+                if (elapsed >= 1000) {
+                    scene.remove(p.particles);
+                    p.particles.geometry.dispose();
+                    p.particles.material.dispose();
+                    return false;
+                }
+                const t = elapsed / 1000;
+                const positions = p.particles.geometry.attributes.position.array;
+                for (let i = 0; i < positions.length / 3; i++) {
+                    positions[i * 3] += p.velocities[i * 3] * 0.016;
+                    positions[i * 3 + 1] += p.velocities[i * 3 + 1] * 0.016;
+                    positions[i * 3 + 2] += p.velocities[i * 3 + 2] * 0.016;
+                }
+                p.particles.geometry.attributes.position.needsUpdate = true;
+                p.particles.material.opacity = 1 - t;
+                return true;
+            });
+        }
+
+        const trailGeometry = new THREE.CylinderGeometry(hexRadius, hexRadius, hexHeight / 2, 6);
+        function addTrail(x, y, color, visits) {
+            const alpha = Math.min(0.2 * visits, 0.8);
+            const trailMaterial = new THREE.MeshPhongMaterial({
+                color, transparent: true, opacity: alpha, shininess: 50,
+                emissive: color, emissiveIntensity: 0.3
+            });
+            const trail = new THREE.Mesh(trailGeometry, trailMaterial);
+            trail.position.copy(grid[x][y].mesh.position);
+            trail.position.y += hexHeight / 2;
+            scene.add(trail);
+            const key = `${x},${y}`;
+            if (!trails[key]) trails[key] = [];
+            trails[key].push(trail);
+        }
+
+        function addMiniTrail(sphere, color, index, playerKey) {
+            const trailMaterial = new THREE.MeshPhongMaterial({
+                color, transparent: true, opacity: 0.3, shininess: 50,
+                emissive: color, emissiveIntensity: 0.5
+            });
+            const trail = new THREE.Mesh(miniTrailGeometry, trailMaterial);
+            trail.position.copy(sphere.position);
+            scene.add(trail);
+            const key = `${playerKey}_${index}_${Date.now()}`;
+            miniTrails[key] = { mesh: trail, startTime: Date.now() };
+        }
+
+        function cleanMiniTrails() {
+            Object.keys(miniTrails).forEach(key => {
+                const trailData = miniTrails[key];
+                const elapsed = Date.now() - trailData.startTime;
+                if (elapsed >= 500) {
+                    scene.remove(trailData.mesh);
+                    trailData.mesh.geometry.dispose();
+                    trailData.mesh.material.dispose();
+                    delete miniTrails[key];
+                } else {
+                    trailData.mesh.material.opacity = 0.3 * (1 - elapsed / 500);
+                }
+            });
+        }
+
+        function addPlayerSphereTrail(player, playerKey) {
+            const trailMaterial = new THREE.MeshPhongMaterial({
+                color: player.color, transparent: true, opacity: 0.5, shininess: 50,
+                emissive: player.color, emissiveIntensity: 0.5
+            });
+            const trail = new THREE.Mesh(playerSphereTrailGeometry, trailMaterial);
+            trail.position.copy(player.mesh.position);
+            scene.add(trail);
+            const key = `${playerKey}_${Date.now()}`;
+            playerSphereTrails[key] = { mesh: trail, startTime: Date.now() };
+        }
+
+        function cleanPlayerSphereTrails() {
+            Object.keys(playerSphereTrails).forEach(key => {
+                const trailData = playerSphereTrails[key];
+                const elapsed = Date.now() - trailData.startTime;
+                if (elapsed >= 500) {
+                    scene.remove(trailData.mesh);
+                    trailData.mesh.geometry.dispose();
+                    trailData.mesh.material.dispose();
+                    delete playerSphereTrails[key];
+                } else {
+                    trailData.mesh.material.opacity = 0.5 * (1 - elapsed / 500);
+                }
+            });
+        }
+
+        function createWall(x, y, color) {
+            const initialHeight = hexHeight * 4;
+            const wallMaterial = new THREE.MeshPhongMaterial({ 
+                color, 
+                shininess: 50, 
+                transparent: true, 
+                opacity: 0.3,
+                emissive: color,
+                emissiveIntensity: 2.5
+            });
+            const wallGeometry = new THREE.CylinderGeometry(hexRadius, hexRadius, initialHeight, 6);
+            const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+            wall.position.copy(grid[x][y].mesh.position);
+            wall.position.y += hexHeight;
+            wall.castShadow = true;
+            scene.add(wall);
+
+            const borderGeometry = new THREE.EdgesGeometry(wallGeometry);
+            const borderMaterial = new THREE.LineBasicMaterial({ 
+                color: 0x333333, 
+                transparent: true, 
+                opacity: 0.5 
+            });
+            const border = new THREE.LineSegments(borderGeometry, borderMaterial);
+            border.position.copy(wall.position);
+            border.scale.set(1.05, 1, 1.05);
+            scene.add(border);
+
+            const beamGeometry = new THREE.CylinderGeometry(0.1, 0.1, 2, 8);
+            const beamMaterial = new THREE.MeshBasicMaterial({ 
+                color: color, 
+                transparent: true, 
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            const beam = new THREE.Mesh(beamGeometry, beamMaterial);
+            beam.position.copy(wall.position);
+            beam.position.y += initialHeight / 2 + 1;
+            scene.add(beam);
+
+            const startTime = Date.now();
+            function animateBeam() {
+                const elapsed = Date.now() - startTime;
+                const duration = 1000;
+                if (elapsed < duration) {
+                    const t = elapsed / duration;
+                    beam.scale.y = 1 + t * 3;
+                    beamMaterial.opacity = 0.8 * (1 - t);
+                    beam.position.y += 0.02;
+                    requestAnimationFrame(animateBeam);
+                } else {
+                    scene.remove(beam);
+                    beamGeometry.dispose();
+                    beamMaterial.dispose();
+                }
+            }
+            animateBeam();
+
+            function animateWallFlash() {
+                if (!wallMaterial) return;
+                const elapsed = Date.now() - startTime;
+                const cycleTime = (elapsed % 500) / 500;
+                const intensity = 0.3 + (3.0 - 0.3) * (0.5 + 0.5 * Math.sin(cycleTime * Math.PI * 2));
+                wallMaterial.emissiveIntensity = intensity;
+                requestAnimationFrame(animateWallFlash);
+            }
+            animateWallFlash();
+
+            walls.set(`${x},${y}`, { color, mesh: wall, height: initialHeight, border });
+
+            const wallDisplay = document.getElementById('wallDisplay');
+            wallDisplay.textContent = `${color === 0xff0000 ? 'Red' : 'Blue'} Wall Created!`;
+            wallDisplay.style.display = 'block';
+            setTimeout(() => {
+                wallDisplay.style.display = 'none';
+            }, 1000);
+
+            const player = Object.values(players).find(p => p.color === color);
+            player.wallsCreated++;
+            player.score += 100;
+            createScoreText('+100', wall.position, 0xffffff);
+
+            const directions = [
+                [{dx: 0, dy: -1}, {dx: 0, dy: -2}],
+                [{dx: 0, dy: 1}, {dx: 0, dy: 2}],
+                [{dx: -1, dy: 0}, {dx: -2, dy: 0}],
+                [{dx: 1, dy: 0}, {dx: 2, dy: 0}],
+                [{dx: -1, dy: -1}, {dx: -2, dy: -2}],
+                [{dx: 1, dy: 1}, {dx: 2, dy: 2}],
+                [{dx: -1, dy: 1}, {dx: -2, dy: 2}],
+                [{dx: 1, dy: -1}, {dx: 2, dy: -2}]
+            ];
+            for (const [d1, d2] of directions) {
+                const key1 = `${x + d1.dx},${y + d1.dy}`;
+                const key2 = `${x + d2.dx},${y + d2.dy}`;
+                if (
+                    walls.has(key1) && walls.get(key1).color === color &&
+                    walls.has(key2) && walls.get(key2).color === color &&
+                    x + d1.dx >= 0 && x + d1.dx < gridSize && y + d1.dy >= 0 && y + d1.dy < gridSize &&
+                    x + d2.dx >= 0 && x + d2.dx < gridSize && y + d2.dy >= 0 && y + d2.dy < gridSize
+                ) {
+                    player.score += 500;
+                    createScoreText('+500', wall.position, 0xffffff);
+                    break;
+                }
+            }
+        }
+
+        function increaseWallHeight(x, y, color) {
+            const wallData = walls.get(`${x},${y}`);
+            if (!wallData) return;
+            const newHeight = wallData.height + hexHeight;
+            if (newHeight > 160) return;
+            const newGeometry = new THREE.CylinderGeometry(hexRadius, hexRadius, newHeight, 6);
+            const wallMaterial = new THREE.MeshPhongMaterial({ 
+                color: wallData.color, 
+                shininess: 50, 
+                transparent: true, 
+                opacity: 0.3,
+                emissive: wallData.color,
+                emissiveIntensity: 0.3
+            });
+            scene.remove(wallData.mesh);
+            scene.remove(wallData.border);
+            const newWall = new THREE.Mesh(newGeometry, wallMaterial);
+            newWall.position.copy(grid[x][y].mesh.position);
+            newWall.position.y += hexHeight;
+            newWall.castShadow = true;
+            scene.add(newWall);
+
+            const borderGeometry = new THREE.EdgesGeometry(newGeometry);
+            const borderMaterial = new THREE.LineBasicMaterial({ 
+                color: 0x333333, 
+                transparent: true, 
+                opacity: 0.5 
+            });
+            const newBorder = new THREE.LineSegments(borderGeometry, borderMaterial);
+            newBorder.position.copy(newWall.position);
+            newBorder.scale.set(1.05, 1, 1.05);
+            scene.add(newBorder);
+
+            const startTime = Date.now();
+            function animateWallFlash() {
+                if (!wallMaterial) return;
+                const elapsed = Date.now() - startTime;
+                const cycleTime = (elapsed % 500) / 500;
+                const intensity = 0.3 + (3.0 - 0.3) * (0.5 + 0.5 * Math.sin(cycleTime * Math.PI * 2));
+                wallMaterial.emissiveIntensity = intensity;
+                requestAnimationFrame(animateWallFlash);
+            }
+            animateWallFlash();
+
+            walls.set(`${x},${y}`, { color: wallData.color, mesh: newWall, height: newHeight, border: newBorder });
+        }
+
+        function getReachableHexes(player) {
+            const visited = new Set();
+            const queue = [[player.x, player.y]];
+            const playerColor = player.color;
+            visited.add(`${player.x},${player.y}`);
+
+            const directions = [
+                { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
+                { dx: -1, dy: 0 }, { dx: 1, dy: 0 }
+            ];
+
+            while (queue.length > 0) {
+                const [x, y] = queue.shift();
+                for (const { dx, dy } of directions) {
+                    const newX = x + dx;
+                    const newY = y + dy;
+                    const key = `${newX},${newY}`;
+                    if (
+                        newX >= 0 && newX < gridSize &&
+                        newY >= 0 && newY < gridSize &&
+                        !visited.has(key) &&
+                        (!walls.has(key) || walls.get(key).color === playerColor)
+                    ) {
+                        visited.add(key);
+                        queue.push([newX, newY]);
+                    }
+                }
+            }
+
+            return visited.size;
+        }
+
+        function calculateWinProbabilities() {
+            const probabilities = {};
+            let totalScore = 0;
+            const playerScores = {};
+
+            Object.values(players).forEach(player => {
+                const reachableHexes = getReachableHexes(player);
+                const wallsScore = player.wallsCreated * 10;
+                const score = reachableHexes + wallsScore;
+                playerScores[player.color] = score;
+                totalScore += score;
+            });
+
+            Object.values(players).forEach(player => {
+                const score = playerScores[player.color];
+                probabilities[player.color] = totalScore > 0 ? (score / totalScore) * 100 : 50;
+            });
+
+            const sum = Object.values(probabilities).reduce((a, b) => a + b, 0);
+            if (sum > 0) {
+                Object.keys(probabilities).forEach(key => {
+                    probabilities[key] = (probabilities[key] / sum) * 100;
+                });
+            }
+
+            return probabilities;
+        }
+
+        function checkCollision() {
+            const playerPositions = Object.values(players).map(p => `${p.x},${p.y}`);
+            const uniquePositions = new Set(playerPositions);
+            if (uniquePositions.size < playerPositions.length) {
+                shakeTime = Date.now();
+                const collisionPos = Object.values(players).find(p => playerPositions.filter(pos => pos === `${p.x},${p.y}`).length > 1).mesh.position;
+                createCollisionEffect(collisionPos);
+                Object.values(players).forEach(player => {
+                    const reverseDir = { dx: -player.lastDirection.dx, dy: -player.lastDirection.dy };
+                    movePlayer(player, reverseDir.dx, reverseDir.dy);
+                });
+            }
+        }
+
+        function isPlayerTrapped(player) {
+            const { x, y } = player;
+            const playerColor = player.color;
+            const directions = [
+                { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
+                { dx: -1, dy: 0 }, { dx: 1, dy: 0 }
+            ];
+            return directions.every(({ dx, dy }) => {
+                const newX = x + dx;
+                const newY = y + dy;
+                const key = `${newX},${newY}`;
+                return !(newX >= 0 && newX < gridSize && newY >= 0 && newY < gridSize && (!walls.has(key) || walls.get(key).color === playerColor));
+            });
+        }
+
+        function checkTripletRepetition(player) {
+            const wallMoves = player.moveHistory.filter(move => move.onOwnWall);
+            if (wallMoves.length < 3) return false;
+
+            const triplets = [];
+            for (let i = 0; i < wallMoves.length - 2; i++) {
+                const triplet = [
+                    `${wallMoves[i].x},${wallMoves[i].y}`,
+                    `${wallMoves[i+1].x},${wallMoves[i+1].y}`,
+                    `${wallMoves[i+2].x},${wallMoves[i+2].y}`
+                ].join('|');
+                triplets.push(triplet);
+            }
+
+            const tripletCounts = {};
+            triplets.forEach(triplet => {
+                tripletCounts[triplet] = (tripletCounts[triplet] || 0) + 1;
+                if (tripletCounts[triplet] >= 3) {
+                    return true;
+                }
+            });
+
+            return false;
+        }
+
+        function checkNoMoreWalls() {
+            for (let x = 0; x < gridSize; x++) {
+                for (let y = 0; y < gridSize; y++) {
+                    const key = `${x},${y}`;
+                    if (!walls.has(key)) {
+                        if (grid[x][y].visits.red < 5 || grid[x][y].visits.blue < 5) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        function movePlayer(player, dx, dy) {
+            const newX = player.x + dx;
+            const newY = player.y + dy;
+            const key = `${newX},${newY}`;
+            const playerColor = player.color;
+            if (newX >= 0 && newX < gridSize && newY >= 0 && newY < gridSize && (!walls.has(key) || walls.get(key).color === playerColor)) {
+                const colorKey = player === players.red ? 'red' : 'blue';
+                player.lastDirection = { dx, dy };
+                player.x = newX;
+                player.y = newY;
+                player.targetPosition = grid[newX][newY].mesh.position.clone();
+                player.targetPosition.y = hexHeight + 0.3;
+                player.transitionStart = Date.now();
+                grid[newX][newY].visits[colorKey]++;
+                if (grid[newX][newY].visits[colorKey] === 1) {
+                    player.score += 10;
+                    createScoreText('+10', player.targetPosition, 0xffffff);
+                }
+                player.moves++;
+
+                player.moveHistory.push({ x: newX, y: newY, onOwnWall: walls.has(key) && walls.get(key).color === playerColor });
+
+                addTrail(newX, newY, player.color, grid[newX][newY].visits[colorKey]);
+                if (grid[newX][newY].visits[colorKey] >= 5 && !walls.has(key)) {
+                    createWall(newX, newY, player.color);
+                } else if (walls.has(key) && walls.get(key).color === playerColor) {
+                    increaseWallHeight(newX, newY, player.color);
+                }
+                checkCollision();
+
+                if (walls.has(key) && walls.get(key).color === playerColor && checkTripletRepetition(player)) {
+                    showGameOver(colorKey, 'repeated a move triplet 3 times');
+                }
+            }
+        }
+
+        function updatePlayerPosition(player) {
+            if (player.targetPosition && player.transitionStart) {
+                const elapsed = Date.now() - player.transitionStart;
+                const t = Math.min(elapsed / player.transitionDuration, 1);
+                const startPos = player.mesh.position.clone();
+                const endPos = player.targetPosition;
+                player.mesh.position.lerpVectors(startPos, endPos, t);
+                const playerKey = Object.keys(players).find(key => players[key] === player);
+                addPlayerSphereTrail(player, playerKey);
+                if (t >= 1) {
+                    player.targetPosition = null;
+                    player.transitionStart = null;
+                }
+            }
+        }
+
+        function autoplayMove(player) {
+            if (!autoplay || !gameStarted || gameOver) return;
+            const directions = [
+                { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
+                { dx: -1, dy: 0 }, { dx: 1, dy: 0 }
+            ];
+            const playerColor = player.color;
+            const validDirections = directions.filter(({ dx, dy }) => {
+                const newX = player.x + dx;
+                const newY = player.y + dy;
+                const key = `${newX},${newY}`;
+                return newX >= 0 && newX < gridSize && newY >= 0 && newY < gridSize && !walls.has(key);
+            });
+            const chosenDirections = validDirections.length > 0 ? validDirections : directions;
+            const { dx, dy } = chosenDirections[Math.floor(Math.random() * chosenDirections.length)];
+            movePlayer(player, dx, dy);
+        }
+
+        const keys = {};
+        document.addEventListener('keydown', (e) => { keys[e.key] = true; });
+        document.addEventListener('keyup', (e) => { keys[e.key] = false; });
+
+        let autoplay = true;
+        const toggleButton = document.getElementById('toggleButton');
+        toggleButton.addEventListener('click', () => {
+            if (!gameStarted) return;
+            autoplay = !autoplay;
+            toggleButton.textContent = autoplay ? 'Toggle Autoplay (On)' : 'Toggle Autoplay (Off)';
+        });
+
+        const speedUpButton = document.getElementById('speedUpButton');
+        speedUpButton.addEventListener('click', () => {
+            if (!gameStarted) return;
+            Object.values(players).forEach(player => {
+                player.speed *= 1.2;
+                player.transitionDuration *= 0.7;
+            });
+        });
+
+        let level = 1;
+        let lastLevelTime = Date.now();
+        const levelDisplay = document.getElementById('levelDisplay');
+        const gameOverDisplay = document.getElementById('gameOverDisplay');
+        const statsDisplay = document.getElementById('statsDisplay');
+        const probabilityBar = document.getElementById('probabilityBar');
+
+        function showLevelFlash() {
+            levelDisplay.textContent = `Level ${level}`;
+            levelDisplay.style.display = 'block';
+            setTimeout(() => {
+                levelDisplay.style.display = 'none';
+            }, 1000);
+        }
+
+        function showGameOver(triggerPlayer = null, reason = null) {
+            gameOver = true;
+            autoplay = false;
+            toggleButton.textContent = 'Toggle Autoplay (Off)';
+
+            let message = `Game Over - Level ${level}\n`;
+            const probabilities = calculateWinProbabilities();
+            let winner = null;
+            let maxProb = -1;
+            Object.entries(probabilities).forEach(([color, prob]) => {
+                const playerKey = Object.keys(players).find(key => players[key].color === parseInt(color));
+                if (prob > maxProb) {
+                    maxProb = prob;
+                    winner = playerKey;
+                }
+            });
+            const winnerName = winner ? winner.charAt(0).toUpperCase() + winner.slice(1) : 'No one';
+
+            if (reason === 'repeated a move triplet 3 times') {
+                const playerName = triggerPlayer.charAt(0).toUpperCase() + triggerPlayer.slice(1);
+                message += `${playerName} Loses! Repeated a move triplet 3 times\n\n`;
+            } else if (reason === 'no more walls') {
+                message += `${winnerName} Wins! No more walls can be created\n\n`;
+            } else if (reason === 'time up') {
+                message += `${winnerName} Wins! Time's up\n\n`;
+            } else {
+                const trappedPlayers = Object.keys(players).filter(key => isPlayerTrapped(players[key]));
+                const trappedNames = trappedPlayers.map(key => key.charAt(0).toUpperCase() + key.slice(1));
+                const reasonText = trappedNames.length > 0 ? `${trappedNames.join(' and ')} trapped` : 'All players trapped';
+                message += `${winnerName} Wins! ${reasonText}\n\n`;
+            }
+
+            message += `Player Stats:\n`;
+            Object.entries(players).forEach(([key, player]) => {
+                const color = `#${player.color.toString(16).padStart(6, '0')}`;
+                message += `<span style="color: ${color};">${key.charAt(0).toUpperCase() + key.slice(1)}: ` +
+                           `Score: ${player.score}, Moves: ${player.moves}, Walls: ${player.wallsCreated}, ` +
+                           `Speed: ${player.speed.toFixed(1)}, Win: ${probabilities[player.color].toFixed(1)}%</span>\n`;
+            });
+
+            gameOverDisplay.innerHTML = message;
+            gameOverDisplay.style.display = 'block';
+        }
+
+        function resetGame() {
+            gameOver = false;
+            gameStarted = false;
+            gameOverDisplay.style.display = 'none';
+            level = 1;
+            lastLevelTime = Date.now();
+            autoplay = true;
+            toggleButton.textContent = 'Toggle Autoplay (On)';
+            cameraView = 'full';
+            cameraViewIndex = 0;
+            camera.position.copy(startViewPosition);
+            camera.lookAt(fullViewTarget);
+
+            walls.forEach(wall => {
+                scene.remove(wall.mesh);
+                scene.remove(wall.border);
+            });
+            walls.clear();
+
+            Object.values(trails).forEach(trailArray => {
+                trailArray.forEach(trail => scene.remove(trail));
+            });
+            trails = {};
+
+            Object.values(miniTrails).forEach(trailData => {
+                scene.remove(trailData.mesh);
+                trailData.mesh.geometry.dispose();
+                trailData.mesh.material.dispose();
+            });
+            miniTrails = {};
+
+            Object.values(playerSphereTrails).forEach(trailData => {
+                scene.remove(trailData.mesh);
+                trailData.mesh.geometry.dispose();
+                trailData.mesh.material.dispose();
+            });
+            playerSphereTrails = {};
+
+            collisionParticles.forEach(p => {
+                scene.remove(p.particles);
+                p.particles.geometry.dispose();
+                p.particles.material.dispose();
+            });
+            collisionParticles = [];
+
+            for (let x = 0; x < gridSize; x++) {
+                for (let y = 0; y < gridSize; y++) {
+                    grid[x][y].visits = { red: 0, blue: 0 };
+                }
+            }
+
+            Object.values(players).forEach(player => {
+                scene.remove(player.mesh);
+                player.orbitingSpheres.forEach(sphere => scene.remove(sphere));
+            });
+            players = {
+                red: { 
+                    x: 0, y: 0, 
+                    color: 0xff0000, 
+                    speed: 0.3,
+                    mesh: new THREE.Mesh(playerGeometry, new THREE.MeshStandardMaterial(playerMaterialConfig(0xff0000))),
+                    moves: 0,
+                    wallsCreated: 0,
+                    score: 0,
+                    targetPosition: null,
+                    transitionStart: null,
+                    transitionDuration: 1800,
+                    lastDirection: { dx: 0, dy: 0 },
+                    moveHistory: [],
+                    orbitingSpheres: []
+                },
+                blue: { 
+                    x: gridSize - 1, y: gridSize - 1,
+                    color: 0x0000ff, 
+                    speed: 0.3,
+                    mesh: new THREE.Mesh(playerGeometry, new THREE.MeshStandardMaterial(playerMaterialConfig(0x0000ff))),
+                    moves: 0,
+                    wallsCreated: 0,
+                    score: 0,
+                    targetPosition: null,
+                    transitionStart: null,
+                    transitionDuration: 1800,
+                    lastDirection: { dx: 0, dy: 0 },
+                    moveHistory: [],
+                    orbitingSpheres: []
+                }
+            };
+            Object.values(players).forEach(player => {
+                const { x, y } = player;
+                player.mesh.position.copy(grid[x][y].mesh.position);
+                player.mesh.position.y = hexHeight + 0.3;
+                player.mesh.castShadow = true;
+                player.mesh.receiveShadow = true;
+                scene.add(player.mesh);
+                for (let i = 0; i < 15; i++) {
+                    const sphere = new THREE.Mesh(
+                        miniSphereGeometry,
+                        new THREE.MeshStandardMaterial(miniSphereMaterialConfig())
+                    );
+                    sphere.position.copy(player.mesh.position);
+                    sphere.thetaOffset = Math.random() * Math.PI * 2;
+                    sphere.phiOffset = Math.random() * Math.PI;
+                    player.orbitingSpheres.push(sphere);
+                    scene.add(sphere);
+                }
+            });
+
+            startCountdown();
+        }
+
+        function updateStats() {
+            const probabilities = calculateWinProbabilities();
+            statsDisplay.innerHTML = `Level: ${level}<br>` +
+                `<span class="red-stat">Red Score: ${players.red.score}</span><br>` +
+                `<span class="red-stat">Red Moves: ${players.red.moves}</span><br>` +
+                `<span class="red-stat">Red Walls: ${players.red.wallsCreated}</span><br>` +
+                `<span class="red-stat">Red Speed: ${players.red.speed.toFixed(1)}</span><br>` +
+                `<span class="red-stat">Red Win: ${probabilities[0xff0000].toFixed(1)}%</span><br>` +
+                `<span class="blue-stat">Blue Score: ${players.blue.score}</span><br>` +
+                `<span class="blue-stat">Blue Moves: ${players.blue.moves}</span><br>` +
+                `<span class="blue-stat">Blue Walls: ${players.blue.wallsCreated}</span><br>` +
+                `<span class="blue-stat">Blue Speed: ${players.blue.speed.toFixed(1)}</span><br>` +
+                `<span class="blue-stat">Blue Win: ${probabilities[0x0000ff].toFixed(1)}%</span><br>`;
+
+            let offset = 0;
+            probabilityBar.innerHTML = `<div style="position: relative; width: 100%;">` +
+                `<span class="probability-label" style="left: ${offset + probabilities[0xff0000] / 2}%">${probabilities[0xff0000].toFixed(1)}%</span>` +
+                `<span class="probability-label" style="left: ${offset + probabilities[0xff0000] + probabilities[0x0000ff] / 2}%">${probabilities[0x0000ff].toFixed(1)}%</span>` +
+                `<div class="progress-bar">` +
+                `<div class="progress-bar-fill red-progress" style="width: ${probabilities[0xff0000]}%"></div>` +
+                `<div class="progress-bar-fill blue-progress" style="width: ${probabilities[0x0000ff]}%"></div>` +
+                `</div></div>`;
+            probabilityBar.style.display = 'block';
+        }
+
+        function updateLevel() {
+            if (!gameStarted || gameOver) return;
+            const now = Date.now();
+            if (now - lastLevelTime > 10000) {
+                level++;
+                Object.values(players).forEach(player => {
+                    player.speed *= 1.6;
+                });
+                lastLevelTime = now;
+                showLevelFlash();
+            }
+        }
+
+        function updateCamera() {
+            if (!gameStarted) return;
+            let camPos, camTarget;
+            if (cameraView === 'full') {
+                camPos = fullViewPosition;
+                camTarget = fullViewTarget;
+                camera.fov = 75;
+                Object.values(spotlights).forEach(s => s.visible = false);
+            } else if (cameraView === 'red') {
+                const pos = players.red.mesh.position.clone();
+                camPos = new THREE.Vector3(pos.x, pos.y + 5, pos.z + 5);
+                camTarget = pos;
+                camera.fov = 75;
+                Object.keys(spotlights).forEach(key => spotlights[key].visible = key === 'red');
+                spotlights.red.position.copy(camPos);
+                spotlights.red.target.position.copy(pos);
+            } else if (cameraView === 'redFollow') {
+                camPos = players.red.mesh.position.clone();
+                camPos.y += 1;
+                const dir = players.red.lastDirection.dx === 0 && players.red.lastDirection.dy === 0 
+                    ? new THREE.Vector3(0, 0, -1) 
+                    : new THREE.Vector3(-players.red.lastDirection.dx * hexRadius * Math.sqrt(3), 0, -players.red.lastDirection.dy * hexRadius * 1.5).normalize();
+                camPos.add(dir.multiplyScalar(2));
+                const forwardDir = players.red.lastDirection.dx === 0 && players.red.lastDirection.dy === 0 
+                    ? new THREE.Vector3(0, 0, 1) 
+                    : new THREE.Vector3(players.red.lastDirection.dx * hexRadius * Math.sqrt(3), 0, players.red.lastDirection.dy * hexRadius * 1.5).normalize();
+                camTarget = players.red.mesh.position.clone().add(forwardDir.multiplyScalar(10));
+                camera.fov = 75;
+                Object.keys(spotlights).forEach(key => spotlights[key].visible = key === 'red');
+                spotlights.red.position.copy(camPos);
+                spotlights.red.target.position.copy(camTarget);
+            } else if (cameraView === 'blue') {
+                const pos = players.blue.mesh.position.clone();
+                camPos = new THREE.Vector3(pos.x, pos.y + 5, pos.z + 5);
+                camTarget = pos;
+                camera.fov = 75;
+                Object.keys(spotlights).forEach(key => spotlights[key].visible = key === 'blue');
+                spotlights.blue.position.copy(camPos);
+                spotlights.blue.target.position.copy(pos);
+            } else if (cameraView === 'blueFollow') {
+                camPos = players.blue.mesh.position.clone();
+                camPos.y += 1;
+                const dir = players.blue.lastDirection.dx === 0 && players.blue.lastDirection.dy === 0 
+                    ? new THREE.Vector3(0, 0, -1) 
+                    : new THREE.Vector3(-players.blue.lastDirection.dx * hexRadius * Math.sqrt(3), 0, -players.blue.lastDirection.dy * hexRadius * 1.5).normalize();
+                camPos.add(dir.multiplyScalar(2));
+                const forwardDir = players.blue.lastDirection.dx === 0 && players.blue.lastDirection.dy === 0 
+                    ? new THREE.Vector3(0, 0, 1) 
+                    : new THREE.Vector3(players.blue.lastDirection.dx * hexRadius * Math.sqrt(3), 0, players.blue.lastDirection.dy * hexRadius * 1.5).normalize();
+                camTarget = players.blue.mesh.position.clone().add(forwardDir.multiplyScalar(10));
+                camera.fov = 75;
+                Object.keys(spotlights).forEach(key => spotlights[key].visible = key === 'blue');
+                spotlights.blue.position.copy(camPos);
+                spotlights.blue.target.position.copy(camTarget);
+            } else if (cameraView === 'fly') {
+                flyAngle += 0.01;
+                const zoomFactor = 0.8 + 0.4 * Math.sin(flyAngle * 0.5);
+                const radius = maxDim * 0.8 * zoomFactor;
+                camPos = new THREE.Vector3(
+                    gridWidth / 2 + Math.cos(flyAngle) * radius,
+                    maxDim * 0.8 * zoomFactor,
+                    gridHeight / 2 + Math.sin(flyAngle) * radius
+                );
+                camTarget = fullViewTarget;
+                camera.fov = 60 - 15 * (zoomFactor - 0.8);
+                Object.keys(spotlights).forEach(key => spotlights[key].visible = key === 'fly');
+                spotlights.fly.position.copy(camPos);
+                spotlights.fly.target.position.copy(fullViewTarget);
+            }
+
+            if (shakeTime > 0) {
+                const elapsed = Date.now() - shakeTime;
+                if (elapsed < shakeDuration) {
+                    const t = elapsed / shakeDuration;
+                    const shake = shakeAmplitude * (1 - t) * (Math.random() - 0.5);
+                    camPos.x += shake;
+                    camPos.y += shake;
+                    camPos.z += shake;
+                } else {
+                    shakeTime = 0;
+                }
+            }
+
+            camera.position.copy(camPos);
+            camera.lookAt(camTarget);
+            camera.updateProjectionMatrix();
+        }
+
+        let lastAutoplayTime = Date.now();
+        function animate() {
+            if (gameOver) {
+                renderer.render(scene, camera);
+                return;
+            }
+            requestAnimationFrame(animate);
+
+            const time = Date.now() * 0.001;
+            for (let i = 0; i < starCount; i++) {
+                starMaterial.opacity = 0.7 + 0.3 * Math.sin(time + starPhases[i]);
+            }
+
+            Object.entries(players).forEach(([key, player]) => {
+                player.orbitingSpheres.forEach((sphere, index) => {
+                    const orbitRadius = 0.5;
+                    const orbitSpeed = 2;
+                    const theta = time * orbitSpeed + sphere.thetaOffset;
+                    const phi = time * orbitSpeed * 0.5 + sphere.phiOffset;
+                    sphere.position.x = player.mesh.position.x + orbitRadius * Math.sin(phi) * Math.cos(theta);
+                    sphere.position.y = player.mesh.position.y + orbitRadius * Math.cos(phi);
+                    sphere.position.z = player.mesh.position.z + orbitRadius * Math.sin(phi) * Math.sin(theta);
+                    addMiniTrail(sphere, player.color, index, key);
+                });
+            });
+
+            if (gameStarted) {
+                if (keys['ArrowUp']) movePlayer(players.blue, 0, -1);
+                if (keys['ArrowDown']) movePlayer(players.blue, 0, 1);
+                if (keys['ArrowLeft']) movePlayer(players.blue, -1, 0);
+                if (keys['ArrowRight']) movePlayer(players.blue, 1, 0);
+                if (keys['w']) movePlayer(players.red, 0, -1);
+                if (keys['s']) movePlayer(players.red, 0, 1);
+                if (keys['a']) movePlayer(players.red, -1, 0);
+                if (keys['d']) movePlayer(players.red, 1, 0);
+
+                const now = Date.now();
+                if (now - lastAutoplayTime > 150) {
+                    Object.values(players).forEach(player => autoplayMove(player));
+                    lastAutoplayTime = now;
+                }
+
+                if (Object.values(players).some(player => isPlayerTrapped(player))) {
+                    showGameOver();
+                }
+
+                if (checkNoMoreWalls()) {
+                    showGameOver(null, 'no more walls');
+                }
+
+                const remaining = updateTimer();
+                if (remaining <= 0) {
+                    showGameOver(null, 'time up');
+                }
+
+                Object.values(players).forEach(player => updatePlayerPosition(player));
+                updateLevel();
+                updateStats();
+                updateCollisionParticles();
+                cleanMiniTrails();
+                cleanPlayerSphereTrails();
+            }
+
+            updateCamera();
+            renderer.render(scene, camera);
+        }
+
+        startCountdown();
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
