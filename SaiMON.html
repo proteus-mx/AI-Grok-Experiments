@@ -1,0 +1,572 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D SaiMON Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/gsap.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        canvas { display: block; }
+        #ui {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            color: #e0e0e0;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 22px;
+            background: linear-gradient(45deg, rgba(0, 0, 50, 0.8), rgba(0, 50, 100, 0.8));
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.3);
+            border: 2px solid #00ffff;
+            backdrop-filter: blur(5px);
+        }
+        #ui div {
+            margin: 8px 0;
+            text-shadow: 0 0 8px #00ffff;
+            transition: transform 0.2s;
+        }
+        #ui div:hover {
+            transform: scale(1.05);
+        }
+        #ui span {
+            color: #00ffff;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00ffff;
+        }
+        #title {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ffff;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 60px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #00ffff;
+            text-align: center;
+        }
+        #subtitle {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #e0e0e0;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 24px;
+            text-shadow: 0 0 10px #00ffff;
+        }
+        #autoplay-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #00ffff, #0077ff);
+            color: #000;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+            transition: transform 0.2s;
+        }
+        #autoplay-toggle:hover {
+            transform: scale(1.1);
+        }
+        #level-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffd700;
+            font-size: 120px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            text-shadow: 0 0 30px #ffd700;
+            display: none;
+        }
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff3333;
+            font-size: 100px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            text-shadow: 0 0 30px #ff3333;
+            display: none;
+        }
+        #points-display, #bonus-display {
+            position: absolute;
+            color: #00ff00;
+            font-size: 60px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            text-shadow: 0 0 15px #00ff00;
+            display: none;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+    </style>
+</head>
+<body>
+    <div id="title">SaiMON</div>
+    <div id="subtitle">Copy me!</div>
+    <button id="autoplay-toggle">Autoplay: ON</button>
+    <div id="ui">
+        <div>Level: <span id="level">1</span></div>
+        <div>Level Time: <span id="level-timer">0</span>s</div>
+        <div>Game Time: <span id="timer">0</span>s</div>
+        <div>Moves: <span id="moves">0</span></div>
+        <div>Score: <span id="score">0</span></div>
+    </div>
+    <div id="level-display">Level 1</div>
+    <div id="game-over">Game Over!</div>
+    <div id="points-display"></div>
+    <div id="bonus-display"></div>
+
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Vortex background
+        const vortexGeometry = new THREE.BufferGeometry();
+        const vortexCount = 5000;
+        const vortexPosArray = new Float32Array(vortexCount * 3);
+        const vortexColors = new Float32Array(vortexCount * 3);
+        const vortexVelocities = new Float32Array(vortexCount * 3);
+        const vortexSizes = new Float32Array(vortexCount);
+
+        const vortexColorSchemes = [
+            { hue: 0.5, saturation: 0.8, lightness: 0.5 }, // Cyan
+            { hue: 0.0, saturation: 0.8, lightness: 0.5 }, // Red
+            { hue: 0.3, saturation: 0.8, lightness: 0.5 }, // Green
+            { hue: 0.6, saturation: 0.8, lightness: 0.5 }, // Purple
+            { hue: 0.1, saturation: 0.8, lightness: 0.5 }  // Orange
+        ];
+
+        for (let i = 0; i < vortexCount * 3; i += 3) {
+            const radius = Math.random() * 30 + 10;
+            const angle = Math.random() * Math.PI * 2;
+            vortexPosArray[i] = Math.cos(angle) * radius;
+            vortexPosArray[i + 1] = Math.sin(angle) * radius;
+            vortexPosArray[i + 2] = (Math.random() - 0.5) * 100;
+
+            vortexVelocities[i] = (Math.random() - 0.5) * 0.05;
+            vortexVelocities[i + 1] = (Math.random() - 0.5) * 0.05;
+            vortexVelocities[i + 2] = Math.random() * 0.1 + 0.05;
+            vortexSizes[i] = Math.random() * 0.2 + 0.05;
+        }
+
+        vortexGeometry.setAttribute('position', new THREE.BufferAttribute(vortexPosArray, 3));
+        vortexGeometry.setAttribute('color', new THREE.BufferAttribute(vortexColors, 3));
+        vortexGeometry.setAttribute('size', new THREE.BufferAttribute(vortexSizes, 1));
+
+        const vortexMaterial = new THREE.PointsMaterial({
+            vertexColors: true,
+            size: 0.2,
+            transparent: true,
+            opacity: 0.7,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        const vortex = new THREE.Points(vortexGeometry, vortexMaterial);
+        scene.add(vortex);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1.5, 100);
+        pointLight.position.set(10, 10, 10);
+        scene.add(pointLight);
+
+        // Simon buttons
+        const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00];
+        const buttons = [];
+        const shapes = [
+            new THREE.BoxGeometry(2, 2, 2),
+            new THREE.SphereGeometry(1.5, 32, 32),
+            new THREE.CylinderGeometry(1.5, 1.5, 2, 32),
+            new THREE.TorusGeometry(1.5, 0.5, 16, 100)
+        ];
+        const positions = [
+            { x: -3, y: 0 }, { x: 3, y: 0 },
+            { x: 0, y: 3 }, { x: 0, y: -3 }
+        ];
+
+        function createButtons(shapeIndex) {
+            buttons.length = 0;
+            scene.children = scene.children.filter(child => !(child instanceof THREE.Mesh && child.userData.index !== undefined));
+            colors.forEach((color, i) => {
+                const material = new THREE.MeshPhongMaterial({ color, emissive: 0x000000, shininess: 100 });
+                const mesh = new THREE.Mesh(shapes[shapeIndex], material);
+                mesh.position.set(positions[i].x, positions[i].y, 0);
+                mesh.userData = { index: i, originalColor: color, originalPosition: { x: positions[i].x, y: positions[i].y, z: 0 } };
+                scene.add(mesh);
+                buttons.push(mesh);
+            });
+        }
+
+        function updateVortexColors(level) {
+            const colorScheme = vortexColorSchemes[(level - 1) % vortexColorSchemes.length];
+            for (let i = 0; i < vortexCount * 3; i += 3) {
+                const color = new THREE.Color().setHSL(
+                    colorScheme.hue + (Math.random() - 0.5) * 0.1,
+                    colorScheme.saturation,
+                    colorScheme.lightness
+                );
+                vortexColors[i] = color.r;
+                vortexColors[i + 1] = color.g;
+                vortexColors[i + 2] = color.b;
+            }
+            vortexGeometry.setAttribute('color', new THREE.BufferAttribute(vortexColors, 3));
+        }
+
+        // Particle system for effects
+        const particleGeometry = new THREE.BufferGeometry();
+        const particleCount = 100;
+        const posArray = new Float32Array(particleCount * 3);
+        for (let i = 0; i < particleCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 10;
+        }
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        const particleMaterial = new THREE.PointsMaterial({
+            color: 0xffffff,
+            size: 0.1,
+            transparent: true,
+            opacity: 0.8
+        });
+        const particles = new THREE.Points(particleGeometry, particleMaterial);
+        particles.visible = false;
+        scene.add(particles);
+
+        camera.position.z = 10;
+
+        // Game logic
+        let sequence = [];
+        let playerSequence = [];
+        let level = 1;
+        let moves = 0;
+        let score = 0;
+        let isPlayerTurn = false;
+        let timer = 0;
+        let levelTimer = 0;
+        let gameActive = true;
+        let autoplay = true;
+
+        function startLevel() {
+            sequence = [];
+            playerSequence = [];
+            moves = 0;
+            levelTimer = 0;
+            isPlayerTurn = false;
+            createButtons((level - 1) % shapes.length);
+            updateVortexColors(level);
+            for (let i = 0; i < level; i++) {
+                sequence.push(Math.floor(Math.random() * 4));
+            }
+            document.getElementById('level-timer').textContent = levelTimer.toFixed(1);
+            showLevelDisplay();
+            setTimeout(playSequence, 2000);
+        }
+
+        function showLevelDisplay() {
+            const levelDisplay = document.getElementById('level-display');
+            levelDisplay.textContent = `Level ${level}`;
+            levelDisplay.style.display = 'block';
+            gsap.to(levelDisplay, { opacity: 1, duration: 0.5, yoyo: true, repeat: 1, onComplete: () => {
+                levelDisplay.style.display = 'none';
+            }});
+        }
+
+        function showPointsDisplay(points, x, y) {
+            const pointsDisplay = document.getElementById('points-display');
+            pointsDisplay.textContent = `+${points}`;
+            pointsDisplay.style.left = `${x}px`;
+            pointsDisplay.style.top = `${y}px`;
+            pointsDisplay.style.display = 'block';
+            gsap.to(pointsDisplay, {
+                opacity: 1,
+                y: -50,
+                duration: 1,
+                onComplete: () => {
+                    pointsDisplay.style.display = 'none';
+                    pointsDisplay.style.opacity = 0.8;
+                    pointsDisplay.style.transform = 'translateY(0)';
+                }
+            });
+        }
+
+        function showBonusDisplay(bonus) {
+            const bonusDisplay = document.getElementById('bonus-display');
+            bonusDisplay.textContent = `Bonus: +${bonus}`;
+            bonusDisplay.style.left = '50%';
+            bonusDisplay.style.top = '60%';
+            bonusDisplay.style.transform = 'translate(-50%, -50%)';
+            bonusDisplay.style.display = 'block';
+            gsap.to(bonusDisplay, {
+                opacity: 1,
+                y: -50,
+                duration: 1.5,
+                onComplete: () => {
+                    bonusDisplay.style.display = 'none';
+                    bonusDisplay.style.opacity = 0.8;
+                    bonusDisplay.style.transform = 'translate(-50%, -50%)';
+                }
+            });
+        }
+
+        function playSequence() {
+            let i = 0;
+            function next() {
+                if (i < sequence.length) {
+                    flashAndBounceButton(sequence[i], () => {
+                        i++;
+                        setTimeout(next, 200);
+                    });
+                } else {
+                    isPlayerTurn = true;
+                    if (autoplay) {
+                        setTimeout(autoPlaySequence, 500);
+                    }
+                }
+            }
+            next();
+        }
+
+        function autoPlaySequence() {
+            if (!autoplay || !isPlayerTurn || !gameActive) return;
+            let i = 0;
+            function next() {
+                if (i < sequence.length) {
+                    handleClick(sequence[i]);
+                    i++;
+                    setTimeout(next, 500);
+                }
+            }
+            next();
+        }
+
+        function flashAndBounceButton(index, callback) {
+            const button = buttons[index];
+            gsap.to(button.material.emissive, {
+                r: 1, g: 1, b: 1, duration: 0.3, yoyo: true, repeat: 1,
+                onComplete: () => {
+                    button.material.emissive.set(0);
+                }
+            });
+            gsap.to(button.position, {
+                z: 2, duration: 0.3, yoyo: true, repeat: 1,
+                onComplete: () => {
+                    button.position.set(
+                        button.userData.originalPosition.x,
+                        button.userData.originalPosition.y,
+                        button.userData.originalPosition.z
+                    );
+                    if (callback) callback();
+                }
+            });
+        }
+
+        function showParticles(x, y, color, isPositive) {
+            particles.position.set(x, y, 0);
+            particleMaterial.color.set(color);
+            particles.visible = true;
+            const positions = particleGeometry.attributes.position.array;
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 2;
+                positions[i + 1] = (Math.random() - 0.5) * 2;
+                positions[i + 2] = 0;
+            }
+            particleGeometry.attributes.position.needsUpdate = true;
+            gsap.to(particleMaterial, {
+                opacity: 0,
+                duration: isPositive ? 1 : 0.5,
+                onComplete: () => { particles.visible = false; particleMaterial.opacity = 0.8; }
+            });
+        }
+
+        function handleClick(index) {
+            if (!isPlayerTurn || !gameActive) return;
+            flashAndBounceButton(index);
+            playerSequence.push(index);
+            moves++;
+            document.getElementById('moves').textContent = moves;
+
+            const button = buttons[index];
+            const canvasRect = renderer.domElement.getBoundingClientRect();
+            const x = ((button.position.x + 3) / 6) * canvasRect.width + canvasRect.left;
+            const y = ((-button.position.y + 3) / 6) * canvasRect.height + canvasRect.top;
+
+            if (playerSequence[playerSequence.length - 1] !== sequence[playerSequence.length - 1]) {
+                // Incorrect
+                showParticles(button.position.x, button.position.y, 0xff3333, false);
+                gameOver();
+            } else {
+                // Correct move
+                const points = 50;
+                score += points;
+                document.getElementById('score').textContent = score;
+                showPointsDisplay(points, x, y);
+
+                if (playerSequence.length === sequence.length) {
+                    // Correct sequence
+                    showParticles(0, 0, 0x00ff00, true);
+                    score += level * 100;
+                    const bonusPoints = Math.max(0, Math.floor(100 - levelTimer));
+                    score += bonusPoints;
+                    if (bonusPoints > 0) {
+                        showBonusDisplay(bonusPoints);
+                    }
+                    document.getElementById('score').textContent = score;
+                    level++;
+                    document.getElementById('level').textContent = level;
+                    isPlayerTurn = false;
+                    setTimeout(startLevel, 1000);
+                }
+            }
+        }
+
+        function gameOver() {
+            gameActive = false;
+            const gameOverText = document.getElementById('game-over');
+            gameOverText.style.display = 'block';
+            gsap.to(gameOverText, { opacity: 1, duration: 0.5, yoyo: true, repeat: 1 });
+            setTimeout(() => {
+                gameOverText.style.display = 'none';
+                level = 1;
+                score = 0;
+                timer = 0;
+                levelTimer = 0;
+                moves = 0;
+                gameActive = true;
+                document.getElementById('level').textContent = level;
+                document.getElementById('score').textContent = score;
+                document.getElementById('moves').textContent = moves;
+                document.getElementById('level-timer').textContent = levelTimer.toFixed(1);
+                startLevel();
+            }, 2000);
+        }
+
+        // Autoplay toggle
+        const autoplayButton = document.getElementById('autoplay-toggle');
+        autoplayButton.addEventListener('click', () => {
+            autoplay = !autoplay;
+            autoplayButton.textContent = `Autoplay: ${autoplay ? 'ON' : 'OFF'}`;
+            if (autoplay && isPlayerTurn) {
+                autoPlaySequence();
+            }
+        });
+
+        // Raycaster for mouse clicks
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        window.addEventListener('click', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(buttons);
+            if (intersects.length > 0) {
+                const index = intersects[0].object.userData.index;
+                handleClick(index);
+            }
+        });
+
+        // Timers
+        setInterval(() => {
+            if (gameActive) {
+                timer += 0.1;
+                levelTimer += 0.1;
+                document.getElementById('timer').textContent = timer.toFixed(1);
+                document.getElementById('level-timer').textContent = levelTimer.toFixed(1);
+            }
+        }, 100);
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            buttons.forEach(button => {
+                button.rotation.x += 0.01;
+                button.rotation.y += 0.01;
+            });
+            // Vortex animation
+            const positions = vortexGeometry.attributes.position.array;
+            for (let i = 0; i < vortexCount * 3; i += 3) {
+                const radius = Math.sqrt(positions[i] ** 2 + positions[i + 1] ** 2);
+                const angle = Math.atan2(positions[i + 1], positions[i]) + vortexVelocities[i] * (1 + 1 / radius);
+                positions[i] = Math.cos(angle) * radius;
+                positions[i + 1] = Math.sin(angle) * radius;
+                positions[i + 2] += vortexVelocities[i + 2];
+                if (positions[i + 2] > 50) {
+                    positions[i + 2] -= 100;
+                    const newRadius = Math.random() * 30 + 10;
+                    const newAngle = Math.random() * Math.PI * 2;
+                    positions[i] = Math.cos(newAngle) * newRadius;
+                    positions[i + 1] = Math.sin(newAngle) * newRadius;
+                }
+            }
+            vortexGeometry.attributes.position.needsUpdate = true;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Start game
+        startLevel();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
