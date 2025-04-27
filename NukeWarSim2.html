@@ -1,0 +1,946 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Spinning Earth</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        canvas { display: block; }
+        #stats {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #00FF00; /* WarGames green */
+            font-family: 'VT323', monospace;
+            font-size: 18px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border: 2px solid #00FF00;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+            text-shadow: 0 0 5px rgba(0, 255, 0, 0.7);
+            line-height: 1.5;
+            background-image: linear-gradient(rgba(0, 255, 0, 0.05) 1px, transparent 1px);
+            background-size: 100% 4px; /* Subtle scanlines */
+        }
+        #cameraButton {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #00FF00;
+            font-family: 'VT323', monospace;
+            font-size: 18px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00FF00;
+            border-radius: 5px;
+            padding: 10px 15px;
+            cursor: pointer;
+            text-shadow: 0 0 5px rgba(0, 255, 0, 0.7);
+        }
+        #cameraButton:hover {
+            background: rgba(0, 255, 0, 0.2);
+        }
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+    </style>
+</head>
+<body>
+    <div id="stats">
+        <div>LAUNCH COUNTDOWN: <span id="countdown">5.0</span>s</div>
+        <div>ACTIVE LAUNCHES: <span id="launches">NONE</span></div>
+        <div>GLOBAL POPULATION: <span id="population">8,000,000,000</span></div>
+        <div>CASUALTIES: <span id="killed">0</span></div>
+    </div>
+    <button id="cameraButton">Cycle Camera</button>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Earth geometry and material
+        const geometry = new THREE.SphereGeometry(5, 128, 128); // High resolution
+        const textureLoader = new THREE.TextureLoader();
+        const earthTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg');
+        const normalMap = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_normal_2048.jpg');
+        const specularMap = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_specular_2048.jpg');
+        const earthMaterial = new THREE.MeshPhongMaterial({
+            map: earthTexture,
+            normalMap: normalMap,
+            specularMap: specularMap,
+            shininess: 50,
+            normalScale: new THREE.Vector2(1, 1)
+        });
+        const earth = new THREE.Mesh(geometry, earthMaterial);
+        scene.add(earth);
+
+        // Atmospheric glow
+        const atmosphereGeometry = new THREE.SphereGeometry(5.05, 128, 128);
+        const atmosphereMaterial = new THREE.MeshBasicMaterial({
+            color: 0x3399ff,
+            transparent: true,
+            opacity: 0.2,
+            side: THREE.BackSide,
+            blending: THREE.AdditiveBlending
+        });
+        const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+        scene.add(atmosphere);
+
+        // Clouds
+        const cloudGeometry = new THREE.SphereGeometry(5.1, 128, 128);
+        const cloudTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_clouds_2048.jpg');
+        const cloudMaterial = new THREE.MeshPhongMaterial({
+            map: cloudTexture,
+            transparent: true,
+            opacity: 0.7
+        });
+        const clouds = new THREE.Mesh(cloudGeometry, cloudMaterial);
+        scene.add(clouds);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x808080, 0.8); // Brighter ambient
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1.5, 100); // Stronger sunlight
+        pointLight.position.set(15, 5, 15);
+        scene.add(pointLight);
+
+        // Starfield
+        const starGeometry = new THREE.BufferGeometry();
+        const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1 });
+        const starVertices = [];
+        for (let i = 0; i < 10000; i++) {
+            const x = (Math.random() - 0.5) * 2000;
+            const y = (Math.random() - 0.5) * 2000;
+            const z = (Math.random() - 0.5) * 2000;
+            starVertices.push(x, y, z);
+        }
+        starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+
+        // Satellite system
+        const satellites = [];
+        const satelliteMaterial = new THREE.MeshPhongMaterial({
+            color: 0xaaaaaa,
+            shininess: 100,
+            specular: 0xffffff
+        });
+
+        function createSatellite() {
+            const satelliteGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+            const satellite = new THREE.Mesh(satelliteGeometry, satelliteMaterial);
+            const orbitalRadius = 6 + Math.random(); // 6 to 7
+            const inclination = Math.random() * Math.PI / 3; // 0 to 60 degrees
+            const orbitalSpeed = 0.0005 + Math.random() * 0.001; // Slower: 0.0005 to 0.0015
+            const phase = Math.random() * Math.PI * 2; // Random starting phase
+            scene.add(satellite);
+            return { mesh: satellite, orbitalRadius, inclination, orbitalSpeed, phase };
+        }
+
+        // Create 5 satellites
+        for (let i = 0; i < 5; i++) {
+            satellites.push(createSatellite());
+        }
+
+        // Laser system
+        const lasers = [];
+        const laserMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff0000,
+            transparent: true,
+            opacity: 0.8
+        });
+        let laserHitCount = 0;
+
+        function shootLaser() {
+            if (missiles.length === 0 || satellites.length === 0) return;
+
+            const satellite = satellites[Math.floor(Math.random() * satellites.length)];
+            const missile = missiles[Math.floor(Math.random() * missiles.length)];
+
+            const startPos = satellite.mesh.position.clone();
+            const endPos = missile.mesh.position.clone();
+            const direction = endPos.clone().sub(startPos).normalize();
+            const length = startPos.distanceTo(endPos);
+
+            const laserGeometry = new THREE.CylinderGeometry(0.02, 0.02, length, 8);
+            const laserMesh = new THREE.Mesh(laserGeometry, laserMaterial);
+            laserMesh.position.copy(startPos);
+            laserMesh.lookAt(endPos);
+            laserMesh.rotateX(Math.PI / 2);
+            scene.add(laserMesh);
+
+            lasers.push({ mesh: laserMesh, startPos, endPos, t: 0, missileIndex: missiles.indexOf(missile) });
+        }
+
+        // Camera position
+        camera.position.z = 15;
+        let originalCameraZ = 15;
+        let targetCameraZ = 15;
+        let zoomStartTime = 0;
+        let isZooming = false;
+        let isZoomedIn = false;
+
+        // Camera management
+        let activeCamera = camera;
+        let currentCameraIndex = 0;
+
+        // Double-tap zoom toggle
+        let lastTap = 0;
+        renderer.domElement.addEventListener('touchend', (e) => {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTap;
+            if (tapLength < 300 && tapLength > 0) {
+                isZooming = true;
+                zoomStartTime = performance.now();
+                targetCameraZ = isZoomedIn ? 15 : 10; // Toggle zoom
+                isZoomedIn = !isZoomedIn; // Update state
+            }
+            lastTap = currentTime;
+        });
+
+        // Interaction variables
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let rotationVelocity = { x: 0, y: 0 };
+
+        // Mouse/touch events
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+        renderer.domElement.addEventListener('touchstart', (e) => {
+            isDragging = true;
+            previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        });
+
+        renderer.domElement.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const deltaMove = {
+                    x: e.clientX - previousMousePosition.x,
+                    y: e.clientY - previousMousePosition.y
+                };
+                rotationVelocity.y = deltaMove.x * 0.005;
+                rotationVelocity.x = deltaMove.y * 0.005;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            }
+        });
+        renderer.domElement.addEventListener('touchmove', (e) => {
+            if (isDragging) {
+                const deltaMove = {
+                    x: e.touches[0].clientX - previousMousePosition.x,
+                    y: e.touches[0].clientY - previousMousePosition.y
+                };
+                rotationVelocity.y = deltaMove.x * 0.005;
+                rotationVelocity.x = deltaMove.y * 0.005;
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+        });
+
+        renderer.domElement.addEventListener('mouseup', () => { isDragging = false; });
+        renderer.domElement.addEventListener('touchend', () => { isDragging = false; });
+
+        // Missile system
+        const missiles = [];
+        const missileMaterial = new THREE.MeshPhongMaterial({
+            color: 0x606060, // Metallic gray
+            emissive: 0x404040,
+            emissiveIntensity: 0.3,
+            shininess: 100,
+            specular: 0xaaaaaa
+        });
+        const missileGlowMaterial = new THREE.MeshBasicMaterial({
+            color: 0xaaaaaa,
+            transparent: true,
+            opacity: 0.3
+        });
+
+        function createMissileMesh() {
+            const missileGroup = new THREE.Group();
+
+            // Missile body (cylinder, scaled down)
+            const bodyGeometry = new THREE.CylinderGeometry(0.04, 0.04, 0.4, 16);
+            const body = new THREE.Mesh(bodyGeometry, missileMaterial);
+            body.position.y = 0.2;
+            missileGroup.add(body);
+
+            // Missile nose (cone, scaled down)
+            const noseGeometry = new THREE.ConeGeometry(0.04, 0.1, 16);
+            const nose = new THREE.Mesh(noseGeometry, missileMaterial);
+            nose.position.y = 0.45;
+            missileGroup.add(nose);
+
+            // Fins (4 triangular prisms, scaled down)
+            const finGeometry = new THREE.BoxGeometry(0.075, 0.005, 0.1);
+            for (let i = 0; i < 4; i++) {
+                const fin = new THREE.Mesh(finGeometry, missileMaterial);
+                fin.position.y = 0.05;
+                fin.position.x = (i % 2 === 0 ? 1 : -1) * 0.04;
+                fin.position.z = (i < 2 ? 1 : -1) * 0.04;
+                fin.rotation.y = Math.PI / 4 + (i * Math.PI / 2);
+                missileGroup.add(fin);
+            }
+
+            // Glow effect (scaled down)
+            const glowGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.5, 16);
+            const glow = new THREE.Mesh(glowGeometry, missileGlowMaterial);
+            glow.position.y = 0.25;
+            missileGroup.add(glow);
+
+            // Exhaust particles
+            const exhaustGeometry = new THREE.BufferGeometry();
+            const exhaustMaterial = new THREE.PointsMaterial({
+                color: 0xff4500,
+                size: 0.025,
+                transparent: true,
+                opacity: 0.8,
+                vertexColors: true
+            });
+            const exhaustVertices = new Float32Array(100 * 3);
+            const exhaustColors = new Float32Array(100 * 3);
+            const exhaustVelocities = new Float32Array(100 * 3);
+            for (let i = 0; i < 100; i++) {
+                exhaustVertices[i * 3] = 0;
+                exhaustVertices[i * 3 + 1] = 0;
+                exhaustVertices[i * 3 + 2] = 0;
+                exhaustColors[i * 3] = 1;
+                exhaustColors[i * 3 + 1] = Math.random() * 0.5 + 0.5;
+                exhaustColors[i * 3 + 2] = 0;
+                exhaustVelocities[i * 3] = (Math.random() - 0.5) * 0.01;
+                exhaustVelocities[i * 3 + 1] = -(Math.random() * 0.05 + 0.05);
+                exhaustVelocities[i * 3 + 2] = (Math.random() - 0.5) * 0.01;
+            }
+            exhaustGeometry.setAttribute('position', new THREE.BufferAttribute(exhaustVertices, 3));
+            exhaustGeometry.setAttribute('color', new THREE.BufferAttribute(exhaustColors, 3));
+            const exhaust = new THREE.Points(exhaustGeometry, exhaustMaterial);
+            exhaust.position.y = -0.05;
+            missileGroup.add(exhaust);
+
+            // Missile camera (adjusted for smaller missile)
+            const missileCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            missileCamera.position.set(0, 0.25, -0.5); // Slightly above and behind missile
+            missileCamera.lookAt(0, 0.25, 0); // Look forward along missile path
+            missileGroup.add(missileCamera);
+
+            return { group: missileGroup, exhaust, exhaustVelocities, camera: missileCamera };
+        }
+
+        // Explosion and nuclear cloud
+        const explosionCoreGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+        const explosionCoreMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 1.0
+        });
+        const groundFlashGeometry = new THREE.CircleGeometry(0.3, 32);
+        const groundFlashMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffffcc,
+            transparent: true,
+            opacity: 0.7
+        });
+        const shockwaveGeometry = new THREE.RingGeometry(0.2, 0.6, 32);
+        const shockwaveMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff9900,
+            transparent: true,
+            opacity: 0.5,
+            side: THREE.DoubleSide
+        });
+        const nuclearCloudGeometry = new THREE.BufferGeometry();
+        const nuclearCloudMaterial = new THREE.PointsMaterial({
+            color: 0x666666,
+            size: 0.15,
+            transparent: true,
+            opacity: 0.6
+        });
+        const damageGeometry = new THREE.PlaneGeometry(0.2, 0.2);
+        const damageMaterial = new THREE.MeshBasicMaterial({
+            color: 0x333333,
+            transparent: true,
+            opacity: 0.8
+        });
+        const persistentSmokeMaterial = new THREE.PointsMaterial({
+            color: 0x666666,
+            size: 0.15,
+            transparent: true,
+            opacity: 0.3 // Reduced opacity for lingering effect
+        });
+
+        // Function to create text sprite for casualties
+        function createTextSprite(message) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 64;
+            context.font = '24px VT323';
+            context.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.fillStyle = '#00FF00';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(message, canvas.width / 2, canvas.height / 2);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({
+                map: texture,
+                transparent: true,
+                opacity: 1.0
+            });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(2, 0.5, 1); // Adjust size
+            return sprite;
+        }
+
+        // Game stats
+        let countdown = 5.0;
+        let population = 8000000000;
+        let peopleKilled = 0;
+        let launches = [];
+
+        function updateStats() {
+            document.getElementById('countdown').textContent = countdown.toFixed(1);
+            document.getElementById('population').textContent = population.toLocaleString();
+            document.getElementById('killed').textContent = peopleKilled.toLocaleString();
+            document.getElementById('launches').textContent = launches.length ? launches.join(', ') : 'NONE';
+        }
+
+        // Countdown timer
+        setInterval(() => {
+            countdown -= 0.1;
+            if (countdown <= 0) countdown = 5.0;
+            updateStats();
+        }, 100);
+
+        function latLonToVector3(lat, lon, radius) {
+            const phi = (90 - lat) * Math.PI / 180;
+            const theta = (lon + 180) * Math.PI / 180;
+            return new THREE.Vector3(
+                -radius * Math.sin(phi) * Math.cos(theta),
+                radius * Math.cos(phi),
+                radius * Math.sin(phi) * Math.sin(theta)
+            );
+        }
+
+        // List of nuclear-armed countries (sources)
+        const nuclearCountries = [
+            { name: 'United States', lat: 38.90, lon: -77.04 }, // Washington, D.C.
+            { name: 'Russia', lat: 55.75, lon: 37.62 }, // Moscow
+            { name: 'China', lat: 39.90, lon: 116.40 }, // Beijing
+            { name: 'France', lat: 48.86, lon: 2.35 }, // Paris
+            { name: 'United Kingdom', lat: 51.51, lon: -0.13 }, // London
+            { name: 'India', lat: 28.61, lon: 77.21 }, // New Delhi
+            { name: 'Pakistan', lat: 33.68, lon: 73.05 }, // Islamabad
+            { name: 'Israel', lat: 31.77, lon: 35.22 }, // Jerusalem
+            { name: 'North Korea', lat: 39.03, lon: 125.75 } // Pyongyang
+        ];
+
+        // List of destination countries (broader list)
+        const destinationCountries = [
+            { name: 'United States', lat: 38.90, lon: -77.04 }, // Washington, D.C.
+            { name: 'Russia', lat: 55.75, lon: 37.62 }, // Moscow
+            { name: 'China', lat: 39.90, lon: 116.40 }, // Beijing
+            { name: 'France', lat: 48.86, lon: 2.35 }, // Paris
+            { name: 'United Kingdom', lat: 51.51, lon: -0.13 }, // London
+            { name: 'India', lat: 28.61, lon: 77.21 }, // New Delhi
+            { name: 'Pakistan', lat: 33.68, lon: 73.05 }, // Islamabad
+            { name: 'Israel', lat: 31.77, lon: 35.22 }, // Jerusalem
+            { name: 'North Korea', lat: 39.03, lon: 125.75 }, // Pyongyang
+            { name: 'Australia', lat: -35.28, lon: 149.13 }, // Canberra
+            { name: 'Brazil', lat: -15.79, lon: -47.88 }, // Brasília
+            { name: 'Canada', lat: 45.42, lon: -75.70 }, // Ottawa
+            { name: 'Germany', lat: 52.52, lon: 13.41 }, // Berlin
+            { name: 'Japan', lat: 35.68, lon: 139.76 }, // Tokyo
+            { name: 'South Africa', lat: -25.75, lon: 28.19 }, // Pretoria
+            { name: 'Iran', lat: 35.69, lon: 51.42 }, // Tehran
+            { name: 'South Korea', lat: 37.57, lon: 126.98 }, // Seoul
+            { name: 'Mexico', lat: 19.43, lon: -99.13 }, // Mexico City
+            { name: 'Saudi Arabia', lat: 24.71, lon: 46.68 }, // Riyadh
+            { name: 'Egypt', lat: 30.04, lon: 31.24 } // Cairo
+        ];
+
+        function launchMissile() {
+            // Randomly select source from nuclear countries
+            const sourceIndex = Math.floor(Math.random() * nuclearCountries.length);
+            // Randomly select target from destination countries
+            let targetIndex;
+            do {
+                targetIndex = Math.floor(Math.random() * destinationCountries.length);
+            } while (
+                destinationCountries[targetIndex].name === nuclearCountries[sourceIndex].name
+            ); // Ensure different source and target
+
+            const source = nuclearCountries[sourceIndex];
+            const target = destinationCountries[targetIndex];
+
+            const { group: missile, exhaust, exhaustVelocities, camera: missileCamera } = createMissileMesh();
+
+            // Set missile position in Earth's local coordinates
+            const localStartPos = latLonToVector3(source.lat, source.lon, 5.1);
+            missile.position.copy(localStartPos);
+            earth.add(missile); // Parent to Earth for launch
+
+            // Store world-space positions for trajectory
+            const startPos = earth.localToWorld(localStartPos.clone());
+            const endPos = latLonToVector3(target.lat, target.lon, 5.1);
+            const midPoint = startPos.clone().lerp(endPos, 0.5).normalize().multiplyScalar(7);
+
+            // Particle trail (longer and more visible)
+            const trailGeometry = new THREE.BufferGeometry();
+            const trailMaterial = new THREE.PointsMaterial({
+                color: 0xffa500,
+                size: 0.05,
+                transparent: true,
+                opacity: 0.9,
+                vertexColors: true
+            });
+            const trailVertices = new Float32Array(600 * 3);
+            const trailOpacities = new Float32Array(600);
+            // Initialize trail vertices to avoid NaN
+            for (let i = 0; i < 600 * 3; i++) {
+                trailVertices[i] = 0;
+                trailOpacities[i / 3] = 0;
+            }
+            trailGeometry.setAttribute('position', new THREE.BufferAttribute(trailVertices, 3));
+            trailGeometry.setAttribute('opacity', new THREE.BufferAttribute(trailOpacities, 1));
+            const trail = new THREE.Points(trailGeometry, trailMaterial);
+            scene.add(trail);
+
+            // Add launch to stats
+            launches.push(`${source.name} to ${target.name}`);
+            updateStats();
+
+            missiles.push({ mesh: missile, trail, exhaust, exhaustVelocities, startPos, midPoint, endPos, t: 0, endName: target.name, launched: false, camera: missileCamera });
+        }
+
+        function createExplosion(position, endName) {
+            // Ensure valid position
+            const safePosition = position.clone();
+            const localPos = earth.worldToLocal(safePosition);
+
+            // Damage mark (persistent)
+            const damage = new THREE.Mesh(damageGeometry, damageMaterial.clone());
+            damage.position.copy(localPos);
+            damage.lookAt(new THREE.Vector3(0, 0, 0));
+            damage.position.normalize().multiplyScalar(5.01);
+            earth.add(damage);
+
+            // Ground flash
+            const groundFlash = new THREE.Mesh(groundFlashGeometry, groundFlashMaterial.clone());
+            groundFlash.position.copy(localPos);
+            groundFlash.lookAt(new THREE.Vector3(0, 0, 0));
+            groundFlash.position.normalize().multiplyScalar(5.01);
+            earth.add(groundFlash);
+
+            // Explosion core
+            const core = new THREE.Mesh(explosionCoreGeometry, explosionCoreMaterial.clone());
+            core.position.copy(localPos);
+            earth.add(core);
+
+            // Shockwave
+            const shockwave = new THREE.Mesh(shockwaveGeometry, shockwaveMaterial.clone());
+            shockwave.position.copy(localPos);
+            shockwave.lookAt(new THREE.Vector3(0, 0, 0));
+            earth.add(shockwave);
+
+            // Particle system: sparks
+            const sparkGeometry = new THREE.BufferGeometry();
+            const sparkMaterial = new THREE.PointsMaterial({
+                size: 0.08,
+                transparent: true,
+                opacity: 0.9,
+                vertexColors: true
+            });
+            const sparkVertices = [];
+            const sparkColors = [];
+            const sparkVelocities = [];
+            for (let i = 0; i < 400; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI;
+                const r = Math.random() * 0.3;
+                sparkVertices.push(
+                    r * Math.sin(phi) * Math.cos(theta),
+                    r * Math.sin(phi) * Math.sin(theta),
+                    r * Math.cos(phi)
+                );
+                const speed = 0.08 + Math.random() * 0.12;
+                sparkVelocities.push(
+                    speed * Math.sin(phi) * Math.cos(theta),
+                    speed * Math.sin(phi) * Math.sin(theta),
+                    speed * Math.cos(phi)
+                );
+                const t = Math.random();
+                const color = t < 0.3 ? [1, 1, 1] : t < 0.7 ? [1, 1, 0] : [1, 0.5, 0];
+                sparkColors.push(...color);
+            }
+            sparkGeometry.setAttribute('position', new THREE.Float32BufferAttribute(sparkVertices, 3));
+            sparkGeometry.setAttribute('color', new THREE.Float32BufferAttribute(sparkColors, 3));
+            const sparks = new THREE.Points(sparkGeometry, sparkMaterial);
+            sparks.position.copy(localPos);
+            earth.add(sparks);
+
+            // Particle system: smoke (temporary)
+            const smokeGeometry = new THREE.BufferGeometry();
+            const smokeMaterial = new THREE.PointsMaterial({
+                color: 0x888888,
+                size: 0.1,
+                transparent: true,
+                opacity: 0.6,
+                vertexColors: true
+            });
+            const smokeVertices = [];
+            const smokeVelocities = [];
+            const smokeColors = [];
+            for (let i = 0; i < 150; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI / 2;
+                const r = Math.random() * 0.2;
+                smokeVertices.push(
+                    r * Math.sin(phi) * Math.cos(theta),
+                    r * Math.sin(phi) * Math.sin(theta),
+                    r * Math.cos(phi)
+                );
+                const speed = 0.02 + Math.random() * 0.03;
+                smokeVelocities.push(
+                    speed * Math.sin(phi) * Math.cos(theta),
+                    speed * Math.sin(phi) * Math.sin(theta),
+                    speed * 0.03
+                );
+                const gray = 0.7 + Math.random() * 0.2;
+                smokeColors.push(gray, gray, gray);
+            }
+            smokeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(smokeVertices, 3));
+            smokeGeometry.setAttribute('color', new THREE.Float32BufferAttribute(smokeColors, 3));
+            const smoke = new THREE.Points(smokeGeometry, smokeMaterial);
+            smoke.position.copy(localPos);
+            earth.add(smoke);
+
+            // Persistent smoke cloud
+            const persistentSmokeGeometry = new THREE.BufferGeometry();
+            const persistentSmokeVertices = [];
+            const persistentSmokeColors = [];
+            for (let i = 0; i < 100; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI / 3;
+                const r = Math.random() * 0.3;
+                persistentSmokeVertices.push(
+                    r * Math.sin(phi) * Math.cos(theta),
+                    r * Math.sin(phi) * Math.sin(theta),
+                    r * Math.cos(phi) + 0.1
+                );
+                const gray = 0.6 + Math.random() * 0.2;
+                persistentSmokeColors.push(gray, gray, gray);
+            }
+            persistentSmokeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(persistentSmokeVertices, 3));
+            persistentSmokeGeometry.setAttribute('color', new THREE.Float32BufferAttribute(persistentSmokeColors, 3));
+            const persistentSmoke = new THREE.Points(persistentSmokeGeometry, persistentSmokeMaterial.clone());
+            persistentSmoke.position.copy(localPos);
+            earth.add(persistentSmoke);
+
+            // Nuclear cloud
+            const cloudVertices = [];
+            const cloudVelocities = [];
+            const cloudColors = [];
+            for (let i = 0; i < 100; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI / 3;
+                const r = Math.random() * 0.5;
+                cloudVertices.push(
+                    r * Math.sin(phi) * Math.cos(theta),
+                    r * Math.sin(phi) * Math.sin(theta),
+                    r * Math.cos(phi) + 0.2
+                );
+                const speed = 0.01 + Math.random() * 0.015;
+                cloudVelocities.push(
+                    speed * Math.sin(phi) * Math.cos(theta),
+                    speed * Math.sin(phi) * Math.sin(theta),
+                    speed * 0.03
+                );
+                const gray = 0.6 + Math.random() * 0.2;
+                cloudColors.push(gray, gray, gray);
+            }
+            nuclearCloudGeometry.setAttribute('position', new THREE.Float32BufferAttribute(cloudVertices, 3));
+            nuclearCloudGeometry.setAttribute('color', new THREE.Float32BufferAttribute(cloudColors, 3));
+            const nuclearCloud = new THREE.Points(nuclearCloudGeometry, nuclearCloudMaterial.clone());
+            nuclearCloud.position.copy(localPos);
+            earth.add(nuclearCloud);
+
+            // Casualties text sprite
+            const casualtiesSprite = createTextSprite('CASUALTIES: 10,000,000');
+            const worldPos = earth.localToWorld(localPos.clone().normalize().multiplyScalar(5.5)); // Offset above surface
+            casualtiesSprite.position.copy(worldPos);
+            scene.add(casualtiesSprite);
+
+            // Update stats on explosion
+            population -= 10000000;
+            peopleKilled += 10000000;
+            if (endName) {
+                launches = launches.filter(launch => !launch.endsWith(endName));
+            }
+            updateStats();
+
+            // Animate explosion (excluding persistent smoke and damage) and casualties sprite
+            let opacity = 1.0;
+            let shockwaveScale = 1;
+            const fadeInterval = setInterval(() => {
+                opacity -= 0.04;
+                shockwaveScale += 0.08;
+
+                core.material.opacity = opacity;
+                groundFlash.material.opacity = opacity * 0.7;
+                sparks.material.opacity = opacity;
+                smoke.material.opacity = opacity * 0.6;
+                shockwave.material.opacity = opacity * 0.4;
+                nuclearCloud.material.opacity = opacity * 0.5;
+                casualtiesSprite.material.opacity = opacity;
+                shockwave.scale.set(shockwaveScale, shockwaveScale, 1);
+
+                // Update spark positions
+                const sparkPos = sparks.geometry.attributes.position.array;
+                for (let i = 0; i < sparkPos.length; i += 3) {
+                    sparkPos[i] += sparkVelocities[i];
+                    sparkPos[i + 1] += sparkVelocities[i + 1];
+                    sparkPos[i + 2] += sparkVelocities[i + 2];
+                    sparkVelocities[i] *= 0.95;
+                    sparkVelocities[i + 1] *= 0.95;
+                    sparkVelocities[i + 2] *= 0.95;
+                }
+                sparks.geometry.attributes.position.needsUpdate = true;
+
+                // Update smoke positions
+                const smokePos = smoke.geometry.attributes.position.array;
+                for (let i = 0; i < smokePos.length; i += 3) {
+                    smokePos[i] += smokeVelocities[i];
+                    smokePos[i + 1] += smokeVelocities[i + 1];
+                    smokePos[i + 2] += smokeVelocities[i + 2];
+                }
+                smoke.geometry.attributes.position.needsUpdate = true;
+
+                // Update nuclear cloud positions
+                const cloudPos = nuclearCloud.geometry.attributes.position.array;
+                for (let i = 0; i < cloudPos.length; i += 3) {
+                    cloudPos[i] += cloudVelocities[i];
+                    cloudPos[i + 1] += cloudVelocities[i + 1];
+                    cloudPos[i + 2] += cloudVelocities[i + 2];
+                }
+                nuclearCloud.geometry.attributes.position.needsUpdate = true;
+
+                if (opacity <= 0) {
+                    clearInterval(fadeInterval);
+                    earth.remove(core);
+                    earth.remove(groundFlash);
+                    earth.remove(sparks);
+                    earth.remove(smoke);
+                    earth.remove(shockwave);
+                    earth.remove(nuclearCloud);
+                    scene.remove(casualtiesSprite);
+                }
+            }, 50);
+        }
+
+        // Missile and laser launch intervals
+        setInterval(() => {
+            launchMissile();
+            shootLaser();
+        }, 5000);
+
+        // Camera cycling
+        function cycleCamera() {
+            const availableCameras = [camera, ...missiles.map(m => m.camera)];
+            currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+            activeCamera = availableCameras[currentCameraIndex];
+        }
+
+        document.getElementById('cameraButton').addEventListener('click', cycleCamera);
+
+        // Animation
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Smooth camera zoom (only for main camera)
+            if (isZooming && activeCamera === camera) {
+                const elapsed = (performance.now() - zoomStartTime) / 1000; // Seconds
+                const t = Math.min(elapsed / 0.5, 1); // Smooth transition over 0.5s
+                camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetCameraZ, t);
+                if (t >= 1) {
+                    isZooming = false;
+                }
+            }
+
+            // Earth rotation (slow when not dragging)
+            if (!isDragging) {
+                rotationVelocity.y += 0.0002; // Slower auto-rotation
+            }
+            earth.rotation.y += rotationVelocity.y * 0.5;
+            earth.rotation.x += rotationVelocity.x * 0.5;
+            clouds.rotation.y += rotationVelocity.y * 0.5 + 0.0005;
+            clouds.rotation.x += rotationVelocity.x * 0.5;
+            rotationVelocity.x *= 0.95;
+            rotationVelocity.y *= 0.95;
+
+            // Update satellites
+            satellites.forEach(satellite => {
+                const time = performance.now() * satellite.orbitalSpeed + satellite.phase;
+                const x = satellite.orbitalRadius * Math.cos(time);
+                const z = satellite.orbitalRadius * Math.sin(time);
+                const y = z * Math.sin(satellite.inclination);
+                satellite.mesh.position.set(x, y, z);
+            });
+
+            // Update lasers
+            lasers.forEach((laser, index) => {
+                laser.t += 0.05; // Fast laser travel
+                if (laser.t >= 1) {
+                    if (laser.missileIndex >= 0 && laser.missileIndex < missiles.length) {
+                        laserHitCount++;
+                        if (laserHitCount % 2 === 1) { // Every other hit destroys missile
+                            const missile = missiles[laser.missileIndex];
+                            createExplosion(missile.mesh.position, null); // Explosion without stats update
+                            scene.remove(missile.mesh);
+                            scene.remove(missile.trail);
+                            if (activeCamera === missile.camera) {
+                                activeCamera = camera;
+                                currentCameraIndex = 0;
+                            }
+                            missiles.splice(laser.missileIndex, 1);
+                        }
+                    }
+                    scene.remove(laser.mesh);
+                    lasers.splice(index, 1);
+                } else {
+                    const pos = laser.startPos.clone().lerp(laser.endPos, laser.t);
+                    laser.mesh.position.copy(pos);
+                    laser.mesh.lookAt(laser.endPos);
+                    laser.mesh.rotateX(Math.PI / 2);
+                }
+            });
+
+            // Update missiles
+            missiles.forEach((missile, index) => {
+                if (!missile.launched) {
+                    // Detach from Earth and move to world space
+                    missile.launched = true;
+                    const worldPos = earth.localToWorld(missile.mesh.position.clone());
+                    earth.remove(missile.mesh);
+                    scene.add(missile.mesh);
+                    missile.mesh.position.copy(worldPos);
+                }
+
+                missile.t += 0.008; // Slower for visible travel
+                if (missile.t >= 1) {
+                    createExplosion(missile.mesh.position, missile.endName);
+                    scene.remove(missile.mesh);
+                    scene.remove(missile.trail);
+                    // Reset to main camera if the active camera was this missile's
+                    if (activeCamera === missile.camera) {
+                        activeCamera = camera;
+                        currentCameraIndex = 0;
+                    }
+                    missiles.splice(index, 1);
+                } else {
+                    // Quadratic Bezier curve for trajectory
+                    const t = missile.t;
+                    const p0 = missile.startPos;
+                    const p1 = missile.midPoint;
+                    const p2 = missile.endPos;
+                    const pos = new THREE.Vector3()
+                        .copy(p0).multiplyScalar((1 - t) * (1 - t))
+                        .add(p1.clone().multiplyScalar(2 * (1 - t) * t))
+                        .add(p2.clone().multiplyScalar(t * t));
+                    missile.mesh.position.copy(pos);
+
+                    // Orient missile along path
+                    const nextT = t + 0.01;
+                    const nextPos = new THREE.Vector3()
+                        .copy(p0).multiplyScalar((1 - nextT) * (1 - nextT))
+                        .add(p1.clone().multiplyScalar(2 * (1 - nextT) * nextT))
+                        .add(p2.clone().multiplyScalar(t * t));
+                    missile.mesh.lookAt(nextPos);
+                    missile.mesh.rotateX(Math.PI / 2);
+
+                    // Update trail with fading opacity
+                    const trailPos = missile.trail.geometry.attributes.position.array;
+                    const trailOpacities = missile.trail.geometry.attributes.opacity.array;
+                    const trailIndex = (Math.floor(t * 600) % 600) * 3;
+                    trailPos[trailIndex] = isFinite(pos.x) ? pos.x : 0;
+                    trailPos[trailIndex + 1] = isFinite(pos.y) ? pos.y : 0;
+                    trailPos[trailIndex + 2] = isFinite(pos.z) ? pos.z : 0;
+                    trailOpacities[Math.floor(t * 600) % 600] = 1.0 - t;
+                    missile.trail.geometry.attributes.position.needsUpdate = true;
+                    missile.trail.geometry.attributes.opacity.needsUpdate = true;
+
+                    // Update exhaust particles
+                    const exhaustPos = missile.exhaust.geometry.attributes.position.array;
+                    for (let i = 0; i < exhaustPos.length; i += 3) {
+                        exhaustPos[i] += missile.exhaustVelocities[i];
+                        exhaustPos[i + 1] += missile.exhaustVelocities[i + 1];
+                        exhaustPos[i + 2] += missile.exhaustVelocities[i + 2];
+                        if (exhaustPos[i + 1] < -0.25) { // Reset particles (adjusted for smaller missile)
+                            exhaustPos[i] = 0;
+                            exhaustPos[i + 1] = 0;
+                            exhaustPos[i + 2] = 0;
+                            missile.exhaustVelocities[i] = (Math.random() - 0.5) * 0.01;
+                            missile.exhaustVelocities[i + 1] = -(Math.random() * 0.05 + 0.05);
+                            missile.exhaustVelocities[i + 2] = (Math.random() - 0.5) * 0.01;
+                        }
+                    }
+                    missile.exhaust.geometry.attributes.position.needsUpdate = true;
+                }
+            });
+
+            renderer.render(scene, activeCamera);
+        }
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            missiles.forEach(missile => {
+                missile.camera.aspect = window.innerWidth / window.innerHeight;
+                missile.camera.updateProjectionMatrix();
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
