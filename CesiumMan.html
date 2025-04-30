@@ -1,0 +1,368 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>3D Elephant Scene</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/loaders/GLTFLoader.js"></script>
+  <style>
+    body { margin: 0; }
+    canvas { display: block; }
+    #ui {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    button {
+      margin: 5px;
+      padding: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <button id="cameraBtn">Camera Position</button>
+    <button id="walkBtn">Walk</button>
+    <button id="danceBtn">Dance</button>
+    <button id="scrambleBtn">Scramble</button>
+    <button id="gridBtn">Grid</button>
+  </div>
+  <script>
+    // Scene setup
+    const scene = new THREE.Scene();
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true; // Enable shadows
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Soft shadows
+    document.body.appendChild(renderer.domElement);
+
+    // Cameras
+    const orbitCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const followCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    let activeCamera = orbitCamera;
+
+    // Sun-like light source
+    const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    sunLight.position.set(10, 20, 10);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 1024;
+    sunLight.shadow.mapSize.height = 1024;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 50;
+    sunLight.shadow.camera.left = -20;
+    sunLight.shadow.camera.right = 20;
+    sunLight.shadow.camera.top = 20;
+    sunLight.shadow.camera.bottom = -20;
+    scene.add(sunLight);
+    scene.add(new THREE.AmbientLight(0x404040, 0.3)); // Softer ambient light
+
+    // Metallic floor with texture
+    const textureLoader = new THREE.TextureLoader();
+    const floorGeometry = new THREE.PlaneGeometry(50, 50);
+    const floorMaterial = new THREE.MeshStandardMaterial({
+      color: 0xaaaaaa, // Base metallic color
+      metalness: 0.8, // High metalness for metallic look
+      roughness: 0.3, // Low roughness for slight reflectivity
+      normalMap: textureLoader.load('https://threejs.org/examples/textures/normal_map.jpg'), // Normal map for texture
+    });
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -0.1;
+    floor.receiveShadow = true; // Floor receives shadows
+    scene.add(floor);
+
+    // Dark gradient background
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const context = canvas.getContext('2d');
+    const gradient = context.createLinearGradient(0, 0, 0, 512);
+    gradient.addColorStop(0, '#1a1a1a');
+    gradient.addColorStop(1, '#000000');
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 512, 512);
+    const texture = new THREE.CanvasTexture(canvas);
+    const bgGeometry = new THREE.SphereGeometry(100, 32, 32);
+    const bgMaterial = new THREE.MeshBasicMaterial({ map: texture, side: THREE.BackSide });
+    const background = new THREE.Mesh(bgGeometry, bgMaterial);
+    scene.add(background);
+
+    // Store mixers, actions, and characters
+    const mixers = [];
+    const characters = [];
+    let selectedCharacters = [];
+    let loadedCount = 0;
+
+    // Load 100 characters
+    const loader = new THREE.GLTFLoader();
+    const movementTypes = ['walk', 'run', 'dance'];
+
+    for (let i = 0; i < 100; i++) {
+      loader.load(
+        'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/CesiumMan/glTF/CesiumMan.gltf',
+        (gltf) => {
+          try {
+            const model = gltf.scene;
+            model.scale.set(0.5, 0.5, 0.5);
+            const x = ((i % 10) - 4.5) * 1.5;
+            const z = (Math.floor(i / 10) - 4.5) * 1.5;
+            model.position.set(x, 0, z);
+            model.castShadow = true; // Characters cast shadows
+            scene.add(model);
+
+            // Vary clothes with random color tint
+            model.traverse((child) => {
+              if (child.isMesh && child.material) {
+                const hue = Math.random() * 0.2 + 0.4;
+                const color = new THREE.Color().setHSL(hue, 0.5, 0.5);
+                child.material.color = color;
+                child.castShadow = true;
+                child.receiveShadow = true;
+              }
+            });
+
+            const mixer = new THREE.AnimationMixer(model);
+            mixers.push(mixer);
+            const movement = movementTypes[Math.floor(Math.random() * movementTypes.length)];
+            const action = mixer.clipAction(gltf.animations[0]);
+            action.play();
+
+            if (movement === 'walk') action.timeScale = 1.0 + (Math.random() - 0.5) * 0.2;
+            else if (movement === 'run') action.timeScale = 2.0 + (Math.random() - 0.5) * 0.4;
+            else if (movement === 'dance') action.timeScale = 1.5 + (Math.random() - 0.5) * 0.3;
+
+            characters.push({ model, mixer, action, clip: gltf.animations[0] });
+            loadedCount++;
+
+            if (loadedCount === 100) {
+              selectedCharacters = characters.sort(() => Math.random() - 0.5).slice(0, 5);
+            }
+          } catch (e) {
+            console.error('Error processing model:', e);
+          }
+        },
+        undefined,
+        (error) => console.error('Error loading model:', error)
+      );
+    }
+
+    // Camera flight path for orbit camera
+    let time = 0;
+    const radius = 10;
+    const height = 5;
+    const speed = 0.5;
+
+    // Camera cycling
+    let currentCameraIndex = 0;
+    let cameraTransition = false;
+    let transitionProgress = 0;
+    const transitionDuration = 1.5;
+    const cameraSwitchInterval = 5;
+    let lastSwitchTime = 0;
+
+    // Easing function for smooth transitions
+    function easeInOutCubic(t) {
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    // UI buttons
+    document.addEventListener('DOMContentLoaded', () => {
+      const cameraBtn = document.getElementById('cameraBtn');
+      const walkBtn = document.getElementById('walkBtn');
+      const danceBtn = document.getElementById('danceBtn');
+      const scrambleBtn = document.getElementById('scrambleBtn');
+      const gridBtn = document.getElementById('gridBtn');
+
+      // Update camera button text with position
+      function updateCameraButton() {
+        const pos = activeCamera.position;
+        cameraBtn.textContent = `Camera: (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`;
+      }
+
+      // Camera button: Switch cameras
+      cameraBtn.addEventListener('click', () => {
+        currentCameraIndex = (currentCameraIndex + 1) % 2;
+        cameraTransition = true;
+        transitionProgress = 0;
+        lastSwitchTime = time;
+      });
+
+      // Walk button: Make all characters walk
+      walkBtn.addEventListener('click', () => {
+        characters.forEach(char => {
+          try {
+            char.action.fadeOut(0.2);
+            char.action = char.mixer.clipAction(char.clip);
+            char.action.timeScale = 1.0 + (Math.random() - 0.5) * 0.2;
+            char.action.reset().fadeIn(0.2).play();
+          } catch (e) {
+            console.error('Error setting walk animation:', e);
+          }
+        });
+      });
+
+      // Dance button: Make all characters dance
+      danceBtn.addEventListener('click', () => {
+        characters.forEach(char => {
+          try {
+            char.action.fadeOut(0.2);
+            char.action = char.mixer.clipAction(char.clip);
+            char.action.timeScale = 1.5 + (Math.random() - 0.5) * 0.3;
+            char.action.reset().fadeIn(0.2).play();
+          } catch (e) {
+            console.error('Error setting dance animation:', e);
+          }
+        });
+      });
+
+      // Scramble button: Randomly reposition characters
+      scrambleBtn.addEventListener('click', () => {
+        characters.forEach(char => {
+          try {
+            const x = (Math.random() - 0.5) * 20;
+            const z = (Math.random() - 0.5) * 20;
+            char.model.position.set(x, 0, z);
+          } catch (e) {
+            console.error('Error scrambling position:', e);
+          }
+        });
+        selectedCharacters = characters.sort(() => Math.random() - 0.5).slice(0, 5);
+      });
+
+      // Grid button: Restore 10x10 grid
+      gridBtn.addEventListener('click', () => {
+        characters.forEach((char, i) => {
+          try {
+            const x = ((i % 10) - 4.5) * 1.5;
+            const z = (Math.floor(i / 10) - 4.5) * 1.5;
+            char.model.position.set(x, 0, z);
+          } catch (e) {
+            console.error('Error restoring grid position:', e);
+          }
+        });
+        selectedCharacters = characters.sort(() => Math.random() - 0.5).slice(0, 5);
+      });
+
+      // Initial button text
+      updateCameraButton();
+    });
+
+    // Clock for animation
+    const clock = new THREE.Clock();
+
+    // Animation loop
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      time += delta * speed;
+
+      // Update animations
+      mixers.forEach(mixer => {
+        try {
+          mixer.update(delta);
+        } catch (e) {
+          console.error('Error updating mixer:', e);
+        }
+      });
+
+      // Orbit camera position
+      orbitCamera.position.x = Math.cos(time) * radius;
+      orbitCamera.position.z = Math.sin(time) * radius;
+      orbitCamera.position.y = height;
+      orbitCamera.lookAt(0, 1, 0);
+
+      // Follow camera tracks 5 random characters
+      if (selectedCharacters.length > 0) {
+        const targetIndex = Math.floor(time % selectedCharacters.length);
+        const target = selectedCharacters[targetIndex].model.position;
+        followCamera.position.set(target.x + 2, target.y + 1.5, target.z + 2);
+        followCamera.lookAt(target.x, target.y + 0.5, target.z);
+      }
+
+      // Camera cycling
+      const currentTime = time;
+      if (currentTime - lastSwitchTime > cameraSwitchInterval && !cameraTransition) {
+        cameraTransition = true;
+        transitionProgress = 0;
+        currentCameraIndex = (currentCameraIndex + 1) % 2;
+        lastSwitchTime = currentTime;
+      }
+
+      // Smooth transition with easing
+      if (cameraTransition) {
+        transitionProgress += delta / transitionDuration;
+        if (transitionProgress >= 1) {
+          transitionProgress = 1;
+          cameraTransition = false;
+          activeCamera = currentCameraIndex == 0 ? orbitCamera : followCamera;
+        }
+
+        const easedProgress = easeInOutCubic(transitionProgress);
+        const srcCamera = currentCameraIndex === 0 ? followCamera : orbitCamera;
+        const dstCamera = currentCameraIndex === 0 ? orbitCamera : followCamera;
+        activeCamera.position.lerpVectors(srcCamera.position, dstCamera.position, easedProgress);
+        activeCamera.quaternion.slerpQuaternions(srcCamera.quaternion, dstCamera.quaternion, easedProgress);
+      }
+
+      // Update camera button text
+      document.getElementById('cameraBtn').textContent = 
+        `Camera: (${activeCamera.position.x.toFixed(2)}, ${activeCamera.position.y.toFixed(2)}, ${activeCamera.position.z.toFixed(2)})`;
+
+      renderer.render(scene, activeCamera);
+    }
+    animate();
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      orbitCamera.aspect = window.innerWidth / window.innerHeight;
+      followCamera.aspect = window.innerWidth / window.innerHeight;
+      orbitCamera.updateProjectionMatrix();
+      followCamera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
