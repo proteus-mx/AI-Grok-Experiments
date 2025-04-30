@@ -1,0 +1,454 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matrix Reaction Game</title>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            border: 2px solid #0f0;
+            background: #111;
+            display: none;
+        }
+        #stats {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border: 1px solid #0f0;
+        }
+        #stats p {
+            margin: 5px 0;
+        }
+        .target {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle, #0f0, #050);
+            border-radius: 50%;
+            cursor: crosshair;
+            box-shadow: 0 0 10px #0f0;
+            transition: all 0.2s;
+        }
+        .hit {
+            background: radial-gradient(circle, #fff, #0f0);
+            box-shadow: 0 0 20px #fff;
+        }
+        .miss {
+            background: radial-gradient(circle, #f00, #500);
+            box-shadow: 0 0 20px #f00;
+        }
+        .matrix-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.1;
+            pointer-events: none;
+        }
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border: 2px solid #0f0;
+            text-align: center;
+            display: none;
+            max-width: 600px;
+        }
+        #restart-btn {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+        }
+        #restart-btn:hover {
+            background: #0c0;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #0f0;
+            padding: 5px;
+            text-align: center;
+        }
+        .highlight {
+            font-weight: bold;
+            color: #0ff;
+        }
+        #loading-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            width: 800px;
+            height: 600px;
+        }
+        #loading-screen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        #loading-screen p {
+            font-size: 16px;
+            max-width: 600px;
+            margin: 0 auto 20px;
+        }
+        #loading-screen #countdown {
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-screen">
+        <canvas id="matrix-bg-loading" class="matrix-bg"></canvas>
+        <h1>mAtrIx reActIon</h1>
+        <p>Test your hand to eye coordination and reaction time, tap the objects as they appear as fast as you can. You’ll get a score and average reaction time. Try and beat your best</p>
+        <div id="countdown">5</div>
+    </div>
+    <div id="game-container">
+        <canvas id="matrix-bg" class="matrix-bg"></canvas>
+        <div id="stats">
+            <p>Overall Time: <span id="overall-time">0</span>s</p>
+            <p>Last Reaction Time: <span id="reaction-time">0</span>ms</p>
+            <p>Best Reaction Time: <span id="best-reaction-time">0</span>ms</p>
+            <p>Average Reaction Time: <span id="avg-reaction-time">0</span>ms</p>
+            <p>Score: <span id="score">0</span></p>
+            <p>Targets Left: <span id="targets-left">10</span></p>
+        </div>
+        <div id="game-over">
+            <canvas id="matrix-bg-game-over" class="matrix-bg"></canvas>
+            <h1>GAME OVER</h1>
+            <p>Final Score: <span id="final-score">0</span></p>
+            <p>Total Time: <span id="final-time">0</span>s</p>
+            <p>Best Reaction Time: <span id="final-best-reaction">0</span>ms</p>
+            <p>Average Reaction Time: <span id="final-avg-reaction">0</span>ms</p>
+            <div id="previous-results"></div>
+            <button id="restart-btn">Restart</button>
+        </div>
+    </div>
+    <script>
+        const container = document.getElementById('game-container');
+        const loadingScreen = document.getElementById('loading-screen');
+        const gameOverScreen = document.getElementById('game-over');
+        const stats = {
+            overallTime: document.getElementById('overall-time'),
+            reactionTime: document.getElementById('reaction-time'),
+            bestReactionTime: document.getElementById('best-reaction-time'),
+            avgReactionTime: document.getElementById('avg-reaction-time'),
+            score: document.getElementById('score'),
+            targetsLeft: document.getElementById('targets-left')
+        };
+        const finalStats = {
+            score: document.getElementById('final-score'),
+            time: document.getElementById('final-time'),
+            bestReaction: document.getElementById('final-best-reaction'),
+            avgReaction: document.getElementById('final-avg-reaction')
+        };
+        const previousResults = document.getElementById('previous-results');
+        const restartBtn = document.getElementById('restart-btn');
+        const countdownDisplay = document.getElementById('countdown');
+
+        // Matrix Background Setup
+        const canvases = [
+            { id: 'matrix-bg-loading', width: 800, height: 600 },
+            { id: 'matrix-bg', width: 800, height: 600 },
+            { id: 'matrix-bg-game-over', width: 600, height: 600 }
+        ];
+        const contexts = {};
+        const drops = {};
+
+        canvases.forEach(canvas => {
+            const c = document.getElementById(canvas.id);
+            const ctx = c.getContext('2d');
+            c.width = canvas.width;
+            c.height = canvas.height;
+            contexts[canvas.id] = ctx;
+            drops[canvas.id] = Array(Math.floor(canvas.width / 14)).fill(0);
+        });
+
+        const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const fontSize = 14;
+
+        function drawMatrix(canvasId) {
+            const ctx = contexts[canvasId];
+            const canvas = document.getElementById(canvasId);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#0f0';
+            ctx.font = `${fontSize}px monospace`;
+            drops[canvasId].forEach((y, i) => {
+                const text = chars[Math.floor(Math.random() * chars.length)];
+                const x = i * fontSize;
+                ctx.fillText(text, x, y * fontSize);
+                if (y * fontSize > canvas.height && Math.random() > 0.975) drops[canvasId][i] = 0;
+                drops[canvasId][i]++;
+            });
+        }
+        setInterval(() => {
+            drawMatrix('matrix-bg-loading');
+            drawMatrix('matrix-bg');
+            drawMatrix('matrix-bg-game-over');
+        }, 50);
+
+        // Loading Screen Countdown
+        let countdown = 5;
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            countdownDisplay.textContent = countdown;
+            if (countdown <= 0) {
+                clearInterval(countdownInterval);
+                loadingScreen.style.display = 'none';
+                container.style.display = 'block';
+                startGame();
+            }
+        }, 1000);
+
+        // Game Logic
+        let gameState = {
+            overallStart: Date.now(),
+            reactionTimes: [],
+            bestReactionTime: Infinity,
+            score: 0,
+            isTargetActive: false,
+            targetsSpawned: 0,
+            maxTargets: 10,
+            gameOver: false
+        };
+        let previousGames = [];
+        let timerInterval;
+
+        function spawnTarget() {
+            if (gameState.isTargetActive || gameState.gameOver) return;
+            if (gameState.targetsSpawned >= gameState.maxTargets) {
+                endGame();
+                return;
+            }
+            gameState.isTargetActive = true;
+            gameState.targetsSpawned++;
+            stats.targetsLeft.textContent = gameState.maxTargets - gameState.targetsSpawned;
+            const target = document.createElement('div');
+            target.className = 'target';
+            const maxX = container.offsetWidth - 50;
+            const maxY = container.offsetHeight - 50;
+            const x = Math.random() * maxX;
+            const y = Math.random() * maxY;
+            target.style.left = `${x}px`;
+            target.style.top = `${y}px`;
+            const startTime = Date.now();
+            container.appendChild(target);
+
+            setTimeout(() => {
+                if (target.parentNode) {
+                    target.className = 'target miss';
+                    setTimeout(() => {
+                        if (target.parentNode) {
+                            container.removeChild(target);
+                            gameState.isTargetActive = false;
+                            setTimeout(spawnTarget, Math.random() * 5000);
+                        }
+                    }, 200);
+                }
+            }, 3000);
+
+            target.addEventListener('click', () => {
+                if (gameState.gameOver) return;
+                target.className = 'target hit';
+                const reactionTime = Date.now() - startTime;
+                gameState.reactionTimes.push(reactionTime);
+                if (reactionTime < gameState.bestReactionTime) {
+                    gameState.bestReactionTime = reactionTime;
+                    stats.bestReactionTime.textContent = reactionTime;
+                }
+                stats.reactionTime.textContent = reactionTime;
+                stats.avgReactionTime.textContent = Math.round(
+                    gameState.reactionTimes.reduce((a, b) => a + b, 0) / gameState.reactionTimes.length
+                );
+                const points = Math.max(1000 - reactionTime, 100);
+                gameState.score += points;
+                stats.score.textContent = gameState.score;
+                setTimeout(() => {
+                    if (target.parentNode) {
+                        container.removeChild(target);
+                        gameState.isTargetActive = false;
+                        setTimeout(spawnTarget, Math.random() * 5000);
+                    }
+                }, 200);
+            });
+        }
+
+        function updateTimers() {
+            if (gameState.gameOver) return;
+            const now = Date.now();
+            stats.overallTime.textContent = Math.floor((now - gameState.overallStart) / 1000);
+        }
+
+        function endGame() {
+            gameState.gameOver = true;
+            clearInterval(timerInterval);
+            previousGames.push({
+                score: gameState.score,
+                time: Math.floor((Date.now() - gameState.overallStart) / 1000),
+                avgReaction: parseInt(stats.avgReactionTime.textContent) || 0,
+                bestReaction: gameState.bestReactionTime === Infinity ? 0 : gameState.bestReactionTime
+            });
+            finalStats.score.textContent = gameState.score;
+            finalStats.time.textContent = Math.floor((Date.now() - gameState.overallStart) / 1000);
+            finalStats.bestReaction.textContent = gameState.bestReactionTime === Infinity ? '0' : gameState.bestReactionTime;
+            finalStats.avgReaction.textContent = stats.avgReactionTime.textContent;
+            if (previousGames.length > 0) {
+                const maxScore = Math.max(...previousGames.map(g => g.score));
+                const minAvgReaction = Math.min(...previousGames.map(g => g.avgReaction));
+                const minBestReaction = Math.min(...previousGames.map(g => g.bestReaction || Infinity));
+                let table = `
+                    <table>
+                        <tr>
+                            <th>Game</th>
+                            <th>Score</th>
+                            <th>Time (s)</th>
+                            <th>Best Reaction (ms)</th>
+                            <th>Avg Reaction (ms)</th>
+                        </tr>
+                `;
+                previousGames.forEach((game, index) => {
+                    const scoreClass = game.score === maxScore ? 'highlight' : '';
+                    const bestReactionClass = game.bestReaction === minBestReaction ? 'highlight' : '';
+                    const avgReactionClass = game.avgReaction === minAvgReaction ? 'highlight' : '';
+                    table += `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td class="${scoreClass}">${game.score}</td>
+                            <td>${game.time}</td>
+                            <td class="${bestReactionClass}">${game.bestReaction}</td>
+                            <td class="${avgReactionClass}">${game.avgReaction}</td>
+                        </tr>
+                    `;
+                });
+                table += '</table>';
+                previousResults.innerHTML = table;
+            }
+            gameOverScreen.style.display = 'block';
+        }
+
+        function resetGame() {
+            gameState = {
+                overallStart: Date.now(),
+                reactionTimes: [],
+                bestReactionTime: Infinity,
+                score: 0,
+                isTargetActive: false,
+                targetsSpawned: 0,
+                maxTargets: 10,
+                gameOver: false
+            };
+            stats.overallTime.textContent = '0';
+            stats.reactionTime.textContent = '0';
+            stats.bestReactionTime.textContent = '0';
+            stats.avgReactionTime.textContent = '0';
+            stats.score.textContent = '0';
+            stats.targetsLeft.textContent = '10';
+            gameOverScreen.style.display = 'none';
+            timerInterval = setInterval(updateTimers, 1000);
+            spawnTarget();
+        }
+
+        function startGame() {
+            timerInterval = setInterval(updateTimers, 1000);
+            spawnTarget();
+        }
+
+        restartBtn.addEventListener('click', resetGame);
+        restartBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            resetGame();
+        });
+
+        // Touch Support for Targets
+        container.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const targets = document.getElementsByClassName('target');
+            for (let target of targets) {
+                const rect = target.getBoundingClientRect();
+                if (
+                    touch.clientX >= rect.left &&
+                    touch.clientX <= rect.right &&
+                    touch.clientY >= rect.top &&
+                    touch.clientY <= rect.bottom
+                ) {
+                    target.click();
+                }
+            }
+        });
+
+        // Resize
+        window.addEventListener('resize', () => {
+            canvas.width = container.offsetWidth;
+            canvas.height = container.offsetHeight;
+        });
+    </script>
+</body>
+</html>
