@@ -1,0 +1,983 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WordAIly</title>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.4.2/lib/p5.js"></script>
+  <style>
+    body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364); overflow: hidden; }
+    canvas { border-left: 8px solid #ffd700; border-right: 8px solid #ffd700; border-bottom: 8px solid #ffd700; border-top: none; border-radius: 15px; box-shadow: 0 0 30px rgba(255, 215, 0, 0.5); }
+    #overallScore, #level, #timer, #wordTimer, #instructions, #title, #hintBtn, #exitBtn, #difficultyDisplay { position: absolute; color: #fff; font-family: 'Verdana', sans-serif; text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.8); }
+    #title { top: 20px; width: 100%; text-align: center; font-size: 60px; font-family: 'Papyrus', 'Verdana', sans-serif; background: linear-gradient(to right, #ffd700, #ff4500); -webkit-background-clip: text; color: transparent; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); background-color: rgba(0, 0, 0, 0.7); padding: 5px 10px; border-radius: 5px; display: inline-block; }
+    #overallScore { top: 100px; left: 20px; font-size: 20px; display: none; }
+    #overallScore.score-throb, #levelScoreDisplay.score-throb, #scoreDisplay.score-throb { animation: throb 0.5s ease-in-out infinite; }
+    #level { top: 100px; right: 20px; font-size: 20px; display: none; }
+    #timer { top: 100px; width: 100%; text-align: center; font-size: 20px; display: none; }
+    #wordTimer { top: 130px; width: 100%; text-align: center; font-size: 20px; display: none; }
+    #wordTimer.green { color: #00ff00; }
+    #wordTimer.amber { color: #ffa500; }
+    #wordTimer.red { color: #ff0000; animation: flash 1s ease-in-out infinite; }
+    #instructions { bottom: 80px; text-align: center; width: 100%; font-size: 16px; display: none; }
+    #difficultyDisplay { bottom: 45px; left: 20px; font-size: 14px; display: none; }
+    .button { padding: 14px 28px; font-size: 22px; font-weight: bold; background: linear-gradient(to bottom, #ff4500, #ff6347); color: white; border: 2px solid #ffd700; border-radius: 8px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; width: 120px; box-sizing: border-box; display: flex; justify-content: center; align-items: center; text-align: center; }
+    .difficulty-button { padding: 10px 20px; font-size: 16px; width: 80px; }
+    .button:hover { box-shadow: 0 0 15px rgba(255, 99, 71, 0.7); transform: scale(1.15); }
+    #startBtn, #nextLevelBtn { animation: throb 1s ease-in-out infinite; }
+    .hint-throb { animation: throb 1s ease-in-out infinite; }
+    @keyframes throb {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+    @keyframes flash {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    #hintBtn { top: 30px; right: 20px; display: none; }
+    #exitBtn { top: 30px; left: 20px; display: none; }
+    #buttonContainer { position: absolute; bottom: 20px; width: 500px; display: none; justify-content: space-between; }
+    #summary { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.9); padding: 20px; border-radius: 10px; color: white; font-family: 'Verdana', sans-serif; text-align: center; max-width: 600px; }
+    #summary button { margin: 10px; }
+    #summary small { display: block; font-size: 12px; margin-top: 10px; }
+    #summary p { font-size: 18px; margin: 10px 0; }
+    #summary #levelScoreDisplay { font-size: 36px; font-weight: bold; background: #ffd700; color: #000; padding: 5px 10px; border-radius: 5px; display: inline-block; }
+    #summary #scoreDisplay { font-size: 36px; font-weight: bold; background: #00ff00; color: #000; padding: 5px 10px; border-radius: 5px; display: inline-block; }
+    #summary.game-over #scoreDisplay { background: #ffd700; }
+    #correctOverlay { position: absolute; bottom: 120px; left: 20px; background: rgba(0, 255, 0, 0.3); padding: 10px; border-radius: 5px; color: white; font-family: 'Verdana', sans-serif; font-size: 14px; max-width: 200px; max-height: 200px; overflow-y: auto; }
+    #incorrectOverlay { position: absolute; bottom: 120px; right: 20px; background: rgba(255, 0, 0, 0.3); padding: 10px; border-radius: 5px; color: white; font-family: 'Verdana', sans-serif; font-size: 14px; max-width: 200px; max-height: 200px; overflow-y: auto; }
+    #welcome { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.7); padding: 20px; border-radius: 10px; color: white; font-family: 'Verdana', sans-serif; text-align: center; max-width: 600px; }
+    #welcome p { font-size: 20px; margin: 10px 0; }
+    #welcome small { font-size: 14px; display: block; margin: 10px 0; }
+    #welcome .button-container { display: flex; flex-direction: row; justify-content: center; gap: 20px; }
+    #welcome .difficulty-container { display: flex; flex-direction: row; justify-content: center; gap: 20px; margin-top: 10px; }
+    #welcome .difficulty-container small { margin-bottom: 5px; }
+    #welcome button { margin: 0; }
+    .progress-container { position: absolute; width: 150px; height: 15px; background: #333; border: 2px solid #ffd700; border-radius: 5px; overflow: hidden; }
+    #levelProgressContainer { top: 140px; right: 20px; display: none; }
+    #allWordsProgressContainer { top: 140px; left: 20px; display: none; }
+    .progress-bar { height: 100%; transition: width: 0.3s ease; }
+    #levelProgressBar { background: #00ff00; }
+    #allWordsProgressBar { background: #1e90ff; }
+    .progress-label { position: absolute; color: #fff; font-family: 'Verdana', sans-serif; font-size: 14px; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); text-align: center; width: 150px; top: 0; line-height: 15px; }
+    .progress-title { position: absolute; color: #fff; font-family: 'Verdana', sans-serif; font-size: 12px; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); text-align: center; width: 150px; top: -30px; }
+    #newWordsMessage { font-size: 16px; color: #ffd700; margin: 10px 0; animation: flash 1s ease-in-out 2; }
+    #wordsList { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.9); padding: 20px; border: 2px solid #ffd700; border-radius: 10px; color: white; font-family: 'Verdana', sans-serif; text-align: left; max-width: 800px; max-height: 400px; overflow-y: auto; }
+    #wordsList h2 { font-size: 24px; text-align: center; margin: 0 0 10px; }
+    #wordsList h3 { font-size: 18px; margin: 10px 0 5px; }
+    #wordsList p { font-size: 14px; margin: 5px 0; }
+    #wordsList button { margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
+    #easyBtn.selected { background: linear-gradient(to bottom, #00ff00, #00cc00); }
+    #hardBtn.selected { background: linear-gradient(to bottom, #ff0000, #cc0000); }
+  </style>
+</head>
+<body>
+  <div id="welcome">
+    <p>Tap the correct part of speech: Noun, Verb, Adjective, or Adverb. Get 10 right to finish the level. Score points for accuracy, streaks, and speed!</p>
+    <small>Total Words: 152</small>
+    <div class="button-container">
+      <button id="startBtn" class="button">Start</button>
+      <button id="viewWordsWelcomeBtn" class="button">View Words</button>
+    </div>
+    <div class="difficulty-container">
+      <small>Difficulty</small>
+      <button id="easyBtn" class="button difficulty-button selected">Easy</button>
+      <button id="hardBtn" class="button difficulty-button">Hard</button>
+    </div>
+    <small>Version 1.0</small>
+  </div>
+  <div id="title">WordAIly</div>
+  <div id="overallScore">Overall Score: 0</div>
+  <div id="level">Level: 1</div>
+  <div id="timer">Level Time: 0s</div>
+  <div id="wordTimer">Word Timer: 0.0s</div>
+  <div id="instructions">Click the correct button to match the falling word's part of speech!</div>
+  <div id="difficultyDisplay">Difficulty: Easy</div>
+  <div id="buttonContainer">
+    <button id="nounBtn" class="button">Noun</button>
+    <button id="verbBtn" class="button">Verb</button>
+    <button id="adjBtn" class="button">Adjective</button>
+    <button id="advBtn" class="button">Adverb</button>
+  </div>
+  <button id="hintBtn" class="button">Hint</button>
+  <button id="exitBtn" class="button">Exit</button>
+  <div id="correctOverlay"></div>
+  <div id="incorrectOverlay"></div>
+  <div id="levelProgressContainer" class="progress-container">
+    <div class="progress-title">Level Progress</div>
+    <div id="levelProgressBar" class="progress-bar" style="width: 0%"></div>
+    <div id="levelProgressLabel" class="progress-label">0/10</div>
+  </div>
+  <div id="allWordsProgressContainer" class="progress-container">
+    <div class="progress-title">Total Words</div>
+    <div id="allWordsProgressBar" class="progress-bar" style="width: 0%"></div>
+    <div id="allWordsProgressLabel" class="progress-label">0/152</div>
+  </div>
+  <div id="summary" style="display: none;">
+    <div id="summaryContent"></div>
+    <button id="nextLevelBtn" class="button" style="display: none;">Next Level</button>
+    <button id="viewWordsSummaryBtn" class="button" style="display: none;">View Words</button>
+    <button id="restartBtn" class="button" style="display: none;">Restart</button>
+  </div>
+<script>
+let words = [
+  { word: "cat", type: "noun", meaning: "a small domesticated carnivorous mammal", difficulty: 1 },
+  { word: "run", type: "verb", meaning: "to move quickly on foot", difficulty: 1 },
+  { word: "big", type: "adjective", meaning: "of considerable size or extent", difficulty: 1 },
+  { word: "quickly", type: "adverb", meaning: "at a fast speed", difficulty: 3 },
+  { word: "house", type: "noun", meaning: "a building for human habitation", difficulty: 2 },
+  { word: "jump", type: "verb", meaning: "to push oneself off a surface", difficulty: 2 },
+  { word: "red", type: "adjective", meaning: "of a color like blood or fire", difficulty: 1 },
+  { word: "slowly", type: "adverb", meaning: "at a low speed", difficulty: 3 },
+  { word: "tree", type: "noun", meaning: "a tall perennial plant with a trunk", difficulty: 1 },
+  { word: "sing", type: "verb", meaning: "to produce musical sounds with the voice", difficulty: 2 },
+  { word: "happy", type: "adjective", meaning: "feeling or showing pleasure", difficulty: 2 },
+  { word: "loudly", type: "adverb", meaning: "with a great deal of volume", difficulty: 3 },
+  { word: "river", type: "noun", meaning: "a large natural stream of water", difficulty: 2 },
+  { word: "dance", type: "verb", meaning: "to move rhythmically to music", difficulty: 2 },
+  { word: "bright", type: "adjective", meaning: "giving out or reflecting much light", difficulty: 2 },
+  { word: "gently", type: "adverb", meaning: "with a mild or kind manner", difficulty: 3 },
+  { word: "mountain", type: "noun", meaning: "a large natural elevation of the earth's surface", difficulty: 3 },
+  { word: "swim", type: "verb", meaning: "to move through water by moving the body", difficulty: 2 },
+  { word: "tiny", type: "adjective", meaning: "very small", difficulty: 2 },
+  { word: "swiftly", type: "adverb", meaning: "quickly or promptly", difficulty: 3 },
+  { word: "book", type: "noun", meaning: "a written or printed work of pages", difficulty: 1 },
+  { word: "write", type: "verb", meaning: "to mark letters or words on a surface", difficulty: 2 },
+  { word: "soft", type: "adjective", meaning: "having a pleasing or smooth texture", difficulty: 2 },
+  { word: "carefully", type: "adverb", meaning: "with caution or attention", difficulty: 4 },
+  { word: "car", type: "noun", meaning: "a wheeled motor vehicle", difficulty: 1 },
+  { word: "play", type: "verb", meaning: "to engage in activity for enjoyment", difficulty: 1 },
+  { word: "shiny", type: "adjective", meaning: "reflecting light, typically when smooth", difficulty: 3 },
+  { word: "boldly", type: "adverb", meaning: "in a confident and courageous way", difficulty: 4 },
+  { word: "dog", type: "noun", meaning: "a domesticated carnivorous mammal", difficulty: 1 },
+  { word: "climb", type: "verb", meaning: "to go up or ascend", difficulty: 2 },
+  { word: "tall", type: "adjective", meaning: "of great or more than average height", difficulty: 2 },
+  { word: "quietly", type: "adverb", meaning: "with little or no sound", difficulty: 3 },
+  { word: "city", type: "noun", meaning: "a large town", difficulty: 2 },
+  { word: "read", type: "verb", meaning: "to look at and comprehend written text", difficulty: 1 },
+  { word: "blue", type: "adjective", meaning: "of a color like sky or sea", difficulty: 1 },
+  { word: "happily", type: "adverb", meaning: "in a happy or cheerful manner", difficulty: 4 },
+  { word: "school", type: "noun", meaning: "an institution for educating children", difficulty: 2 },
+  { word: "build", type: "verb", meaning: "to construct by assembling parts", difficulty: 2 },
+  { word: "warm", type: "adjective", meaning: "having or giving off moderate heat", difficulty: 2 },
+  { word: "suddenly", type: "adverb", meaning: "quickly and unexpectedly", difficulty: 4 },
+  { word: "chair", type: "noun", meaning: "a seat for one person", difficulty: 1 },
+  { word: "talk", type: "verb", meaning: "to speak or converse", difficulty: 1 },
+  { word: "green", type: "adjective", meaning: "of a color like grass or emeralds", difficulty: 1 },
+  { word: "confidently", type: "adverb", meaning: "in a self-assured manner", difficulty: 4 },
+  { word: "cloud", type: "noun", meaning: "a visible mass of water droplets in the sky", difficulty: 2 },
+  { word: "paint", type: "verb", meaning: "to apply color to a surface", difficulty: 2 },
+  { word: "cold", type: "adjective", meaning: "of low temperature", difficulty: 1 },
+  { word: "calmly", type: "adverb", meaning: "in a peaceful manner", difficulty: 3 },
+  { word: "bird", type: "noun", meaning: "a feathered vertebrate with wings", difficulty: 1 },
+  { word: "fly", type: "verb", meaning: "to move through the air", difficulty: 1 },
+  { word: "smooth", type: "adjective", meaning: "having an even surface", difficulty: 2 },
+  { word: "bravely", type: "adverb", meaning: "in a courageous manner", difficulty: 4 },
+  { word: "road", type: "noun", meaning: "a wide way leading from one place to another", difficulty: 1 },
+  { word: "listen", type: "verb", meaning: "to hear with attention", difficulty: 2 },
+  { word: "dark", type: "adjective", meaning: "with little or no light", difficulty: 1 },
+  { word: "easily", type: "adverb", meaning: "without difficulty", difficulty: 3 },
+  { word: "flower", type: "noun", meaning: "the reproductive structure of a plant", difficulty: 2 },
+  { word: "grow", type: "verb", meaning: "to increase in size or develop", difficulty: 2 },
+  { word: "beautiful", type: "adjective", meaning: "pleasing to the senses", difficulty: 4 },
+  { word: "silently", type: "adverb", meaning: "without sound", difficulty: 4 },
+  { word: "table", type: "noun", meaning: "a piece of furniture with a flat top", difficulty: 1 },
+  { word: "eat", type: "verb", meaning: "to consume food", difficulty: 1 },
+  { word: "strong", type: "adjective", meaning: "having great power or force", difficulty: 2 },
+  { word: "gracefully", type: "adverb", meaning: "in an elegant manner", difficulty: 4 },
+  { word: "sun", type: "noun", meaning: "the star at the center of the solar system", difficulty: 1 },
+  { word: "laugh", type: "verb", meaning: "to express amusement with sound", difficulty: 2 },
+  { word: "clear", type: "adjective", meaning: "easy to perceive or understand", difficulty: 2 },
+  { word: "politely", type: "adverb", meaning: "in a respectful manner", difficulty: 4 },
+  { word: "door", type: "noun", meaning: "a movable barrier to an entrance", difficulty: 1 },
+  { word: "walk", type: "verb", meaning: "to move at a regular pace by foot", difficulty: 1 },
+  { word: "heavy", type: "adjective", meaning: "of great weight", difficulty: 2 },
+  { word: "nervously", type: "adverb", meaning: "in an anxious manner", difficulty: 4 },
+  { word: "star", type: "noun", meaning: "a celestial body visible at night", difficulty: 1 },
+  { word: "draw", type: "verb", meaning: "to produce a picture by making lines", difficulty: 2 },
+  { word: "sharp", type: "adjective", meaning: "having a keen edge or point", difficulty: 2 },
+  { word: "firmly", type: "adverb", meaning: "in a steadfast manner", difficulty: 4 },
+  { word: "lake", type: "noun", meaning: "a large body of water surrounded by land", difficulty: 1 },
+  { word: "sleep", type: "verb", meaning: "to rest by being unconscious", difficulty: 2 },
+  { word: "pretty", type: "adjective", meaning: "attractive in a delicate way", difficulty: 3 },
+  { word: "joyfully", type: "adverb", meaning: "in a happy or delighted manner", difficulty: 4 },
+  { word: "pen", type: "noun", meaning: "a tool for writing or drawing with ink", difficulty: 1 },
+  { word: "think", type: "verb", meaning: "to have a thought or idea", difficulty: 2 },
+  { word: "narrow", type: "adjective", meaning: "of small width", difficulty: 3 },
+  { word: "honestly", type: "adverb", meaning: "in a truthful manner", difficulty: 4 },
+  { word: "sky", type: "noun", meaning: "the region above the earth", difficulty: 1 },
+  { word: "shout", type: "verb", meaning: "to call out loudly", difficulty: 2 },
+  { word: "wet", type: "adjective", meaning: "covered or saturated with water", difficulty: 2 },
+  { word: "rudely", type: "adverb", meaning: "in an impolite manner", difficulty: 4 },
+  { word: "bridge", type: "noun", meaning: "a structure over an obstacle like a river", difficulty: 2 },
+  { word: "kick", type: "verb", meaning: "to strike with the foot", difficulty: 2 },
+  { word: "young", type: "adjective", meaning: "having lived for a short time", difficulty: 2 },
+  { word: "kindly", type: "adverb", meaning: "in a kind or friendly manner", difficulty: 4 },
+  { word: "park", type: "noun", meaning: "a public area for recreation", difficulty: 1 },
+  { word: "wait", type: "verb", meaning: "to stay in expectation of something", difficulty: 2 },
+  { word: "deep", type: "adjective", meaning: "extending far down", difficulty: 2 },
+  { word: "patiently", type: "adverb", meaning: "in a way that shows tolerance", difficulty: 4 },
+  { word: "lamp", type: "noun", meaning: "a device for giving light", difficulty: 1 },
+  { word: "cry", type: "verb", meaning: "to shed tears or shout", difficulty: 2 },
+  { word: "wide", type: "adjective", meaning: "of great extent from side to side", difficulty: 2 },
+  { word: "eagerly", type: "adverb", meaning: "with keen interest or enthusiasm", difficulty: 4 },
+  { word: "apple", type: "noun", meaning: "a round fruit with red or green skin", difficulty: 1 },
+  { word: "study", type: "verb", meaning: "to acquire knowledge through learning", difficulty: 2 },
+  { word: "fast", type: "adjective", meaning: "moving or capable of moving quickly", difficulty: 2 },
+  { word: "cheerfully", type: "adverb", meaning: "in a happy and optimistic manner", difficulty: 4 },
+  { word: "window", type: "noun", meaning: "an opening in a wall for light or air", difficulty: 2 },
+  { word: "ride", type: "verb", meaning: "to sit on and control a vehicle or animal", difficulty: 2 },
+  { word: "old", type: "adjective", meaning: "having lived for a long time", difficulty: 1 },
+  { word: "anxiously", type: "adverb", meaning: "with eagerness or worry", difficulty: 4 },
+  { word: "garden", type: "noun", meaning: "a plot of land for growing plants", difficulty: 2 },
+  { word: "throw", type: "verb", meaning: "to propel something through the air", difficulty: 2 },
+  { word: "curly", type: "adjective", meaning: "having curls or a wavy shape", difficulty: 3 },
+  { word: "vigorously", type: "adverb", meaning: "with great energy or force", difficulty: 5 },
+  { word: "moon", type: "noun", meaning: "the natural satellite of the Earth", difficulty: 1 },
+  { word: "smile", type: "verb", meaning: "to form one's face into a pleased expression", difficulty: 2 },
+  { word: "flat", type: "adjective", meaning: "having a level surface", difficulty: 2 },
+  { word: "hastily", type: "adverb", meaning: "with excessive speed or urgency", difficulty: 4 },
+  { word: "boat", type: "noun", meaning: "a small vessel for traveling on water", difficulty: 1 },
+  { word: "search", type: "verb", meaning: "to look for something carefully", difficulty: 2 },
+  { word: "loud", type: "adjective", meaning: "producing much noise", difficulty: 2 },
+  { word: "safely", type: "adverb", meaning: "in a manner free from danger", difficulty: 3 },
+  { word: "clock", type: "noun", meaning: "a device for measuring time", difficulty: 1 },
+  { word: "learn", type: "verb", meaning: "to gain knowledge or skill", difficulty: 2 },
+  { word: "round", type: "adjective", meaning: "shaped like a circle or sphere", difficulty: 2 },
+  { word: "lazily", type: "adverb", meaning: "in a relaxed or idle manner", difficulty: 4 },
+  { word: "hill", type: "noun", meaning: "a raised area of land smaller than a mountain", difficulty: 1 },
+  { word: "carry", type: "verb", meaning: "to hold and transport something", difficulty: 2 },
+  { word: "busy", type: "adjective", meaning: "having a great deal to do", difficulty: 2 },
+  { word: "recklessly", type: "adverb", meaning: "without care for consequences", difficulty: 5 },
+  { word: "fish", type: "noun", meaning: "a cold-blooded aquatic vertebrate", difficulty: 1 },
+  { word: "cut", type: "verb", meaning: "to divide with a sharp tool", difficulty: 1 },
+  { word: "clean", type: "adjective", meaning: "free from dirt or impurities", difficulty: 2 },
+  { word: "freely", type: "adverb", meaning: "without restriction or interference", difficulty: 4 },
+  { word: "street", type: "noun", meaning: "a public thoroughfare in a city", difficulty: 2 },
+  { word: "pull", type: "verb", meaning: "to exert force to draw something closer", difficulty: 2 },
+  { word: "empty", type: "adjective", meaning: "containing nothing", difficulty: 2 },
+  { word: "smoothly", type: "adverb", meaning: "in an even or flowing manner", difficulty: 4 }
+];
+let additionalWords = [
+  { word: "forest", type: "noun", meaning: "a large area covered with trees", difficulty: 2 },
+  { word: "ocean", type: "noun", meaning: "a vast body of salt water", difficulty: 2 },
+  { word: "village", type: "noun", meaning: "a small community in a rural area", difficulty: 3 },
+  { word: "mirror", type: "noun", meaning: "a reflective surface for viewing oneself", difficulty: 2 },
+  { word: "train", type: "noun", meaning: "a series of connected railway cars", difficulty: 2 },
+  { word: "explore", type: "verb", meaning: "to travel through an unfamiliar area", difficulty: 3 },
+  { word: "create", type: "verb", meaning: "to bring something into existence", difficulty: 3 },
+  { word: "discover", type: "verb", meaning: "to find something unexpectedly", difficulty: 3 },
+  { word: "solve", type: "verb", meaning: "to find an answer to a problem", difficulty: 3 },
+  { word: "gather", type: "verb", meaning: "to bring or come together", difficulty: 3 },
+  { word: "gentle", type: "adjective", meaning: "having a mild or kind nature", difficulty: 3 },
+  { word: "vivid", type: "adjective", meaning: "producing strong, clear images", difficulty: 4 },
+  { word: "ancient", type: "adjective", meaning: "very old, from a long time ago", difficulty: 4 },
+  { word: "curious", type: "adjective", meaning: "eager to know or learn", difficulty: 4 },
+  { word: "peaceful", type: "adjective", meaning: "free from disturbance", difficulty: 3 },
+  { word: "boldly", type: "adverb", meaning: "in a confident and courageous way", difficulty: 4 },
+  { word: "wisely", type: "adverb", meaning: "in a way that shows good judgment", difficulty: 4 },
+  { word: "rarely", type: "adverb", meaning: "not often, seldom", difficulty: 4 },
+  { word: "clearly", type: "adverb", meaning: "in a way that is easy to understand", difficulty: 3 },
+  { word: "softly", type: "adverb", meaning: "in a gentle or quiet manner", difficulty: 3 }
+];
+let fallingWords = [];
+let overallScore = 0;
+let levelScore = 0;
+let level = 1;
+let spawnRate = 60;
+let particles = [];
+let feedback = [];
+let pointFeedback = [];
+let correctAnswers = 0;
+let incorrectAnswers = 0;
+let usedWords = [];
+let gamePaused = true;
+let gameStarted = false;
+let correctWordsDisplay = [];
+let incorrectWordsDisplay = [];
+let correctStreak = 0;
+let levelStartTime = 0;
+let levelTime = 0;
+let gameStartTime = 0;
+let responseTimes = [];
+let currentWordStartTime = 0;
+let welcomeWords = [];
+let backgroundSpeed = 0.5;
+let totalWords = words.length;
+let hintsEnabled = false;
+let wordPausedTime = 0;
+let bonusPointsAdded = false;
+let bonusInterval = null;
+let difficultyMode = "easy";
+
+function setup() {
+  createCanvas(800, 600);
+  textAlign(CENTER, CENTER);
+  textSize(28);
+  for (let i = 0; i < 3; i++) {
+    spawnWelcomeWord();
+  }
+  document.getElementById("startBtn").addEventListener("click", startGame);
+  document.getElementById("viewWordsWelcomeBtn").addEventListener("click", showWordsList);
+  document.getElementById("nextLevelBtn").addEventListener("click", startNextLevel);
+  document.getElementById("viewWordsSummaryBtn").addEventListener("click", showWordsList);
+  document.getElementById("restartBtn").addEventListener("click", restartGame);
+  document.getElementById("easyBtn").addEventListener("click", () => setDifficulty("easy"));
+  document.getElementById("hardBtn").addEventListener("click", () => setDifficulty("hard"));
+}
+
+function setDifficulty(mode) {
+  difficultyMode = mode;
+  let easyBtn = document.getElementById("easyBtn");
+  let hardBtn = document.getElementById("hardBtn");
+  let difficultyDisplay = document.getElementById("difficultyDisplay");
+  if (mode === "easy") {
+    easyBtn.classList.add("selected");
+    hardBtn.classList.remove("selected");
+    if (difficultyDisplay) difficultyDisplay.innerText = "Difficulty: Easy";
+  } else {
+    hardBtn.classList.add("selected");
+    easyBtn.classList.remove("selected");
+    if (difficultyDisplay) difficultyDisplay.innerText = "Difficulty: Hard";
+  }
+}
+
+function draw() {
+  background(10, 32, 39);
+  for (let i = 0; i < 50; i++) {
+    fill(255, random(50, 200), random(50, 100), random(100, 200));
+    ellipse(random(width), random(height), random(2, 5), random(2, 5));
+  }
+  if (!gameStarted) {
+    for (let i = welcomeWords.length - 1; i >= 0; i--) {
+      let fw = welcomeWords[i];
+      fw.y += fw.speed;
+      if (fw.y > height + 50) {
+        welcomeWords.splice(i, 1);
+        spawnWelcomeWord();
+      }
+      fill(255, 215, 0, 100);
+      stroke(0, 100);
+      strokeWeight(3);
+      textSize(28);
+      textStyle(BOLD);
+      text(fw.word, fw.x, fw.y);
+      fill(255, 245, 200, 100);
+      strokeWeight(1);
+      textSize(14);
+      textStyle(NORMAL);
+      text(fw.meaning, fw.x, fw.y + 20);
+    }
+    return;
+  }
+  if (gamePaused) return;
+  levelTime = (millis() - levelStartTime) / 1000;
+  let timer = document.getElementById("timer");
+  if (timer) {
+    timer.innerText = `Level Time: ${levelTime.toFixed(1)}s`;
+  }
+  let wordTimer = document.getElementById("wordTimer");
+  if (wordTimer && fallingWords.length > 0) {
+    let wordTime = (millis() - currentWordStartTime) / 1000;
+    wordTimer.innerText = `Word Timer: ${wordTime.toFixed(1)}s`;
+    wordTimer.classList.remove("green", "amber", "red");
+    if (wordTime < 2) {
+      wordTimer.classList.add("green");
+    } else if (wordTime < 5) {
+      wordTimer.classList.add("amber");
+    } else {
+      wordTimer.classList.add("red");
+    }
+  }
+  let isPaused = fallingWords.length > 0 && fallingWords[0].y >= height - 200;
+  for (let i = fallingWords.length - 1; i >= 0; i--) {
+    let fw = fallingWords[i];
+    if (!isPaused) {
+      fw.y += fw.speed;
+    }
+    if (i === 0 && fallingWords.length > 0) {
+      fw.x = width / 2;
+      if (fw.y >= height - 200) {
+        fw.y = height - 200;
+      }
+    }
+    if (i > 0) {
+      fw.y = fallingWords[i-1].y - 50;
+      fw.x = fallingWords[0].x;
+    }
+    fill(255, 215, 0, i === 0 ? 255 : 100);
+    stroke(0, i === 0 ? 255 : 100);
+    strokeWeight(3);
+    if (i === 0 && fallingWords.length > 0 && fw.y >= height - 200) {
+      let throb = 28 + sin(frameCount * 0.1) * 2;
+      textSize(throb);
+    } else {
+      textSize(28);
+    }
+    textStyle(BOLD);
+    text(fw.word, fw.x, fw.y);
+    fill(255, 245, 200, i === 0 ? 255 : 100);
+    strokeWeight(1);
+    textSize(14);
+    textStyle(NORMAL);
+    text(fw.meaning, fw.x, fw.y + 20);
+  }
+  for (let i = particles.length - 1; i >= 0; i--) {
+    let p = particles[i];
+    p.x += p.vx * backgroundSpeed;
+    p.y += p.vy * backgroundSpeed;
+    p.alpha -= 3;
+    fill(255, 165, 0, p.alpha);
+    noStroke();
+    ellipse(p.x, p.y, 8, 8);
+    if (p.alpha <= 0) particles.splice(i, 1);
+  }
+  for (let i = feedback.length - 1; i >= 0; i--) {
+    let fb = feedback[i];
+    fb.y -= 2;
+    fb.alpha -= 5;
+    fill(0, 255, 0, fb.alpha);
+    stroke(0);
+    strokeWeight(1);
+    textSize(18);
+    text(fb.type, fb.x, fb.y);
+    if (fb.alpha <= 0) feedback.splice(i, 1);
+  }
+  for (let i = pointFeedback.length - 1; i >= 0; i--) {
+    let pf = pointFeedback[i];
+    pf.y -= 1;
+    pf.alpha -= 5;
+    if (pf.isStreakBonus || pf.isQuickBonus) {
+      fill(255, 255, 0, pf.alpha);
+    } else {
+      fill(pf.points > 0 ? [0, 255, 0, pf.alpha] : [255, 0, 0, pf.alpha]);
+    }
+    noStroke();
+    textSize(20);
+    text(pf.text, pf.x, pf.y);
+    if (pf.alpha <= 0) pointFeedback.splice(i, 1);
+  }
+  updateCorrectOverlay();
+  updateIncorrectOverlay();
+  if (hintsEnabled && isPaused && fallingWords.length > 0) {
+    if (!wordPausedTime) {
+      wordPausedTime = millis();
+    }
+    if (millis() - wordPausedTime >= 3000) {
+      let fw = fallingWords[0];
+      let buttonId = fw.type === "noun" ? "nounBtn" : fw.type === "verb" ? "verbBtn" : fw.type === "adjective" ? "adjBtn" : "advBtn";
+      let button = document.getElementById(buttonId);
+      if (!button.classList.contains("hint-throb")) {
+        button.classList.add("hint-throb");
+      }
+    }
+  } else {
+    wordPausedTime = 0;
+    ["nounBtn", "verbBtn", "adjBtn", "advBtn"].forEach(id => {
+      let btn = document.getElementById(id);
+      if (btn) btn.classList.remove("hint-throb");
+    });
+  }
+  if (correctAnswers >= 10 && !gamePaused) {
+    showSummary();
+  }
+}
+
+function spawnWelcomeWord() {
+  let word = random(words);
+  welcomeWords.push({ 
+    word: word.word, 
+    type: word.type, 
+    meaning: word.meaning, 
+    x: random(350, width - 350), 
+    y: welcomeWords.length === 0 ? random(-50, 0) : welcomeWords[welcomeWords.length-1].y - 100,
+    speed: 1 
+  });
+}
+
+function spawnNewWord() {
+  if (fallingWords.length < 3) {
+    let availableWords = words.filter(w => !usedWords.some(uw => uw.word === w.word));
+    if (difficultyMode === "hard") {
+      availableWords = availableWords.filter(w => w.difficulty >= 3);
+    }
+    if (availableWords.length === 0) {
+      showSummary(true);
+      return;
+    }
+    let word = random(availableWords);
+    fallingWords.push({ 
+      word: word.word, 
+      type: word.type, 
+      meaning: word.meaning, 
+      x: width / 2,
+      y: fallingWords.length === 0 ? 0 : fallingWords[fallingWords.length-1].y - 50, 
+      speed: 1 + level * 0.5 
+    });
+    if (fallingWords.length === 1) {
+      currentWordStartTime = millis();
+    }
+  }
+}
+
+function startGame() {
+  gameStarted = true;
+  gamePaused = false;
+  overallScore = 0;
+  levelScore = 0;
+  hintsEnabled = false;
+  bonusPointsAdded = false;
+  if (bonusInterval) clearInterval(bonusInterval);
+  document.getElementById("welcome").remove();
+  document.getElementById("buttonContainer").style.display = "flex";
+  document.getElementById("instructions").style.display = "block";
+  document.getElementById("overallScore").style.display = "block";
+  document.getElementById("level").style.display = "block";
+  document.getElementById("timer").style.display = "block";
+  document.getElementById("wordTimer").style.display = "block";
+  document.getElementById("difficultyDisplay").style.display = "block";
+  document.getElementById("levelProgressContainer").style.display = "block";
+  document.getElementById("allWordsProgressContainer").style.display = "block";
+  document.getElementById("hintBtn").style.display = "block";
+  document.getElementById("exitBtn").style.display = "block";
+  document.getElementById("difficultyDisplay").innerText = `Difficulty: ${difficultyMode.charAt(0).toUpperCase() + difficultyMode.slice(1)}`;
+  document.getElementById("nounBtn").addEventListener("click", () => checkAnswer("noun"));
+  document.getElementById("verbBtn").addEventListener("click", () => checkAnswer("verb"));
+  document.getElementById("adjBtn").addEventListener("click", () => checkAnswer("adjective"));
+  document.getElementById("advBtn").addEventListener("click", () => checkAnswer("adverb"));
+  document.getElementById("hintBtn").addEventListener("click", toggleHint);
+  document.getElementById("exitBtn").addEventListener("click", exitGame);
+  levelStartTime = millis();
+  gameStartTime = millis();
+  spawnNewWord();
+  updateScore();
+}
+
+function toggleHint() {
+  hintsEnabled = !hintsEnabled;
+  let hintBtn = document.getElementById("hintBtn");
+  hintBtn.style.background = hintsEnabled ? "linear-gradient(to bottom, #00ff00, #00cc00)" : "linear-gradient(to bottom, #ff4500, #ff6347)";
+}
+
+function exitGame() {
+  restartGame();
+}
+
+function checkAnswer(type) {
+  if (gamePaused || fallingWords.length === 0) return;
+  let fw = fallingWords[0];
+  let responseTime = (millis() - currentWordStartTime) / 1000;
+  responseTimes.push(responseTime);
+  let buttonId = type === "noun" ? "nounBtn" : type === "verb" ? "verbBtn" : type === "adjective" ? "adjBtn" : "advBtn";
+  let button = document.getElementById(buttonId);
+  let scoreElement = document.getElementById("overallScore");
+  
+  if (fw.type === type) {
+    correctAnswers++;
+    correctStreak++;
+    usedWords.push({ word: fw.word, type: fw.type });
+    correctWordsDisplay.push(`${fw.word} (${fw.type})`);
+    if (correctWordsDisplay.length > 10) correctWordsDisplay.shift();
+    feedback.push({ type: fw.type, x: fw.x + 50, y: fw.y, alpha: 255 });
+    pointFeedback.push({ text: "+10", x: fw.x, y: fw.y - 20, alpha: 255, points: 10, isStreakBonus: false, isQuickBonus: false });
+    let count = 0;
+    let interval = setInterval(() => {
+      overallScore++;
+      levelScore++;
+      scoreElement.classList.add("score-throb");
+      updateScore();
+      count++;
+      if (count >= 10) {
+        clearInterval(interval);
+        scoreElement.classList.remove("score-throb");
+      }
+    }, 50);
+    let quickBonus = 0;
+    let quickText = "";
+    if (responseTime < 1) {
+      quickBonus = 5;
+      quickText = "+5 Quick";
+    } else if (responseTime < 2) {
+      quickBonus = 3;
+      quickText = "+3 Quick";
+    } else if (responseTime < 3) {
+      quickBonus = 1;
+      quickText = "+1 Quick";
+    }
+    if (quickBonus > 0) {
+      pointFeedback.push({ text: quickText, x: fw.x, y: fw.y - 60, alpha: 255, points: quickBonus, isStreakBonus: false, isQuickBonus: true });
+      let quickCount = 0;
+      let quickInterval = setInterval(() => {
+        overallScore++;
+        levelScore++;
+        scoreElement.classList.add("score-throb");
+        updateScore();
+        quickCount++;
+        if (quickCount >= quickBonus) {
+          clearInterval(quickInterval);
+          scoreElement.classList.remove("score-throb");
+        }
+      }, 50);
+    }
+    createParticles(fw.x, fw.y);
+    button.style.background = "#00ff00";
+    button.style.boxShadow = "0 0 20px rgba(0, 255, 0, 0.8)";
+    setTimeout(() => { 
+      button.style.background = "linear-gradient(to bottom, #ff4500, #ff6347)"; 
+      button.style.boxShadow = "none"; 
+    }, 300);
+    if (correctStreak >= 3) {
+      pointFeedback.push({ text: "+5 Bonus", x: fw.x, y: fw.y - 40, alpha: 255, points: 5, isStreakBonus: true, isQuickBonus: false });
+      let streakCount = 0;
+      let streakInterval = setInterval(() => {
+        overallScore++;
+        levelScore++;
+        scoreElement.classList.add("score-throb");
+        updateScore();
+        streakCount++;
+        if (streakCount >= 5) {
+          clearInterval(streakInterval);
+          scoreElement.classList.remove("score-throb");
+        }
+      }, 50);
+      correctStreak = 0;
+    }
+  } else {
+    incorrectAnswers++;
+    incorrectWordsDisplay.push(`${fw.word} (${fw.type})`);
+    if (incorrectWordsDisplay.length > 10) incorrectWordsDisplay.shift();
+    pointFeedback.push({ text: "-5", x: fw.x, y: fw.y - 20, alpha: 255, points: -5, isStreakBonus: false, isQuickBonus: false });
+    let count = 0;
+    let interval = setInterval(() => {
+      overallScore = Math.max(0, overallScore - 1);
+      levelScore = Math.max(0, levelScore - 1);
+      scoreElement.classList.add("score-throb");
+      updateScore();
+      count++;
+      if (count >= 5) {
+        clearInterval(interval);
+        scoreElement.classList.remove("score-throb");
+      }
+    }, 50);
+    button.style.background = "#ff0000";
+    button.style.boxShadow = "0 0 20px rgba(255, 0, 0, 0.8)";
+    setTimeout(() => { 
+      button.style.background = "linear-gradient(to bottom, #ff4500, #ff6347)"; 
+      button.style.boxShadow = "none"; 
+    }, 300);
+    correctStreak = 0;
+  }
+  ["nounBtn", "verbBtn", "adjBtn", "advBtn"].forEach(id => {
+    let btn = document.getElementById(id);
+    if (btn) btn.classList.remove("hint-throb");
+  });
+  wordPausedTime = 0;
+  fallingWords.splice(0, 1);
+  spawnNewWord();
+  currentWordStartTime = millis();
+}
+
+function createParticles(x, y) {
+  for (let i = 0; i < 15; i++) {
+    particles.push({ x, y, vx: random(-3, 3), vy: random(-3, 3), alpha: 255 });
+  }
+}
+
+function updateScore() {
+  document.getElementById("overallScore").innerText = `Overall Score: ${overallScore}`;
+  let levelProgress = (correctAnswers / 10) * 100;
+  document.getElementById("levelProgressBar").style.width = `${levelProgress}%`;
+  document.getElementById("levelProgressLabel").innerText = `${correctAnswers}/10`;
+}
+
+function updateLevel() {
+  document.getElementById("level").innerText = `Level: ${level}`;
+  let allWordsProgress = (usedWords.length / totalWords) * 100;
+  document.getElementById("allWordsProgressBar").style.width = `${allWordsProgress}%`;
+  document.getElementById("allWordsProgressLabel").innerText = `${usedWords.length}/${totalWords}`;
+}
+
+function updateCorrectOverlay() {
+  document.getElementById("correctOverlay").innerHTML = correctWordsDisplay.join("<br>");
+}
+
+function updateIncorrectOverlay() {
+  document.getElementById("incorrectOverlay").innerHTML = incorrectWordsDisplay.join("<br>");
+}
+
+function calculateBonusPoints(time) {
+  if (time < 30) return 100;
+  if (time < 45) return 75;
+  if (time < 60) return 50;
+  if (time < 90) return 25;
+  if (time < 120) return 10;
+  return 5;
+}
+
+function showWordsList() {
+  gamePaused = true;
+  if (bonusInterval) {
+    clearInterval(bonusInterval);
+    bonusInterval = null;
+  }
+  let wordsListDiv = document.createElement("div");
+  wordsListDiv.id = "wordsList";
+  let difficultyGroups = [[], [], [], [], []];
+  words.forEach(w => {
+    difficultyGroups[w.difficulty - 1].push(w);
+  });
+  let wordsHTML = "";
+  difficultyGroups.forEach((group, index) => {
+    if (group.length > 0) {
+      let difficultyColor = index === 0 ? '#00ff00' : index === 1 ? '#90ee90' : index === 2 ? '#ffff00' : index === 3 ? '#ffa500' : '#ff0000';
+      wordsHTML += `<h3>Difficulty ${index + 1}</h3>`;
+      group.forEach((w, i) => {
+        let isCorrect = usedWords.some(uw => uw.word === w.word && uw.type === w.type);
+        let isIncorrect = incorrectWordsDisplay.some(iw => iw.includes(w.word) && iw.includes(w.type));
+        let color = isCorrect ? '#00ff00' : isIncorrect ? '#ff0000' : 'white';
+        wordsHTML += `<p style="color: ${color}">${i + 1}. <span style="font-weight: bold">${w.word}</span> (${w.type}): ${w.meaning} <span style="color: ${difficultyColor}">[Difficulty: ${w.difficulty}]</span></p>`;
+      });
+    }
+  });
+  wordsListDiv.innerHTML = `
+    <button id="closeWordsBtn" class="button">Close</button>
+    <h2>Word List</h2>
+    ${wordsHTML}
+  `;
+  document.body.appendChild(wordsListDiv);
+  document.getElementById("closeWordsBtn").addEventListener("click", closeWordsList);
+
+  // Add click listener for outside clicks
+  const outsideClickListener = (event) => {
+    if (!event.target.closest('#wordsList')) {
+      closeWordsList();
+      document.removeEventListener('click', outsideClickListener);
+    }
+  };
+  // Delay to prevent immediate self-closing
+  setTimeout(() => {
+    document.addEventListener('click', outsideClickListener);
+  }, 0);
+}
+
+function closeWordsList() {
+  const wordsList = document.getElementById("wordsList");
+  if (wordsList) wordsList.remove();
+  gamePaused = true;
+}
+
+function showSummary(isGameOver = false) {
+  gamePaused = true;
+  let totalAnswers = correctAnswers + incorrectAnswers;
+  let percentage = totalAnswers > 0 ? ((correctAnswers / totalAnswers) * 100).toFixed(2) : 0;
+  let accuracyColor = percentage < 50 ? '#ff0000' : percentage < 80 ? '#ffa500' : '#00ff00';
+  let accuracyStyle = percentage == 100 ? `color: ${accuracyColor}; animation: flash 1s ease-in-out infinite` : `color: ${accuracyColor}`;
+  let bonusPoints = calculateBonusPoints(levelTime);
+  let avgResponseTime = responseTimes.length > 0 ? (responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length).toFixed(2) : 0;
+  let responseTimeColor = parseFloat(avgResponseTime) <= 3 ? '#00ff00' : parseFloat(avgResponseTime) <= 5 ? '#ffa500' : '#ff0000';
+  let summaryContent = document.getElementById("summaryContent");
+
+  if (isGameOver) {
+    summaryContent.innerHTML = `
+      <h2>Game Over!</h2>
+      <p>Congratulations! You answered all ${totalWords} words!</p>
+      <p>Final Overall Score: <span id="scoreDisplay">${overallScore}</span></p>
+      <p>Total Time: ${((millis() - gameStartTime) / 1000).toFixed(1)}s</p>
+      <p>Average Response Time: <span style="color: ${responseTimeColor}">${avgResponseTime}s</span></p>
+      <p>Total Correct Answers: <span style="color: #00ff00">${usedWords.length}</span></p>
+      <p>Total Incorrect Answers: <span style="color: #ff0000">${incorrectAnswers}</span></p>
+      <p>Accuracy: <span style="${accuracyStyle}">${percentage}%</span></p>
+    `;
+    document.getElementById("summary").classList.add("game-over");
+    document.getElementById("nextLevelBtn").style.display = "none";
+    document.getElementById("viewWordsSummaryBtn").style.display = "none";
+    document.getElementById("restartBtn").style.display = "inline-block";
+  } else {
+    summaryContent.innerHTML = `
+      <h2>Level ${level} Complete!</h2>
+      <p>Level Score: <span id="levelScoreDisplay">${levelScore}</span></p>
+      <p>Overall Score: <span id="scoreDisplay">${overallScore}</span></p>
+      <p>Level Time: ${levelTime.toFixed(1)}s</p>
+      <p>Overall Time: ${((millis() - gameStartTime) / 1000).toFixed(1)}s</p>
+      <p>Average Response Time: <span style="color: ${responseTimeColor}">${avgResponseTime}s</span></p>
+      <p>Accuracy: <span style="${accuracyStyle}">${percentage}%</span></p>
+      <p>Time Bonus: <span id="bonusDisplay">${bonusPoints}</span></p>
+      <p id="newWordsMessage">New words loaded!</p>
+    `;
+    document.getElementById("summary").classList.remove("game-over");
+    document.getElementById("nextLevelBtn").style.display = "inline-block";
+    document.getElementById("viewWordsSummaryBtn").style.display = "inline-block";
+    document.getElementById("restartBtn").style.display = "none";
+
+    if (!bonusPointsAdded) {
+      let levelScoreDisplay = document.getElementById("levelScoreDisplay");
+      let scoreDisplay = document.getElementById("scoreDisplay");
+      let count = 0;
+      bonusInterval = setInterval(() => {
+        if (count < bonusPoints) {
+          overallScore++;
+          levelScore++;
+          if (levelScoreDisplay) levelScoreDisplay.innerText = `${levelScore}`;
+          if (scoreDisplay) scoreDisplay.innerText = `${overallScore}`;
+          if (levelScoreDisplay) levelScoreDisplay.classList.add("score-throb");
+          if (scoreDisplay) scoreDisplay.classList.add("score-throb");
+          count++;
+        } else {
+          clearInterval(bonusInterval);
+          bonusInterval = null;
+          if (levelScoreDisplay) levelScoreDisplay.classList.remove("score-throb");
+          if (scoreDisplay) scoreDisplay.classList.remove("score-throb");
+          bonusPointsAdded = true;
+        }
+      }, 10);
+    }
+  }
+
+  document.getElementById("summary").style.display = "block";
+}
+
+function restartGame() {
+  overallScore = 0;
+  levelScore = 0;
+  level = 1;
+  spawnRate = 60;
+  particles = [];
+  feedback = [];
+  pointFeedback = [];
+  correctAnswers = 0;
+  incorrectAnswers = 0;
+  usedWords = [];
+  gamePaused = true;
+  gameStarted = false;
+  correctWordsDisplay = [];
+  incorrectWordsDisplay = [];
+  correctStreak = 0;
+  levelStartTime = 0;
+  levelTime = 0;
+  gameStartTime = 0;
+  responseTimes = [];
+  currentWordStartTime = 0;
+  fallingWords = [];
+  hintsEnabled = false;
+  wordPausedTime = 0;
+  bonusPointsAdded = false;
+  if (bonusInterval) clearInterval(bonusInterval);
+  bonusInterval = null;
+  difficultyMode = "easy";
+  words = words.slice(0, 152);
+  totalWords = words.length;
+  document.getElementById("summary").style.display = "none";
+  document.getElementById("overallScore").innerText = `Overall Score: ${overallScore}`;
+  document.getElementById("overallScore").style.display = "none";
+  document.getElementById("level").innerText = `Level: ${level}`;
+  document.getElementById("level").style.display = "none";
+  document.getElementById("timer").innerText = `Level Time: 0s`;
+  document.getElementById("timer").style.display = "none";
+  document.getElementById("wordTimer").innerText = `Word Timer: 0.0s`;
+  document.getElementById("wordTimer").style.display = "none";
+  document.getElementById("instructions").style.display = "none";
+  document.getElementById("buttonContainer").style.display = "none";
+  document.getElementById("levelProgressContainer").style.display = "none";
+  document.getElementById("allWordsProgressContainer").style.display = "none";
+  document.getElementById("hintBtn").style.display = "none";
+  document.getElementById("exitBtn").style.display = "none";
+  document.getElementById("difficultyDisplay").style.display = "none";
+  document.getElementById("correctOverlay").innerHTML = "";
+  document.getElementById("incorrectOverlay").innerHTML = "";
+  updateScore();
+  updateLevel();
+  let welcomeDiv = document.createElement("div");
+  welcomeDiv.id = "welcome";
+  welcomeDiv.innerHTML = `
+    <p>Tap the correct part of speech: Noun, Verb, Adjective, or Adverb. Get 10 right to finish the level. Score points for accuracy, streaks, and speed!</p>
+    <small>Total Words: ${totalWords}</small>
+    <div class="button-container">
+      <button id="startBtn" class="button">Start</button>
+      <button id="viewWordsWelcomeBtn" class="button">View Words</button>
+    </div>
+    <div class="difficulty-container">
+      <small>Difficulty</small>
+      <button id="easyBtn" class="button difficulty-button selected">Easy</button>
+      <button id="hardBtn" class="button difficulty-button">Hard</button>
+    </div>
+    <small>Version 1.0</small>
+  `;
+  document.body.appendChild(welcomeDiv);
+  document.getElementById("startBtn").addEventListener("click", startGame);
+  document.getElementById("viewWordsWelcomeBtn").addEventListener("click", showWordsList);
+  document.getElementById("easyBtn").addEventListener("click", () => setDifficulty("easy"));
+  document.getElementById("hardBtn").addEventListener("click", () => setDifficulty("hard"));
+}
+
+function startNextLevel() {
+  level++;
+  levelScore = 0;
+  bonusPointsAdded = false;
+  if (bonusInterval) clearInterval(bonusInterval);
+  bonusInterval = null;
+  words.push(...additionalWords);
+  totalWords = words.length;
+  updateLevel();
+  gamePaused = false;
+  spawnRate = Math.max(30, spawnRate - 5);
+  backgroundSpeed += 0.1;
+  fallingWords = [];
+  feedback = [];
+  particles = [];
+  pointFeedback = [];
+  correctAnswers = 0;
+  incorrectAnswers = 0;
+  correctWordsDisplay = [];
+  incorrectWordsDisplay = [];
+  correctStreak = 0;
+  levelStartTime = millis();
+  responseTimes = [];
+  currentWordStartTime = millis();
+  wordPausedTime = 0;
+  document.getElementById("correctOverlay").innerHTML = "";
+  document.getElementById("incorrectOverlay").innerHTML = "";
+  document.getElementById("summary").style.display = "none";
+  updateScore();
+  spawnNewWord();
+}
+</script>
+</body>
+</html>
