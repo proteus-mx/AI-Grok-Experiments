@@ -110,10 +110,12 @@
 </head>
 <body>
   <div id="welcome">
-    <h3>WordAIly</h3>
-    <p>Learn & test your knowledge of Nouns, Verbs, Adjectives, and Adverbs.</p>
-    <p>Get 10 right to finish the level. Score points for accuracy, streaks, and speed!</p>
-    <small>Total Words: 152</small>
+    <h3 style="color:orange">Welcome to WordAIly!</h3>
+    <small style="color:orange; font-weight:bold">Learn &amp; test your knowledge of:</small>
+        <p>Nouns, Verbs, Adjectives, and Adverbs.</p>
+    </small>
+    <small style="color:orange">Get 10 right to finish the level. Score points for accuracy, streaks, and speed!</small>
+    <small style="color:grey">Total Words: 152</small>
     <div class="button-container">
       <button id="startBtn" class="button">Start</button>
     </div>
@@ -763,13 +765,14 @@ function showWordsList() {
         let isCorrect = usedWords.some(uw => uw.word === w.word && uw.type === w.type);
         let isIncorrect = incorrectWordsDisplay.some(iw => iw.includes(w.word) && iw.includes(w.type));
         let color = isCorrect ? '#00ff00' : isIncorrect ? '#ff0000' : 'white';
-        wordsHTML += `<p style="color: ${color}">${i + 1}. <span style="font-weight: bold">${w.word}</span> (${w.type}): ${w.meaning} <span style="color: ${difficultyColor}">[D: ${w.difficulty}]</span></p>`;
+        wordsHTML += `<p style="color: ${color}">${i + 1}. <span style="font-weight: bold">${w.word}</span> (${w.type}): ${w.meaning}</p>`;
       });
     }
   });
   wordsListDiv.innerHTML = `
     <button id="closeWordsBtn" class="button">Close</button>
     <h2>Word List</h2>
+    <p>Total words: ${totalWords}</p>
     ${wordsHTML}
   `;
   document.body.appendChild(wordsListDiv);
@@ -811,7 +814,7 @@ function showSummary(isGameOver = false) {
       <p>Congratulations! You answered all ${totalWords} words!</p>
       <p>Final Overall Score: <span id="scoreDisplay">${overallScore}</span></p>
       <p>Total Time: ${((millis() - gameStartTime) / 1000).toFixed(1)}s</p>
-      <p>Average Response Time: <span style="color: ${responseTimeColor}">${avgResponseTime}s</span></p>
+      <p>Avg Response Time: <span style="color: ${responseTimeColor}">${avgResponseTime}s</span></p>
       <p>Total Correct Answers: <span style="color: #00ff00">${usedWords.length}</span></p>
       <p>Total Incorrect Answers: <span style="color: #ff0000">${incorrectAnswers}</span></p>
       <p>Accuracy: <span style="${accuracyStyle}">${percentage}%</span></p>
@@ -917,10 +920,12 @@ function restartGame() {
   let welcomeDiv = document.createElement("div");
   welcomeDiv.id = "welcome";
   welcomeDiv.innerHTML = `
-    <h3>WordAIly</h3>
-    <p>Learn & test your knowledge of Nouns, Verbs, Adjectives, and Adverbs.</p>
-    <p>Get 10 right to finish the level. Score points for accuracy, streaks, and speed!</p>
-    <small>Total Words: ${totalWords}</small>
+    <h3 style="color:orange">Welcome to WordAIly!</h3>
+    <small style="color:orange; font-weight:bold">Learn &amp; test your knowledge of:</small>
+        <p>Nouns, Verbs, Adjectives, and Adverbs.</p>
+    </small>
+    <small style="color:orange">Get 10 right to finish the level. Score points for accuracy, streaks, and speed!</small>
+    <small style="color:grey">Total Words: ${totalWords}</small>
     <div class="button-container">
       <button id="startBtn" class="button">Start</button>
     </div>
