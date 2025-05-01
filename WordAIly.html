@@ -5,7 +5,7 @@
         function filledCell(cell) {
           return cell !== '' && cell != null;
         }
-        function loadFileData(filename) {
+        function loadFileData(filename) { 
         if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
             try {
                 var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
