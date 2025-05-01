@@ -41,27 +41,28 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>WordAIly</title>
   <script src="https://cdn.jsdelivr.net/npm/p5@1.4.2/lib/p5.js"></script>
   <style>
-    body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364); overflow: hidden; }
-    canvas { border-left: 8px solid #ffd700; border-right: 8px solid #ffd700; border-bottom: 8px solid #ffd700; border-top: none; border-radius: 15px; box-shadow: 0 0 30px rgba(255, 215, 0, 0.5); }
+    body { margin: 0 auto; display: flex; justify-content: center; align-items: center; width: 100%; height: 100vh; background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364); overflow: hidden; }
+    canvas { width: 406px; border-left: 8px solid #ffd700; border-right: 8px solid #ffd700; border-bottom: 8px solid #ffd700; border-top: none; border-radius: 15px; box-shadow: 0 0 30px rgba(255, 215, 0, 0.5); box-sizing: border-box; }
     #overallScore, #level, #timer, #wordTimer, #instructions, #title, #hintBtn, #exitBtn, #difficultyDisplay { position: absolute; color: #fff; font-family: 'Verdana', sans-serif; text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.8); }
-    #title { top: 20px; width: 100%; text-align: center; font-size: 60px; font-family: 'Papyrus', 'Verdana', sans-serif; background: linear-gradient(to right, #ffd700, #ff4500); -webkit-background-clip: text; color: transparent; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); background-color: rgba(0, 0, 0, 0.7); padding: 5px 10px; border-radius: 5px; display: inline-block; }
-    #overallScore { top: 100px; left: 20px; font-size: 20px; display: none; }
+    #title { top: 10px; width: 100%; text-align: center; font-size: 36px; font-family: 'Papyrus', 'Verdana', sans-serif; background: linear-gradient(to right, #ffd700, #ff4500); -webkit-background-clip: text; color: transparent; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); background-color: rgba(0, 0, 0, 0.7); padding: 5px 10px; border-radius: 5px; display: inline-block; }
+    #overallScore { top: 80px; left: 10px; font-size: 16px; display: none; }
     #overallScore.score-throb, #levelScoreDisplay.score-throb, #scoreDisplay.score-throb { animation: throb 0.5s ease-in-out infinite; }
-    #level { top: 100px; right: 20px; font-size: 20px; display: none; }
-    #timer { top: 100px; width: 100%; text-align: center; font-size: 20px; display: none; }
-    #wordTimer { top: 130px; width: 100%; text-align: center; font-size: 20px; display: none; }
+    #level { top: 80px; right: 10px; left: auto; font-size: 16px; display: none; }
+    #timer { top: 60px; width: 100%; text-align: center; font-size: 16px; display: none; }
+    #wordTimer { top: 80px; width: 100%; text-align: center; font-size: 16px; display: none; }
     #wordTimer.green { color: #00ff00; }
     #wordTimer.amber { color: #ffa500; }
     #wordTimer.red { color: #ff0000; animation: flash 1s ease-in-out infinite; }
-    #instructions { bottom: 80px; text-align: center; width: 100%; font-size: 16px; display: none; }
-    #difficultyDisplay { bottom: 45px; left: 20px; font-size: 14px; display: none; }
-    .button { padding: 14px 28px; font-size: 22px; font-weight: bold; background: linear-gradient(to bottom, #ff4500, #ff6347); color: white; border: 2px solid #ffd700; border-radius: 8px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; width: 120px; box-sizing: border-box; display: flex; justify-content: center; align-items: center; text-align: center; }
-    .difficulty-button { padding: 10px 20px; font-size: 16px; width: 80px; }
-    .button:hover { box-shadow: 0 0 15px rgba(255, 99, 71, 0.7); transform: scale(1.15); }
+    #instructions { bottom: 70px; text-align: center; width: 100%; font-size: 14px; display: none; }
+    #difficultyDisplay { bottom: 35px; left: 50%; transform: translateX(-50%); font-size: 12px; display: none; }
+    .button { padding: 10px 20px; font-size: 18px; font-weight: bold; background: linear-gradient(to bottom, #ff4500, #ff6347); color: white; border: 2px solid #ffd700; border-radius: 8px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; width: 90px; box-sizing: border-box; display: flex; justify-content: center; align-items: center; text-align: center; }
+    .small-grey-button { padding: 8px 16px; font-size: 14px; font-weight: bold; background: linear-gradient(to bottom, #808080, #a9a9a9); color: white; border: 2px solid #ffd700; border-radius: 8px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; width: 60px; box-sizing: border-box; display: flex; justify-content: center; align-items: center; text-align: center; }
+    .difficulty-button { padding: 8px 16px; font-size: 14px; width: 60px; }
+    .button:hover, .small-grey-button:hover, .difficulty-button:hover { box-shadow: 0 0 15px rgba(255, 99, 71, 0.7); transform: scale(1.15); }
     #startBtn, #nextLevelBtn { animation: throb 1s ease-in-out infinite; }
     .hint-throb { animation: throb 1s ease-in-out infinite; }
     @keyframes throb {
@@ -72,38 +73,36 @@
       0%, 100% { opacity: 1; }
       50% { opacity: 0.5; }
     }
-    #hintBtn { top: 30px; right: 20px; display: none; }
-    #exitBtn { top: 30px; left: 20px; display: none; }
-    #buttonContainer { position: absolute; bottom: 20px; width: 500px; display: none; justify-content: space-between; }
-    #summary { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.9); padding: 20px; border-radius: 10px; color: white; font-family: 'Verdana', sans-serif; text-align: center; max-width: 600px; }
+    #buttonContainer { position: absolute; bottom: 20px; width: 360px; left: 50%; transform: translateX(-50%); display: none; justify-content: space-between; }
+    #hintBtn { top: 20px; right: 10px; width: 90px; display: none; }
+    #exitBtn { top: 20px; left: 10px; width: 90px; display: none; }
+    #summary { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.9); padding: 20px; border-radius: 10px; color: white; font-family: 'Verdana', sans-serif; text-align: center; max-width: 360px; }
     #summary button { margin: 10px; }
-    #summary small { display: block; font-size: 12px; margin-top: 10px; }
-    #summary p { font-size: 18px; margin: 10px 0; }
-    #summary #levelScoreDisplay { font-size: 36px; font-weight: bold; background: #ffd700; color: #000; padding: 5px 10px; border-radius: 5px; display: inline-block; }
-    #summary #scoreDisplay { font-size: 36px; font-weight: bold; background: #00ff00; color: #000; padding: 5px 10px; border-radius: 5px; display: inline-block; }
+    #summary small { display: block; font-size: 10px; margin-top: 10px; }
+    #summary p { font-size: 16px; margin: 8px 0; }
+    #summary #levelScoreDisplay { font-size: 28px; font-weight: bold; background: #ffd700; color: #000; padding: 5px 10px; border-radius: 5px; display: inline-block; }
+    #summary #scoreDisplay { font-size: 28px; font-weight: bold; background: #00ff00; color: #000; padding: 5px 10px; border-radius: 5px; display: inline-block; }
     #summary.game-over #scoreDisplay { background: #ffd700; }
-    #correctOverlay { position: absolute; bottom: 120px; left: 20px; background: rgba(0, 255, 0, 0.3); padding: 10px; border-radius: 5px; color: white; font-family: 'Verdana', sans-serif; font-size: 14px; max-width: 200px; max-height: 200px; overflow-y: auto; }
-    #incorrectOverlay { position: absolute; bottom: 120px; right: 20px; background: rgba(255, 0, 0, 0.3); padding: 10px; border-radius: 5px; color: white; font-family: 'Verdana', sans-serif; font-size: 14px; max-width: 200px; max-height: 200px; overflow-y: auto; }
-    #welcome { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.7); padding: 20px; border-radius: 10px; color: white; font-family: 'Verdana', sans-serif; text-align: center; max-width: 600px; }
-    #welcome p { font-size: 20px; margin: 10px 0; }
-    #welcome small { font-size: 14px; display: block; margin: 10px 0; }
-    #welcome .button-container { display: flex; flex-direction: row; justify-content: center; gap: 20px; }
-    #welcome .difficulty-container { display: flex; flex-direction: row; justify-content: center; gap: 20px; margin-top: 10px; }
-    #welcome .difficulty-container small { margin-bottom: 5px; }
-    #welcome button { margin: 0; }
-    .progress-container { position: absolute; width: 150px; height: 15px; background: #333; border: 2px solid #ffd700; border-radius: 5px; overflow: hidden; }
-    #levelProgressContainer { top: 140px; right: 20px; display: none; }
-    #allWordsProgressContainer { top: 140px; left: 20px; display: none; }
+    #correctOverlay { position: absolute; bottom: 80px; left: 10px; background: rgba(0, 255, 0, 0.3); padding: 10px; border-radius: 5px; color: white; font-family: 'Verdana', sans-serif; font-size: 12px; max-width: 150px; max-height: 150px; overflow-y: auto; }
+    #incorrectOverlay { position: absolute; bottom: 120px; right: 10px; left: auto; background: rgba(255, 0, 0, 0.3); padding: 10px; border-radius: 5px; color: white; font-family: 'Verdana', sans-serif; font-size: 12px; max-width: 150px; max-height: 150px; overflow-y: auto; }
+    #welcome { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.7); padding: 15px; border-radius: 10px; color: white; font-family: 'Verdana', sans-serif; text-align: center; max-width: 300px; }
+    #welcome p { font-size: 16px; margin: 8px 0; }
+    #welcome small { font-size: 12px; display: block; margin: 8px 0; }
+    #welcome small.difficulty-label { margin-bottom: 5px; }
+    #welcome .button-container { display: flex; flex-direction: row; justify-content: center; gap: 15px; }
+    #welcome .difficulty-container { display: flex; flex-direction: row; justify-content: center; gap: 15px; margin-top: 5px; }
+    #welcome .view-words-container { display: flex; justify-content: center; margin-top: 10px; }
+    .progress-container { position: absolute; width: 120px; height: 12px; background: #333; border: 2px solid #ffd700; border-radius: 5px; overflow: hidden; }
+    #levelProgressContainer { top: 110px; left: 10px; display: none; }
     .progress-bar { height: 100%; transition: width: 0.3s ease; }
     #levelProgressBar { background: #00ff00; }
-    #allWordsProgressBar { background: #1e90ff; }
-    .progress-label { position: absolute; color: #fff; font-family: 'Verdana', sans-serif; font-size: 14px; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); text-align: center; width: 150px; top: 0; line-height: 15px; }
-    .progress-title { position: absolute; color: #fff; font-family: 'Verdana', sans-serif; font-size: 12px; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); text-align: center; width: 150px; top: -30px; }
-    #newWordsMessage { font-size: 16px; color: #ffd700; margin: 10px 0; animation: flash 1s ease-in-out 2; }
-    #wordsList { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.9); padding: 20px; border: 2px solid #ffd700; border-radius: 10px; color: white; font-family: 'Verdana', sans-serif; text-align: left; max-width: 800px; max-height: 400px; overflow-y: auto; }
-    #wordsList h2 { font-size: 24px; text-align: center; margin: 0 0 10px; }
-    #wordsList h3 { font-size: 18px; margin: 10px 0 5px; }
-    #wordsList p { font-size: 14px; margin: 5px 0; }
+    .progress-label { position: absolute; color: #fff; font-family: 'Verdana', sans-serif; font-size: 12px; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); text-align: center; width: 120px; top: 0; line-height: 12px; }
+    .progress-title { position: absolute; color: #fff; font-family: 'Verdana', sans-serif; font-size: 10px; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); text-align: center; width: 120px; top: -20px; }
+    #newWordsMessage { font-size: 14px; color: #ffd700; margin: 8px 0; animation: flash 1s ease-in-out 2; }
+    #wordsList { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.9); padding: 20px; border: 2px solid #ffd700; border-radius: 10px; color: white; font-family: 'Verdana', sans-serif; text-align: left; max-width: 360px; max-height: 500px; overflow-y: auto; }
+    #wordsList h2 { font-size: 20px; text-align: center; margin: 0 0 10px; }
+    #wordsList h3 { font-size: 16px; margin: 8px 0 5px; }
+    #wordsList p { font-size: 12px; margin: 5px 0; }
     #wordsList button { margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
     #easyBtn.selected { background: linear-gradient(to bottom, #00ff00, #00cc00); }
     #hardBtn.selected { background: linear-gradient(to bottom, #ff0000, #cc0000); }
@@ -115,10 +114,9 @@
     <small>Total Words: 152</small>
     <div class="button-container">
       <button id="startBtn" class="button">Start</button>
-      <button id="viewWordsWelcomeBtn" class="button">View Words</button>
     </div>
+    <small class="difficulty-label">Difficulty</small>
     <div class="difficulty-container">
-      <small>Difficulty</small>
       <button id="easyBtn" class="button difficulty-button selected">Easy</button>
       <button id="hardBtn" class="button difficulty-button">Hard</button>
     </div>
@@ -137,8 +135,8 @@
     <button id="adjBtn" class="button">Adjective</button>
     <button id="advBtn" class="button">Adverb</button>
   </div>
-  <button id="hintBtn" class="button">Hint</button>
   <button id="exitBtn" class="button">Exit</button>
+  <button id="hintBtn" class="button">Hint</button>
   <div id="correctOverlay"></div>
   <div id="incorrectOverlay"></div>
   <div id="levelProgressContainer" class="progress-container">
@@ -146,15 +144,10 @@
     <div id="levelProgressBar" class="progress-bar" style="width: 0%"></div>
     <div id="levelProgressLabel" class="progress-label">0/10</div>
   </div>
-  <div id="allWordsProgressContainer" class="progress-container">
-    <div class="progress-title">Total Words</div>
-    <div id="allWordsProgressBar" class="progress-bar" style="width: 0%"></div>
-    <div id="allWordsProgressLabel" class="progress-label">0/152</div>
-  </div>
   <div id="summary" style="display: none;">
     <div id="summaryContent"></div>
     <button id="nextLevelBtn" class="button" style="display: none;">Next Level</button>
-    <button id="viewWordsSummaryBtn" class="button" style="display: none;">View Words</button>
+    <button id="viewWordsSummaryBtn" class="small-grey-button" style="display: none;">Words</button>
     <button id="restartBtn" class="button" style="display: none;">Restart</button>
   </div>
 <script>
@@ -349,14 +342,13 @@ let bonusInterval = null;
 let difficultyMode = "easy";
 
 function setup() {
-  createCanvas(800, 600);
+  createCanvas(390, 650);
   textAlign(CENTER, CENTER);
   textSize(28);
   for (let i = 0; i < 3; i++) {
     spawnWelcomeWord();
   }
   document.getElementById("startBtn").addEventListener("click", startGame);
-  document.getElementById("viewWordsWelcomeBtn").addEventListener("click", showWordsList);
   document.getElementById("nextLevelBtn").addEventListener("click", startNextLevel);
   document.getElementById("viewWordsSummaryBtn").addEventListener("click", showWordsList);
   document.getElementById("restartBtn").addEventListener("click", restartGame);
@@ -427,7 +419,7 @@ function draw() {
       wordTimer.classList.add("red");
     }
   }
-  let isPaused = fallingWords.length > 0 && fallingWords[0].y >= height - 200;
+  let isPaused = fallingWords.length > 0 && fallingWords[0].y >= height - 100;
   for (let i = fallingWords.length - 1; i >= 0; i--) {
     let fw = fallingWords[i];
     if (!isPaused) {
@@ -435,8 +427,8 @@ function draw() {
     }
     if (i === 0 && fallingWords.length > 0) {
       fw.x = width / 2;
-      if (fw.y >= height - 200) {
-        fw.y = height - 200;
+      if (fw.y >= height - 100) {
+        fw.y = height - 100;
       }
     }
     if (i > 0) {
@@ -446,7 +438,7 @@ function draw() {
     fill(255, 215, 0, i === 0 ? 255 : 100);
     stroke(0, i === 0 ? 255 : 100);
     strokeWeight(3);
-    if (i === 0 && fallingWords.length > 0 && fw.y >= height - 200) {
+    if (i === 0 && fallingWords.length > 0 && fw.y >= height - 100) {
       let throb = 28 + sin(frameCount * 0.1) * 2;
       textSize(throb);
     } else {
@@ -527,7 +519,7 @@ function spawnWelcomeWord() {
     word: word.word, 
     type: word.type, 
     meaning: word.meaning, 
-    x: random(350, width - 350), 
+    x: random(100, width - 100), 
     y: welcomeWords.length === 0 ? random(-50, 0) : welcomeWords[welcomeWords.length-1].y - 100,
     speed: 1 
   });
@@ -575,7 +567,6 @@ function startGame() {
   document.getElementById("wordTimer").style.display = "block";
   document.getElementById("difficultyDisplay").style.display = "block";
   document.getElementById("levelProgressContainer").style.display = "block";
-  document.getElementById("allWordsProgressContainer").style.display = "block";
   document.getElementById("hintBtn").style.display = "block";
   document.getElementById("exitBtn").style.display = "block";
   document.getElementById("difficultyDisplay").innerText = `Difficulty: ${difficultyMode.charAt(0).toUpperCase() + difficultyMode.slice(1)}`;
@@ -730,9 +721,6 @@ function updateScore() {
 
 function updateLevel() {
   document.getElementById("level").innerText = `Level: ${level}`;
-  let allWordsProgress = (usedWords.length / totalWords) * 100;
-  document.getElementById("allWordsProgressBar").style.width = `${allWordsProgress}%`;
-  document.getElementById("allWordsProgressLabel").innerText = `${usedWords.length}/${totalWords}`;
 }
 
 function updateCorrectOverlay() {
@@ -916,9 +904,9 @@ function restartGame() {
   document.getElementById("instructions").style.display = "none";
   document.getElementById("buttonContainer").style.display = "none";
   document.getElementById("levelProgressContainer").style.display = "none";
-  document.getElementById("allWordsProgressContainer").style.display = "none";
   document.getElementById("hintBtn").style.display = "none";
   document.getElementById("exitBtn").style.display = "none";
+  document.getElementById("difficultyDisplay").innerText = `Difficulty: ${difficultyMode.charAt(0).toUpperCase() + difficultyMode.slice(1)}`;
   document.getElementById("difficultyDisplay").style.display = "none";
   document.getElementById("correctOverlay").innerHTML = "";
   document.getElementById("incorrectOverlay").innerHTML = "";
@@ -931,10 +919,9 @@ function restartGame() {
     <small>Total Words: ${totalWords}</small>
     <div class="button-container">
       <button id="startBtn" class="button">Start</button>
-      <button id="viewWordsWelcomeBtn" class="button">View Words</button>
     </div>
+    <small class="difficulty-label">Difficulty</small>
     <div class="difficulty-container">
-      <small>Difficulty</small>
       <button id="easyBtn" class="button difficulty-button selected">Easy</button>
       <button id="hardBtn" class="button difficulty-button">Hard</button>
     </div>
@@ -942,7 +929,6 @@ function restartGame() {
   `;
   document.body.appendChild(welcomeDiv);
   document.getElementById("startBtn").addEventListener("click", startGame);
-  document.getElementById("viewWordsWelcomeBtn").addEventListener("click", showWordsList);
   document.getElementById("easyBtn").addEventListener("click", () => setDifficulty("easy"));
   document.getElementById("hardBtn").addEventListener("click", () => setDifficulty("hard"));
 }
@@ -953,6 +939,7 @@ function startNextLevel() {
   bonusPointsAdded = false;
   if (bonusInterval) clearInterval(bonusInterval);
   bonusInterval = null;
+  usedWords = [];
   words.push(...additionalWords);
   totalWords = words.length;
   updateLevel();
