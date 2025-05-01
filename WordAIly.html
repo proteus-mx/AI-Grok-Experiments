@@ -366,7 +366,11 @@ function setup() {
   document.getElementById("easyBtn").addEventListener("click", () => setDifficulty("easy"));
   document.getElementById("hardBtn").addEventListener("click", () => setDifficulty("hard"));
 
-  window.webkit.messageHandlers.wordAIlyHandler.postMessage("showShare");
+  try {
+      window.webkit.messageHandlers.wordAIlyHandler.postMessage("showShare");
+  } catch (err) {
+      console.warn("iOS message handler not available:", err);
+  }
 }
 
 function setDifficulty(mode) {
@@ -577,8 +581,11 @@ function spawnNewWord() {
 }
 
 function startGame() {
-  window.webkit.messageHandlers.wordAIlyHandler.postMessage("hideShare");
-  
+  try {
+      window.webkit.messageHandlers.wordAIlyHandler.postMessage("hideShare");
+  } catch (err) {
+      console.warn("iOS message handler not available:", err);
+  }  
   gameStarted = true;
   gamePaused = false;
   overallScore = 0;
@@ -895,6 +902,11 @@ function showSummary(isGameOver = false) {
 }
 
 function restartGame() {
+  try {
+      window.webkit.messageHandlers.wordAIlyHandler.postMessage("showShare");
+  } catch (err) {
+      console.warn("iOS message handler not available:", err);
+  }
   overallScore = 0;
   levelScore = 0;
   level = 1;
