@@ -95,7 +95,7 @@ return gk_fileData[filename] || "";
     #welcome .difficulty-container { display: flex; flex-direction: row; justify-content: center; gap: 15px; margin-top: 5px; }
     #welcome .view-words-container { display: flex; justify-content: center; margin-top: 10px; }
     .progress-container { position: absolute; width: 90%; height: 12px; background: #333; border: 2px solid #ffd700; border-radius: 5px; overflow: hidden; }
-    #levelProgressContainer { top: 110px; left: 10px; right: 10px; width:90%; display: none; }
+    #levelProgressContainer { top: 110px; left: 10px; right: 10px; width:93%; display: none; }
     .progress-bar { height: 100%; transition: width: 0.3s ease; }
     #levelProgressBar { background: #00ff00; }
     .progress-label { position: absolute; color: #fff; font-family: 'Verdana', sans-serif; font-size: 12px; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); text-align: center; width: 120px; top: 0; line-height: 12px; }
@@ -118,14 +118,17 @@ return gk_fileData[filename] || "";
     </small>
     <small style="color:orange">Get 10 right to finish the level. Score points for accuracy, streaks, and speed!</small>
     <small style="color:grey">Total Words: 152</small>
+    <p></p>
     <div class="button-container">
       <button id="startBtn" class="button">Start</button>
     </div>
+    <p></p>
     <small class="difficulty-label">Difficulty</small>
     <div class="difficulty-container">
       <button id="easyBtn" class="button difficulty-button selected">Easy</button>
       <button id="hardBtn" class="button difficulty-button">Hard</button>
     </div>
+    <p></p>
     <small>Version 1.0 (alpha)</small>
   </div>
   <div id="title">WordAIly</div>
@@ -410,7 +413,7 @@ function draw() {
   levelTime = (millis() - levelStartTime) / 1000;
   let timer = document.getElementById("timer");
   if (timer) {
-    timer.innerText = `Level Time: ${levelTime.toFixed(1)}s`;
+    timer.innerText = `Level Timer: ${levelTime.toFixed(1)}s`;
   }
   let wordTimer = document.getElementById("wordTimer");
   if (wordTimer && fallingWords.length > 0) {
@@ -425,7 +428,7 @@ function draw() {
       wordTimer.classList.add("red");
     }
   }
-  let isPaused = fallingWords.length > 0 && fallingWords[0].y >= height - 100;
+  let isPaused = fallingWords.length > 0 && fallingWords[0].y >= height - 200;
   for (let i = fallingWords.length - 1; i >= 0; i--) {
     let fw = fallingWords[i];
     if (!isPaused) {
@@ -444,7 +447,7 @@ function draw() {
     fill(255, 215, 0, i === 0 ? 255 : 100);
     stroke(0, i === 0 ? 255 : 100);
     strokeWeight(3);
-    if (i === 0 && fallingWords.length > 0 && fw.y >= height - 100) {
+    if (i === 0 && fallingWords.length > 0 && fw.y >= height - 200) {
       let throb = 28 + sin(frameCount * 0.1) * 2;
       textSize(throb);
     } else {
@@ -499,7 +502,7 @@ function draw() {
     if (!wordPausedTime) {
       wordPausedTime = millis();
     }
-    if (millis() - wordPausedTime >= 3000) {
+    if (millis() - wordPausedTime >= 2000) {
       let fw = fallingWords[0];
       let buttonId = fw.type === "noun" ? "nounBtn" : fw.type === "verb" ? "verbBtn" : fw.type === "adjective" ? "adjBtn" : "advBtn";
       let button = document.getElementById(buttonId);
@@ -526,8 +529,8 @@ function spawnWelcomeWord() {
     type: word.type, 
     meaning: word.meaning, 
     x: random(100, width - 100), 
-    y: welcomeWords.length === 0 ? random(-50, 0) : welcomeWords[welcomeWords.length-1].y - 400,
-    speed: 1 
+    y: welcomeWords.length === 0 ? random(-50, 0) : welcomeWords[welcomeWords.length-1].y - 300,
+    speed: 1.5 
   });
 }
 
@@ -617,8 +620,8 @@ function checkAnswer(type) {
     pointFeedback.push({ text: "+10", x: fw.x, y: fw.y - 20, alpha: 255, points: 10, isStreakBonus: false, isQuickBonus: false });
     let count = 0;
     let interval = setInterval(() => {
-      overallScore++;
-      levelScore++;
+      overallScore++; // BUG? possible doubling
+      levelScore++; // BUG? possible doubling
       scoreElement.classList.add("score-throb");
       updateScore();
       count++;
@@ -643,8 +646,8 @@ function checkAnswer(type) {
       pointFeedback.push({ text: quickText, x: fw.x, y: fw.y - 60, alpha: 255, points: quickBonus, isStreakBonus: false, isQuickBonus: true });
       let quickCount = 0;
       let quickInterval = setInterval(() => {
-        overallScore++;
-        levelScore++;
+        overallScore++; // BUG? possible doubling
+        levelScore++; // BUG? possible doubling
         scoreElement.classList.add("score-throb");
         updateScore();
         quickCount++;
@@ -677,6 +680,8 @@ function checkAnswer(type) {
       }, 50);
       correctStreak = 0;
     }
+
+  // Incorrect 
   } else {
     incorrectAnswers++;
     incorrectWordsDisplay.push(`${fw.word} (${fw.type})`);
@@ -702,6 +707,7 @@ function checkAnswer(type) {
     }, 300);
     correctStreak = 0;
   }
+  
   ["nounBtn", "verbBtn", "adjBtn", "advBtn"].forEach(id => {
     let btn = document.getElementById(id);
     if (btn) btn.classList.remove("hint-throb");
@@ -747,7 +753,7 @@ function calculateBonusPoints(time) {
 }
 
 function showWordsList() {
-  gamePaused = true;
+  //gamePaused = true;
   if (bonusInterval) {
     clearInterval(bonusInterval);
     bonusInterval = null;
@@ -796,7 +802,7 @@ function showWordsList() {
 function closeWordsList() {
   const wordsList = document.getElementById("wordsList");
   if (wordsList) wordsList.remove();
-  gamePaused = true;
+  //gamePaused = true;
 }
 
 function showSummary(isGameOver = false) {
