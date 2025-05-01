@@ -50,7 +50,7 @@ return gk_fileData[filename] || "";
     body { margin: 0 auto; display: flex; justify-content: center; align-items: center; width: 100%; height: 100vh; background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364); overflow: hidden; }
     canvas { width: 100%; border-left: 8px solid #ffd700; border-right: 8px solid #ffd700; border-bottom: 8px solid #ffd700; border-top: 8px solid #ffd700; border-radius: 15px; box-shadow: 0 0 30px rgba(255, 215, 0, 0.5); box-sizing: border-box; }
     #overallScore, #level, #timer, #wordTimer, #instructions, #title, #hintBtn, #exitBtn, #difficultyDisplay { position: absolute; color: #fff; font-family: 'Verdana', sans-serif; text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.8); }
-    #title { top: 10px; width: 100%; text-align: center; font-size: 36px; font-family: 'Papyrus', 'Verdana', sans-serif; background: linear-gradient(to right, #ffd700, #ff4500); -webkit-background-clip: text; color: transparent; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); background-color: rgba(0, 0, 0, 0.7); padding: 5px 10px; border-radius: 5px; display: inline-block; }
+    #title { top: 20px; width: 100%; text-align: center; font-size: 36px; font-family: 'Papyrus', 'Verdana', sans-serif; background: linear-gradient(to right, #ffd700, #ff4500); -webkit-background-clip: text; color: transparent; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); background-color: rgba(0, 0, 0, 0.7); padding: 5px 10px; border-radius: 5px; display: inline-block; }
     #overallScore { top: 80px; left: 10px; font-size: 16px; display: none; }
     #overallScore.score-throb, #levelScoreDisplay.score-throb, #scoreDisplay.score-throb { animation: throb 0.5s ease-in-out infinite; }
     #level { top: 80px; right: 10px; left: auto; font-size: 16px; display: none; }
@@ -136,7 +136,7 @@ return gk_fileData[filename] || "";
   <div id="level">Level: 1</div>
   <div id="timer">Level Time: 0s</div>
   <div id="wordTimer">Word Timer: 0.0s</div>
-  <div id="instructions">Tap button to match the word's part of speech!</div>
+  <div id="instructions">Tap to match word type</div>
   <div id="difficultyDisplay">Difficulty: Easy</div>
   <div id="buttonContainer">
     <button id="nounBtn" class="button">Noun</button>
@@ -410,11 +410,24 @@ function draw() {
     return;
   }
   if (gamePaused) return;
+
+  // Level timer
   levelTime = (millis() - levelStartTime) / 1000;
   let timer = document.getElementById("timer");
   if (timer) {
     timer.innerText = `Level Timer: ${levelTime.toFixed(1)}s`;
+    timer.classList.remove("green", "amber", "red");
+
+    if (levelTime < 20) {
+      timer.classList.add("green");
+    } else if (levelTime < 30) {
+      timer.classList.add("amber");
+    } else {
+      timer.classList.add("red");
+    }
   }
+  
+  // Word timer
   let wordTimer = document.getElementById("wordTimer");
   if (wordTimer && fallingWords.length > 0) {
     let wordTime = (millis() - currentWordStartTime) / 1000;
