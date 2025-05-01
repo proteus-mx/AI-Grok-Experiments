@@ -110,7 +110,8 @@
 </head>
 <body>
   <div id="welcome">
-    <p>Tap the correct part of speech: Noun, Verb, Adjective, or Adverb. Get 10 right to finish the level. Score points for accuracy, streaks, and speed!</p>
+    <p>Test and learn your knowledge of Nouns, Verbs, Adjectives, and Adverbs.</p>
+    <p>Get 10 right to finish the level. Score points for accuracy, streaks, and speed!</p>
     <small>Total Words: 152</small>
     <div class="button-container">
       <button id="startBtn" class="button">Start</button>
@@ -123,11 +124,11 @@
     <small>Version 1.0</small>
   </div>
   <div id="title">WordAIly</div>
-  <div id="overallScore">Overall Score: 0</div>
+  <div id="overallScore">Score: 0</div>
   <div id="level">Level: 1</div>
   <div id="timer">Level Time: 0s</div>
   <div id="wordTimer">Word Timer: 0.0s</div>
-  <div id="instructions">Click the correct button to match the falling word's part of speech!</div>
+  <div id="instructions">Tap button to match the word's part of speech!</div>
   <div id="difficultyDisplay">Difficulty: Easy</div>
   <div id="buttonContainer">
     <button id="nounBtn" class="button">Noun</button>
@@ -915,7 +916,8 @@ function restartGame() {
   let welcomeDiv = document.createElement("div");
   welcomeDiv.id = "welcome";
   welcomeDiv.innerHTML = `
-    <p>Tap the correct part of speech: Noun, Verb, Adjective, or Adverb. Get 10 right to finish the level. Score points for accuracy, streaks, and speed!</p>
+    <p>Test and learn your knowledge of Nouns, Verbs, Adjectives, and Adverbs.</p>
+    <p>Get 10 right to finish the level. Score points for accuracy, streaks, and speed!</p>
     <small>Total Words: ${totalWords}</small>
     <div class="button-container">
       <button id="startBtn" class="button">Start</button>
