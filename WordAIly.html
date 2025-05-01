@@ -363,6 +363,8 @@ function setup() {
   document.getElementById("restartBtn").addEventListener("click", restartGame);
   document.getElementById("easyBtn").addEventListener("click", () => setDifficulty("easy"));
   document.getElementById("hardBtn").addEventListener("click", () => setDifficulty("hard"));
+
+  window.webkit.messageHandlers.wordAIlyHandler.postMessage("showShare");
 }
 
 function setDifficulty(mode) {
@@ -573,6 +575,8 @@ function spawnNewWord() {
 }
 
 function startGame() {
+  window.webkit.messageHandlers.wordAIlyHandler.postMessage("hideShare");
+  
   gameStarted = true;
   gamePaused = false;
   overallScore = 0;
