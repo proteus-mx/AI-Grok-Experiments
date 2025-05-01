@@ -1,43 +1,45 @@
 <script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) { 
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
+var gk_isXlsx = false;
+var gk_xlsxFileLookup = {};
+var gk_fileData = {};
+function filledCell(cell) {
+  return cell !== '' && cell != null;
+}
+function loadFileData(filename) { 
+if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+    try {
+        var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+        var firstSheetName = workbook.SheetNames[0];
+        var worksheet = workbook.Sheets[firstSheetName];
 
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
+        // Convert sheet to JSON to filter blank rows
+        var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+        // Filter out blank rows (rows where all cells are empty, null, or undefined)
+        var filteredData = jsonData.filter(row => row.some(filledCell));
 
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
+        // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+        var headerRowIndex = filteredData.findIndex((row, index) =>
+          row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+        );
+        // Fallback
+        if (headerRowIndex === -1 || headerRowIndex > 25) {
+          headerRowIndex = 0;
+        }
 
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+        // Convert filtered JSON back to CSV
+        var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+        csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+        return csv;
+    } catch (e) {
+        console.error(e);
+        return "";
+    }
+}
+return gk_fileData[filename] || "";
+}
+</script>
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -124,7 +126,7 @@
       <button id="easyBtn" class="button difficulty-button selected">Easy</button>
       <button id="hardBtn" class="button difficulty-button">Hard</button>
     </div>
-    <small>Version 1.0</small>
+    <small>Version 1.0 (alpha)</small>
   </div>
   <div id="title">WordAIly</div>
   <div id="overallScore">Score: 0</div>
@@ -524,7 +526,7 @@ function spawnWelcomeWord() {
     type: word.type, 
     meaning: word.meaning, 
     x: random(100, width - 100), 
-    y: welcomeWords.length === 0 ? random(-50, 0) : welcomeWords[welcomeWords.length-1].y - 100,
+    y: welcomeWords.length === 0 ? random(-50, 0) : welcomeWords[welcomeWords.length-1].y - 400,
     speed: 1 
   });
 }
@@ -736,11 +738,11 @@ function updateIncorrectOverlay() {
 }
 
 function calculateBonusPoints(time) {
-  if (time < 30) return 100;
-  if (time < 45) return 75;
-  if (time < 60) return 50;
-  if (time < 90) return 25;
-  if (time < 120) return 10;
+  if (time < 10) return 100;
+  if (time < 20) return 75;
+  if (time < 30) return 50;
+  if (time < 45) return 25;
+  if (time < 60) return 10;
   return 5;
 }
 
@@ -934,7 +936,7 @@ function restartGame() {
       <button id="easyBtn" class="button difficulty-button selected">Easy</button>
       <button id="hardBtn" class="button difficulty-button">Hard</button> 
     </div>
-    <small>Version 1.0</small>
+    <small>Version 1.0 (alpha)</small>
   `;
   document.body.appendChild(welcomeDiv);
   document.getElementById("startBtn").addEventListener("click", startGame);
