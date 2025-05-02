@@ -132,7 +132,7 @@ return gk_fileData[filename] || "";
       <button id="hardBtn" class="button difficulty-button">Hard</button>
     </div>
     <p></p>
-    <small>Version 0.2 (alpha)</small>
+    <small>Version 0.3 (alpha)</small>
     <small style="color:grey">Total Words: 152</small>
   </div>
   <div id="title">WordAIly</div>
@@ -425,7 +425,7 @@ function draw() {
   levelTime = (millis() - levelStartTime) / 1000;
   let timer = document.getElementById("timer");
   if (timer) {
-    timer.innerText = `Level Timer: ${Math.round(levelTime.toFixed(1)})s`;
+    timer.innerText = `Level Timer: ${Math.round(levelTime.toFixed(1))}s`;
     timer.classList.remove("green", "amber", "red");
 
     if (levelTime < 20) {
@@ -980,7 +980,7 @@ function restartGame() {
       <button id="hardBtn" class="button difficulty-button">Hard</button> 
     </div>
     <p></p>
-    <small>Version 0.2 (alpha)</small>
+    <small>Version 0.3 (alpha)</small>
     <small style="color:grey">Total Words: ${totalWords}</small>
   `;
   document.body.appendChild(welcomeDiv);
