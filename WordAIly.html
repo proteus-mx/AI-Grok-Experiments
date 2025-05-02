@@ -425,7 +425,7 @@ function draw() {
   levelTime = (millis() - levelStartTime) / 1000;
   let timer = document.getElementById("timer");
   if (timer) {
-    timer.innerText = `Level Timer: ${levelTime.toFixed(1)}s`;
+    timer.innerText = `Level Timer: ${Math.round(levelTime.toFixed(1)})s`;
     timer.classList.remove("green", "amber", "red");
 
     if (levelTime < 20) {
@@ -443,6 +443,7 @@ function draw() {
     let wordTime = (millis() - currentWordStartTime) / 1000;
     wordTimer.innerText = `Word Timer: ${wordTime.toFixed(1)}s`;
     wordTimer.classList.remove("green", "amber", "red");
+    
     if (wordTime < 2) {
       wordTimer.classList.add("green");
     } else if (wordTime < 5) {
