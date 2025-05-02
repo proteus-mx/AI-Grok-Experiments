@@ -912,6 +912,7 @@ function showSummary(isGameOver = false) {
   }
 
   document.getElementById("overallScore").innerText = `Score2: ${overallScore}`; // Added to correct inconsistent scores
+  console.log("Score should be: ${overallScore}");
   document.getElementById("summary").style.display = "block";
 }
 
