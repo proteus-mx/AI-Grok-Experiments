@@ -53,27 +53,24 @@ function showLeaderboard() {
 }
 
 
-document.getElementById("leaderboardButton").addEventListener("click", function () {
-    if (window.webkit?.messageHandlers?.wordAIlyHandler) {
-        window.webkit.messageHandlers.wordAIlyHandler.postMessage("showLeaderboard");
-    } else {
-        console.log("Game Center not available");
-    }
-});
-
 document.addEventListener("DOMContentLoaded", function () {
-    const button = document.getElementById("myButton");
-    if (button) {
-        button.addEventListener("click", function () {
-          if (window.webkit?.messageHandlers?.wordAIlyHandler) {
-                  document.getElementById("leaderboardButton").style.display = "inline-block";
-          }
+    const leaderboardButton = document.getElementById("leaderboardButton");
+
+    if (leaderboardButton) {
+        leaderboardButton.addEventListener("click", function () {
+            if (window.webkit?.messageHandlers?.wordAIlyHandler) {
+                window.webkit.messageHandlers.wordAIlyHandler.postMessage("showLeaderboard");
+            } else {
+                console.log("wordAIlyHandler not available — running in browser?");
+            }
         });
+    } else {
+        console.warn("leaderboardButton not found in DOM");
     }
 });
-  
-  
 </script>
+
+
 
 <!DOCTYPE html>
 <html lang="en">
