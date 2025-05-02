@@ -135,7 +135,7 @@ return gk_fileData[filename] || "";
       <button id="hardBtn" class="button difficulty-button">Hard</button>
     </div>
     <p></p>
-    <small>Version 0.6 (alpha)</small>
+    <small>Version 0.7 (alpha)</small>
     <small style="color:grey">Total Words: 152</small>
   </div>
   <div id="title">WordAIly</div>
@@ -712,10 +712,7 @@ function checkAnswer(type) {
           scoreElement.classList.remove("score-throb");
         }
       }, 50);
-      correctStreak = 0;
-      
-      document.getElementById("overallScore").innerText = `Score: ${overallScore}`; // Added to correct inconsistent scores
-      
+      correctStreak = 0;      
     }
 
   // Incorrect 
@@ -911,6 +908,8 @@ function showSummary(isGameOver = false) {
         }
       }, 10);
     }
+          document.getElementById("overallScore").innerText = `Score: ${overallScore}`; // Added to correct inconsistent scores
+
   }
 
   document.getElementById("summary").style.display = "block";
@@ -990,7 +989,7 @@ function restartGame() {
       <button id="hardBtn" class="button difficulty-button">Hard</button> 
     </div>
     <p></p>
-    <small>Version 0.6 (alpha)</small>
+    <small>Version 0.7 (alpha)</small>
     <small style="color:grey">Total Words: ${totalWords}</small>
   `;
   document.body.appendChild(welcomeDiv);
