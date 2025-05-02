@@ -134,6 +134,17 @@ document.addEventListener("DOMContentLoaded", function () {
       opacity: 0.8;
       animation: none;
     }
+
+    
+    .fancy-text {
+      font-size: 36px;
+      font-family: 'Papyrus', 'Verdana', sans-serif;
+      background: linear-gradient(to right, #ffd700, #ff4500);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent; /* for Safari/Chrome */
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    
     #instructions { bottom: 70px; text-align: center; width: 100%; font-size: 14px; display: none; }
     #difficultyDisplay { bottom: 35px; left: 50%; transform: translateX(-50%); font-size: 12px; display: none; }
     .button { padding: 10px 20px; font-size: 18px; font-weight: bold; background: linear-gradient(to bottom, #ff4500, #ff6347); color: white; border: 2px solid #ffd700; border-radius: 8px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; width: 90px; box-sizing: border-box; display: flex; justify-content: center; align-items: center; text-align: center; }
@@ -187,7 +198,7 @@ document.addEventListener("DOMContentLoaded", function () {
 </head>
 <body>
   <div id="welcome">
-    <h3>Welcome to WordAIly!</h3>
+    <h3>Welcome to <span class="fancy-text">WordAIly</span>!</h3>
     <small style="color:orange; font-weight:bold">Learn &amp; test your knowledge of:
         Nouns, Verbs, Adjectives, and Adverbs.
     </small>
