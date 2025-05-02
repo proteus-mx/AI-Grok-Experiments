@@ -713,6 +713,9 @@ function checkAnswer(type) {
         }
       }, 50);
       correctStreak = 0;
+      
+      document.getElementById("overallScore").innerText = `Score: ${overallScore}`; // Added to correct inconsistent scores
+      
     }
 
   // Incorrect 
@@ -850,6 +853,7 @@ function showSummary(isGameOver = false) {
   let responseTimeColor = parseFloat(avgResponseTime) <= 3 ? '#00ff00' : parseFloat(avgResponseTime) <= 5 ? '#ffa500' : '#ff0000';
   let summaryContent = document.getElementById("summaryContent");
 
+  // Game over
   if (isGameOver) {
     summaryContent.innerHTML = `
       <h2>Game Over!</h2>
@@ -865,6 +869,8 @@ function showSummary(isGameOver = false) {
     document.getElementById("nextLevelBtn").style.display = "none";
     document.getElementById("viewWordsSummaryBtn").style.display = "none";
     document.getElementById("restartBtn").style.display = "inline-block";
+
+  // Level complete
   } else {
     summaryContent.innerHTML = `
       <h2>Level ${level} Complete!</h2>
@@ -882,6 +888,7 @@ function showSummary(isGameOver = false) {
     document.getElementById("viewWordsSummaryBtn").style.display = "inline-block";
     document.getElementById("restartBtn").style.display = "none";
 
+    // Bonus points
     if (!bonusPointsAdded) {
       let levelScoreDisplay = document.getElementById("levelScoreDisplay");
       let scoreDisplay = document.getElementById("scoreDisplay");
