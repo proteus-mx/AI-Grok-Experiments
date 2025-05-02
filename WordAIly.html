@@ -51,6 +51,20 @@ function submitScoreToGameCenter(score, leaderboardId) {
 function showLeaderboard() {
     window.webkit?.messageHandlers.wordAIlyHandler.postMessage("showLeaderboard");
 }
+
+
+document.getElementById("leaderboardButton").addEventListener("click", function () {
+    if (window.webkit?.messageHandlers?.wordAIlyHandler) {
+        window.webkit.messageHandlers.wordAIlyHandler.postMessage("showLeaderboard");
+    } else {
+        console.log("Game Center not available");
+    }
+});
+
+if (window.webkit?.messageHandlers?.wordAIlyHandler) {
+        document.getElementById("leaderboardButton").style.display = "inline-block";
+}
+  
 </script>
 
 <!DOCTYPE html>
@@ -78,6 +92,9 @@ function showLeaderboard() {
     #wordTimer.green { color: #00ff00; }
     #wordTimer.amber { color: #ffa500; }
     #wordTimer.red { color: #ff0000; animation: flash 1s ease-in-out infinite; }
+    #leaderboardButton {
+        display: none;
+    }
     #instructions { bottom: 70px; text-align: center; width: 100%; font-size: 14px; display: none; }
     #difficultyDisplay { bottom: 35px; left: 50%; transform: translateX(-50%); font-size: 12px; display: none; }
     .button { padding: 10px 20px; font-size: 18px; font-weight: bold; background: linear-gradient(to bottom, #ff4500, #ff6347); color: white; border: 2px solid #ffd700; border-radius: 8px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; width: 90px; box-sizing: border-box; display: flex; justify-content: center; align-items: center; text-align: center; }
@@ -864,6 +881,7 @@ function showSummary(isGameOver = false) {
 
   // Game over
   if (isGameOver) {
+    submitScoreToGameCenter(1234, "your.leaderboard.id");
     summaryContent.innerHTML = `
       <h2>Game Over!</h2>
       <p>Congratulations! You answered all ${totalWords} words!</p>
@@ -924,9 +942,9 @@ function showSummary(isGameOver = false) {
   }
 
   document.getElementById("summary").style.display = "block";
-  document.getElementById("overallScore").innerText = `Score2: ${overallScore}`; // Added to correct inconsistent scores
-  console.log("Score should be: " + overallScore);
 }
+
+  
 
 function restartGame() {
   if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.wordAIlyHandler) {
@@ -1002,8 +1020,9 @@ function restartGame() {
       <button id="hardBtn" class="button difficulty-button">Hard</button> 
     </div>
     <p></p>
-    <small>Version 0.7 (alpha)</small>
+    <small>Version 0.8 (alpha)</small>
     <small style="color:grey">Total Words: ${totalWords}</small>
+    <button id="leaderboardButton">Show Leaderboard</button>
   `;
   document.body.appendChild(welcomeDiv);
   document.getElementById("startBtn").addEventListener("click", startGame);
