@@ -61,9 +61,17 @@ document.getElementById("leaderboardButton").addEventListener("click", function 
     }
 });
 
-if (window.webkit?.messageHandlers?.wordAIlyHandler) {
-        document.getElementById("leaderboardButton").style.display = "inline-block";
-}
+document.addEventListener("DOMContentLoaded", function () {
+    const button = document.getElementById("myButton");
+    if (button) {
+        button.addEventListener("click", function () {
+          if (window.webkit?.messageHandlers?.wordAIlyHandler) {
+                  document.getElementById("leaderboardButton").style.display = "inline-block";
+          }
+        });
+    }
+});
+  
   
 </script>
 
