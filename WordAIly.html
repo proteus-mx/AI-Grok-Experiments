@@ -62,7 +62,7 @@ return gk_fileData[filename] || "";
     #timer.green { color: #00ff00; }
     #timer.amber { color: #ffa500; }
     #timer.red { color: #ff0000; animation: flash 1s ease-in-out infinite; }
-    #wordTimer { top: 80px; width: 100%; text-align: center; font-size: 12px; display: none; }
+    #wordTimer { top: 90px; width: 100%; text-align: center; font-size: 12px; display: none; }
     #wordTimer.green { color: #00ff00; }
     #wordTimer.amber { color: #ffa500; }
     #wordTimer.red { color: #ff0000; animation: flash 1s ease-in-out infinite; }
@@ -875,7 +875,7 @@ function showSummary(isGameOver = false) {
       <p>Avg Response Time: <span style="color: ${responseTimeColor}">${avgResponseTime}s</span></p>
       <p>Accuracy: <span style="${accuracyStyle}">${percentage}%</span></p>
       <p>Time Bonus: <span id="bonusDisplay">${bonusPoints}</span></p>
-      <p id="newWordsMessage">New words loaded (${totalWords})!</p>
+      <p id="newWordsMessage">New words loaded</p>
     `;
     document.getElementById("summary").classList.remove("game-over");
     document.getElementById("nextLevelBtn").style.display = "inline-block";
