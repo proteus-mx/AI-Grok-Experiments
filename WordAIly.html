@@ -39,6 +39,18 @@ if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
 }
 return gk_fileData[filename] || "";
 }
+
+function submitScoreToGameCenter(score, leaderboardId) {
+    window.webkit?.messageHandlers.wordAIlyHandler.postMessage({
+        action: "submitScore",
+        score: score,
+        leaderboardId: leaderboardId
+    });
+}  
+
+function showLeaderboard() {
+    window.webkit?.messageHandlers.wordAIlyHandler.postMessage("showLeaderboard");
+}
 </script>
 
 <!DOCTYPE html>
@@ -911,9 +923,9 @@ function showSummary(isGameOver = false) {
 
   }
 
-  document.getElementById("overallScore").innerText = `Score2: ${overallScore}`; // Added to correct inconsistent scores
-  console.log("Score should be: ${overallScore}");
   document.getElementById("summary").style.display = "block";
+  document.getElementById("overallScore").innerText = `Score2: ${overallScore}`; // Added to correct inconsistent scores
+  console.log("Score should be: " + overallScore);
 }
 
 function restartGame() {
