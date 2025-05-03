@@ -332,7 +332,7 @@
         <p>Use the Autoplay toggle to watch the game play itself or take control!</p>
         <button id="start-button">Start Game</button>
         <p></p>
-        <small>Version 0.2</small>
+        <small>Version 0.3</small>
         <button id="leaderboardButton">Show Leaderboard</button>
     </div>
     <div id="summary-screen" style="display: none;">
@@ -991,16 +991,22 @@
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
 
-        window.addEventListener('click', (event) => {
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        function handleTouchOrClick(event) {
+            event.preventDefault(); // Prevent default iOS behaviors like scrolling
+            const clientX = event.type === 'touchstart' ? event.touches[0].clientX : event.clientX;
+            const clientY = event.type === 'touchstart' ? event.touches[0].clientY : event.clientY;
+            mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObjects(buttons);
             if (intersects.length > 0) {
                 const index = intersects[0].object.userData.index;
                 handleClick(index);
             }
-        });
+        }
+        
+        window.addEventListener('click', handleTouchOrClick);
+        window.addEventListener('touchstart', handleTouchOrClick, { passive: false });
 
         // Timers
         setInterval(() => {
