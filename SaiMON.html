@@ -1,4 +1,9 @@
 <!DOCTYPE html>
+
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -6,6 +11,38 @@
     <title>3D SaiMON Game</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/gsap.min.js"></script>
+
+    <script type="text/javascript">  
+    function submitScoreToGameCenter(score, leaderboardId) {
+        window.webkit?.messageHandlers.saimonHandler.postMessage({
+            action: "submitScore",
+            score: score,
+            leaderboardId: leaderboardId
+        });
+    }  
+    
+    function showLeaderboard() {
+        window.webkit?.messageHandlers.saimonHandler.postMessage("showLeaderboard");
+    }
+    
+    document.addEventListener("DOMContentLoaded", function () {
+        const leaderboardButton = document.getElementById("leaderboardButton");
+    
+        if (leaderboardButton) {
+            leaderboardButton.addEventListener("click", function () {
+                if (window.webkit?.messageHandlers?.saimonHandler) {
+                    window.webkit.messageHandlers.saimonHandler.postMessage("showLeaderboard");
+                } else {
+                    console.log("saimonHandler not available — running in browser?");
+                }
+            });
+        } else {
+            console.warn("leaderboardButton not found in DOM");
+        }
+    });
+    </script>
+
+    
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
         canvas { display: block; }
@@ -256,6 +293,26 @@
             display: none;
             text-align: center;
         }
+    
+        #submitScoreBtn {
+          padding: 10px 16px;
+          font-size: 16px;
+          background-color: #4CAF50;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          margin-top: 10px;
+          animation: pulse 1.5s infinite;
+          transition: all 0.3s ease;
+        }
+        
+        #submitScoreBtn:disabled {
+          cursor: not-allowed;
+          opacity: 0.8;
+          animation: none;
+        }
+
         @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@700&family=Neuropol&display=swap');
     </style>
 </head>
@@ -277,6 +334,7 @@
         <p>Total Time: <span id="summary-time"></span>s</p>
         <p>Score: <span id="summary-score"></span></p>
         <button id="play-again-button">Play Again</button>
+        <button id="submitScoreBtn">Submit Score to Leaderboard</button>
     </div>
     <div id="title">
         <canvas id="mini-scene-title"></canvas>
@@ -848,6 +906,8 @@
         }
 
         function gameOver() {
+            submitScoreToGameCenter(overallScore, "saimonLeaderboard1");
+
             gameActive = false;
             const gameOverText = document.getElementById('game-over');
             gameOverText.style.display = 'block';
@@ -873,6 +933,18 @@
                 document.getElementById('moves').textContent = moves;
                 document.getElementById('level-timer').textContent = levelTimer.toFixed(1);
             }, 2000);
+
+
+            document.getElementById("submitScoreBtn").addEventListener("click", (e) => {
+              submitScoreToGameCenter(score, "saimonLeaderboard1");
+              e.target.disabled = true;
+              e.target.innerText = "Score Submitted!";
+              e.target.style.animation = "pop 0.5s ease";
+              setTimeout(() => {
+                e.target.style.backgroundColor = "#ccc";
+              }, 500);
+
+            
         }
 
         // Welcome screen start button
