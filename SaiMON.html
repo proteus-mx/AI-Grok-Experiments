@@ -1,19 +1,15 @@
 <!DOCTYPE html>
-
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
-
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SaiMON Game - Watch me, copy me!</title>
     <link rel="icon" type="image/x-icon" href="/AI-Grok-Experiments/favicon-saimon.ico">
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/gsap.min.js"></script> 
-
     <script type="text/javascript">  
     function submitScoreToGameCenter(score, leaderboardId) {
         window.webkit?.messageHandlers.saimonHandler.postMessage({
@@ -22,14 +18,11 @@
             leaderboardId: leaderboardId
         });
     }  
-    
     function showLeaderboard() {
         window.webkit?.messageHandlers.saimonHandler.postMessage("showLeaderboard");
     }
-    
     document.addEventListener("DOMContentLoaded", function () {
         const leaderboardButton = document.getElementById("leaderboardButton");
-    
         if (leaderboardButton) {
             leaderboardButton.addEventListener("click", function () {
                 if (window.webkit?.messageHandlers?.saimonHandler) {
@@ -43,11 +36,9 @@
         }
     });
     </script>
-
-    
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
-        canvas { display: block; }
+        canvas { display: block; touch-action: none; }
         #welcome-screen, #summary-screen {
             position: absolute;
             top: 0;
@@ -295,7 +286,6 @@
             display: none;
             text-align: center;
         }
-    
         #submitScoreBtn {
           padding: 10px 16px;
           font-size: 16px;
@@ -308,7 +298,6 @@
           animation: pulse 1.5s infinite;
           transition: all 0.3s ease;
         }
-        
         #submitScoreBtn:disabled {
           cursor: not-allowed;
           opacity: 0.8;
@@ -317,7 +306,6 @@
         #leaderboardButton {
             display: none;
         }
-
         @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@700&family=Neuropol&display=swap');
     </style>
 </head>
@@ -332,7 +320,7 @@
         <p>Use the Autoplay toggle to watch the game play itself or take control!</p>
         <button id="start-button">Start Game</button>
         <p></p>
-        <small>Version 0.3</small>
+        <small>Version 0.3.1</small>
         <button id="leaderboardButton">Show Leaderboard</button>
     </div>
     <div id="summary-screen" style="display: none;">
@@ -362,7 +350,6 @@
     <div id="game-over">Game Over!</div>
     <div id="points-display"></div>
     <div id="bonus-display"></div>
-
     <script>
         // Setup welcome screen vortex
         function setupWelcomeVortex() {
@@ -371,44 +358,36 @@
                 console.warn('Welcome vortex canvas not found');
                 return;
             }
-
             try {
                 const scene = new THREE.Scene();
                 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
                 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
                 renderer.setSize(window.innerWidth, window.innerHeight);
                 renderer.setClearColor(0x000000, 0);
-
-                // Vortex
                 const vortexGeometry = new THREE.BufferGeometry();
                 const vortexCount = 2000;
                 const vortexPosArray = new Float32Array(vortexCount * 3);
                 const vortexColors = new Float32Array(vortexCount * 3);
                 const vortexVelocities = new Float32Array(vortexCount * 3);
                 const vortexSizes = new Float32Array(vortexCount);
-
                 for (let i = 0; i < vortexCount * 3; i += 3) {
                     const radius = Math.random() * 30 + 10;
                     const angle = Math.random() * Math.PI * 2;
                     vortexPosArray[i] = Math.cos(angle) * radius;
                     vortexPosArray[i + 1] = Math.sin(angle) * radius;
                     vortexPosArray[i + 2] = (Math.random() - 0.5) * 100;
-
                     vortexVelocities[i] = (Math.random() - 0.5) * 0.05;
                     vortexVelocities[i + 1] = (Math.random() - 0.5) * 0.05;
                     vortexVelocities[i + 2] = Math.random() * 0.1 + 0.05;
                     vortexSizes[i] = Math.random() * 0.2 + 0.05;
-
                     const color = new THREE.Color().setHSL(0.5, 0.8, 0.5);
                     vortexColors[i] = color.r;
                     vortexColors[i + 1] = color.g;
                     vortexColors[i + 2] = color.b;
                 }
-
                 vortexGeometry.setAttribute('position', new THREE.BufferAttribute(vortexPosArray, 3));
                 vortexGeometry.setAttribute('color', new THREE.BufferAttribute(vortexColors, 3));
                 vortexGeometry.setAttribute('size', new THREE.BufferAttribute(vortexSizes, 1));
-
                 const vortexMaterial = new THREE.PointsMaterial({
                     vertexColors: true,
                     size: 0.2,
@@ -417,14 +396,10 @@
                     blending: THREE.AdditiveBlending,
                     depthWrite: false
                 });
-
                 const vortex = new THREE.Points(vortexGeometry, vortexMaterial);
                 scene.add(vortex);
-
                 camera.position.z = 50;
-
                 let isWelcomeVisible = true;
-
                 function animateVortex() {
                     if (!isWelcomeVisible) return;
                     requestAnimationFrame(animateVortex);
@@ -447,13 +422,9 @@
                     renderer.render(scene, camera);
                 }
                 animateVortex();
-
-                // Stop animation when welcome screen is hidden
                 document.getElementById('start-button').addEventListener('click', () => {
                     isWelcomeVisible = false;
                 });
-
-                // Handle resize
                 window.addEventListener('resize', () => {
                     camera.aspect = window.innerWidth / window.innerHeight;
                     camera.updateProjectionMatrix();
@@ -463,30 +434,23 @@
                 console.error('Error setting up welcome vortex:', error);
             }
         }
-
-        // Setup mini scene for welcome, summary, and title
         function setupMiniScene(canvasId, width, height) {
             const canvas = document.getElementById(canvasId);
             if (!canvas) {
                 console.warn(`Canvas with ID ${canvasId} not found`);
                 return;
             }
-
             try {
                 const scene = new THREE.Scene();
                 const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
                 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
                 renderer.setSize(width, height);
                 renderer.setClearColor(0x000000, 0);
-
-                // Lighting
                 const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
                 scene.add(ambientLight);
                 const pointLight = new THREE.PointLight(0xffffff, 1.5, 100);
                 pointLight.position.set(5, 5, 5);
                 scene.add(pointLight);
-
-                // Mini objects (first level shapes: box, sphere, cylinder, torus)
                 const shapes = [
                     new THREE.BoxGeometry(1, 1, 1),
                     new THREE.SphereGeometry(0.75, 16, 16),
@@ -499,7 +463,6 @@
                     { x: 0, y: 1.5 }, { x: 0, y: -1.5 }
                 ];
                 const objects = [];
-
                 colors.forEach((color, i) => {
                     const material = new THREE.MeshPhongMaterial({ color, emissive: 0x000000, shininess: 100 });
                     const mesh = new THREE.Mesh(shapes[i], material);
@@ -509,10 +472,7 @@
                     scene.add(mesh);
                     objects.push(mesh);
                 });
-
                 camera.position.z = canvasId === 'mini-scene-welcome' ? 8 : 6;
-
-                // Animation loop
                 function animateMini() {
                     requestAnimationFrame(animateMini);
                     objects.forEach(obj => {
@@ -526,55 +486,44 @@
                 console.error(`Error setting up mini scene for ${canvasId}:`, error);
             }
         }
-
-        // Initialize mini scenes and welcome vortex
         document.addEventListener('DOMContentLoaded', () => {
             setupMiniScene('mini-scene-welcome', 400, 400);
             setupMiniScene('mini-scene-summary', 200, 200);
             setupMiniScene('mini-scene-title', 80, 80);
             setupWelcomeVortex();
         });
-
-        // Main game scene setup
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
-
-        // Vortex background
         const vortexGeometry = new THREE.BufferGeometry();
         const vortexCount = 5000;
         const vortexPosArray = new Float32Array(vortexCount * 3);
         const vortexColors = new Float32Array(vortexCount * 3);
         const vortexVelocities = new Float32Array(vortexCount * 3);
         const vortexSizes = new Float32Array(vortexCount);
-
         const vortexColorSchemes = [
-            { hue: 0.5, saturation: 0.8, lightness: 0.5 }, // Cyan
-            { hue: 0.0, saturation: 0.8, lightness: 0.5 }, // Red
-            { hue: 0.3, saturation: 0.8, lightness: 0.5 }, // Green
-            { hue: 0.6, saturation: 0.8, lightness: 0.5 }, // Purple
-            { hue: 0.1, saturation: 0.8, lightness: 0.5 }  // Orange
+            { hue: 0.5, saturation: 0.8, lightness: 0.5 },
+            { hue: 0.0, saturation: 0.8, lightness: 0.5 },
+            { hue: 0.3, saturation: 0.8, lightness: 0.5 },
+            { hue: 0.6, saturation: 0.8, lightness: 0.5 },
+            { hue: 0.1, saturation: 0.8, lightness: 0.5 }
         ];
-
         for (let i = 0; i < vortexCount * 3; i += 3) {
             const radius = Math.random() * 30 + 10;
             const angle = Math.random() * Math.PI * 2;
             vortexPosArray[i] = Math.cos(angle) * radius;
             vortexPosArray[i + 1] = Math.sin(angle) * radius;
             vortexPosArray[i + 2] = (Math.random() - 0.5) * 100;
-
             vortexVelocities[i] = (Math.random() - 0.5) * 0.05;
             vortexVelocities[i + 1] = (Math.random() - 0.5) * 0.05;
             vortexVelocities[i + 2] = Math.random() * 0.1 + 0.05;
             vortexSizes[i] = Math.random() * 0.2 + 0.05;
         }
-
         vortexGeometry.setAttribute('position', new THREE.BufferAttribute(vortexPosArray, 3));
         vortexGeometry.setAttribute('color', new THREE.BufferAttribute(vortexColors, 3));
         vortexGeometry.setAttribute('size', new THREE.BufferAttribute(vortexSizes, 1));
-
         const vortexMaterial = new THREE.PointsMaterial({
             vertexColors: true,
             size: 0.2,
@@ -583,18 +532,13 @@
             blending: THREE.AdditiveBlending,
             depthWrite: false
         });
-
         const vortex = new THREE.Points(vortexGeometry, vortexMaterial);
         scene.add(vortex);
-
-        // Lighting
         const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
         scene.add(ambientLight);
         const pointLight = new THREE.PointLight(0xffffff, 1.5, 100);
         pointLight.position.set(10, 10, 10);
         scene.add(pointLight);
-
-        // Simon buttons
         const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00];
         const buttons = [];
         const shapes = [
@@ -607,7 +551,6 @@
             { x: -3, y: 0 }, { x: 3, y: 0 },
             { x: 0, y: 3 }, { x: 0, y: -3 }
         ];
-
         function createButtons(shapeIndex) {
             buttons.length = 0;
             scene.children = scene.children.filter(child => !(child instanceof THREE.Mesh && child.userData.index !== undefined));
@@ -620,7 +563,6 @@
                 buttons.push(mesh);
             });
         }
-
         function updateVortexColors(level) {
             const colorScheme = vortexColorSchemes[(level - 1) % vortexColorSchemes.length];
             for (let i = 0; i < vortexCount * 3; i += 3) {
@@ -635,8 +577,6 @@
             }
             vortexGeometry.setAttribute('color', new THREE.BufferAttribute(vortexColors, 3));
         }
-
-        // Particle system for effects
         const particleGeometry = new THREE.BufferGeometry();
         const particleCount = 100;
         const posArray = new Float32Array(particleCount * 3);
@@ -653,8 +593,6 @@
         const particles = new THREE.Points(particleGeometry, particleMaterial);
         particles.visible = false;
         scene.add(particles);
-
-        // Explosion particle system
         const explosionGeometry = new THREE.BufferGeometry();
         const explosionCount = 200;
         const explosionPosArray = new Float32Array(explosionCount * 3);
@@ -680,10 +618,7 @@
         const explosion = new THREE.Points(explosionGeometry, explosionMaterial);
         explosion.visible = false;
         scene.add(explosion);
-
         camera.position.z = 12;
-
-        // Game logic
         let sequence = [];
         let playerSequence = [];
         let level = 1;
@@ -694,7 +629,6 @@
         let levelTimer = 0;
         let gameActive = true;
         let autoplay = false;
-
         function startLevel() {
             sequence = [];
             playerSequence = [];
@@ -712,7 +646,6 @@
             showLevelDisplay();
             setTimeout(playSequence, 2000);
         }
-
         function showLevelDisplay() {
             const levelDisplay = document.getElementById('level-display');
             levelDisplay.textContent = `Level ${level}`;
@@ -721,7 +654,6 @@
                 levelDisplay.style.display = 'none';
             }});
         }
-
         function showPointsDisplay(points, x, y) {
             const pointsDisplay = document.getElementById('points-display');
             if (!pointsDisplay) return;
@@ -740,7 +672,6 @@
                 }
             });
         }
-
         function showBonusDisplay(bonus) {
             const bonusDisplay = document.getElementById('bonus-display');
             if (!bonusDisplay) return;
@@ -757,7 +688,6 @@
                 }
             });
         }
-
         function playSequence() {
             const subtitle = document.getElementById('subtitle');
             if (subtitle) subtitle.textContent = "Watch me!";
@@ -781,7 +711,6 @@
             }
             next();
         }
-
         function autoPlaySequence() {
             if (!autoplay || !isPlayerTurn || !gameActive) return;
             const subtitle = document.getElementById('subtitle');
@@ -796,7 +725,6 @@
             }
             next();
         }
-
         function flashAndBounceButton(index, callback) {
             const button = buttons[index];
             const originalColor = new THREE.Color(button.userData.originalColor);
@@ -819,7 +747,6 @@
                 }
             });
         }
-
         function showParticles(x, y, color, isPositive) {
             particles.position.set(x, y, 0);
             particleMaterial.color.set(color);
@@ -837,7 +764,6 @@
                 onComplete: () => { particles.visible = false; particleMaterial.opacity = 0.8; }
             });
         }
-
         function showExplosion(x, y) {
             explosion.position.set(x, y, 0);
             explosion.visible = true;
@@ -850,7 +776,6 @@
             }
             explosionGeometry.attributes.position.needsUpdate = true;
             explosionMaterial.opacity = 1;
-
             function animateExplosion() {
                 for (let i = 0; i < explosionCount * 3; i += 3) {
                     positions[i] += velocities[i] * 0.1;
@@ -859,7 +784,6 @@
                 }
                 explosionGeometry.attributes.position.needsUpdate = true;
             }
-
             gsap.to(explosionMaterial, {
                 opacity: 0,
                 duration: 0.8,
@@ -870,7 +794,6 @@
                 }
             });
         }
-
         function handleClick(index) {
             if (!isPlayerTurn || !gameActive) return;
             const subtitle = document.getElementById('subtitle');
@@ -879,25 +802,19 @@
             playerSequence.push(index);
             moves++;
             document.getElementById('moves').textContent = moves;
-
             const button = buttons[index];
             const canvasRect = renderer.domElement.getBoundingClientRect();
             const x = ((button.position.x + 3) / 6) * canvasRect.width + canvasRect.left;
             const y = ((-button.position.y + 3) / 6) * canvasRect.height + canvasRect.top;
-
             if (playerSequence[playerSequence.length - 1] !== sequence[playerSequence.length - 1]) {
-                // Incorrect
                 showExplosion(button.position.x, button.position.y);
                 gameOver();
             } else {
-                // Correct move
                 const points = 50;
                 score += points;
                 document.getElementById('score').textContent = score;
                 showPointsDisplay(points, x, y);
-
                 if (playerSequence.length === sequence.length) {
-                    // Correct sequence
                     showParticles(0, 0, 0x00ff00, true);
                     score += level * 100;
                     const bonusPoints = Math.max(0, Math.floor(100 - levelTimer));
@@ -913,10 +830,8 @@
                 }
             }
         }
-
         function gameOver() {
             submitScoreToGameCenter(score, "saimonLeaderboard1");
-
             gameActive = false;
             const gameOverText = document.getElementById('game-over');
             gameOverText.style.display = 'block';
@@ -942,8 +857,6 @@
                 document.getElementById('moves').textContent = moves;
                 document.getElementById('level-timer').textContent = levelTimer.toFixed(1);
             }, 2000);
-
-
             document.getElementById("submitScoreBtn").addEventListener("click", (e) => {
               submitScoreToGameCenter(score, "saimonLeaderboard1");
               e.target.disabled = true;
@@ -953,11 +866,7 @@
                 e.target.style.backgroundColor = "#ccc";
               }, 500);
             });
-
-            
         }
-
-        // Welcome screen start button
         document.getElementById('start-button').addEventListener('click', () => {
             document.getElementById('welcome-screen').style.display = 'none';
             document.getElementById('ui').style.display = 'flex';
@@ -966,8 +875,6 @@
             document.getElementById('autoplay-toggle').style.display = 'block';
             startLevel();
         });
-
-        // Play again button
         document.getElementById('play-again-button').addEventListener('click', () => {
             document.getElementById('summary-screen').style.display = 'none';
             document.getElementById('ui').style.display = 'flex';
@@ -976,8 +883,6 @@
             document.getElementById('autoplay-toggle').style.display = 'block';
             startLevel();
         });
-
-        // Autoplay toggle
         const autoplayButton = document.getElementById('autoplay-toggle');
         autoplayButton.addEventListener('click', () => {
             autoplay = !autoplay;
@@ -986,13 +891,10 @@
                 autoPlaySequence();
             }
         });
-
-        // Raycaster for mouse clicks
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
-
-        function handleTouchOrClick(event) {
-            event.preventDefault(); // Prevent default iOS behaviors like scrolling
+        function handleInteraction(event) {
+            event.preventDefault();
             const clientX = event.type === 'touchstart' ? event.touches[0].clientX : event.clientX;
             const clientY = event.type === 'touchstart' ? event.touches[0].clientY : event.clientY;
             mouse.x = (clientX / window.innerWidth) * 2 - 1;
@@ -1004,11 +906,8 @@
                 handleClick(index);
             }
         }
-        
-        window.addEventListener('click', handleTouchOrClick);
-        window.addEventListener('touchstart', handleTouchOrClick, { passive: false });
-
-        // Timers
+        window.addEventListener('click', handleInteraction);
+        window.addEventListener('touchstart', handleInteraction, { passive: false });
         setInterval(() => {
             if (gameActive) {
                 timer += 0.1;
@@ -1017,15 +916,12 @@
                 document.getElementById('level-timer').textContent = levelTimer.toFixed(1);
             }
         }, 100);
-
-        // Main animation loop
         function animate() {
             requestAnimationFrame(animate);
             buttons.forEach(button => {
                 button.rotation.x += 0.01;
                 button.rotation.y += 0.01;
             });
-            // Vortex animation
             const positions = vortexGeometry.attributes.position.array;
             for (let i = 0; i < vortexCount * 3; i += 3) {
                 const radius = Math.sqrt(positions[i] ** 2 + positions[i + 1] ** 2);
@@ -1045,8 +941,6 @@
             renderer.render(scene, camera);
         }
         animate();
-
-        // Handle window resize
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
