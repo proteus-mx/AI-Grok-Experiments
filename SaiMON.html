@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D SaiMON Game</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/gsap.min.js"></script>
@@ -25,6 +25,12 @@
             text-align: center;
             z-index: 10;
         }
+        #welcome-vortex {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
         #welcome-screen h1, #summary-screen h1 {
             font-size: 80px;
             text-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff;
@@ -38,10 +44,24 @@
             from { text-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff; }
             to { text-shadow: 0 0 40px #00ffff, 0 0 80px #00ffff; }
         }
-        #welcome-screen img, #summary-screen img {
-            width: 200px;
+        #mini-scene-welcome {
+            width: 400px;
+            height: 400px;
             margin-bottom: 20px;
             filter: drop-shadow(0 0 25px #00ffff);
+            animation: pulse 3s ease-in-out infinite;
+        }
+        #mini-scene-summary {
+            width: 200px;
+            height: 200px;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 0 25px #00ffff);
+            animation: pulse 3s ease-in-out infinite;
+        }
+        #mini-scene-title {
+            width: 80px;
+            height: 80px;
+            filter: drop-shadow(0 0 20px #00ffff);
             animation: pulse 3s ease-in-out infinite;
         }
         @keyframes pulse {
@@ -72,28 +92,28 @@
         }
         #ui {
             position: absolute;
-            bottom: 20px;
+            bottom: 10px;
             left: 50%;
             transform: translateX(-50%);
             color: #e0e0e0;
             font-family: 'Neuropol', sans-serif;
-            font-size: 18px;
+            font-size: 14px;
             background: linear-gradient(45deg, rgba(0, 0, 50, 0.8), rgba(0, 50, 100, 0.8));
-            padding: 15px;
-            border-radius: 12px;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.3);
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5), inset 0 0 8px rgba(0, 255, 255, 0.3);
             border: 2px solid #00ffff;
             backdrop-filter: blur(5px);
             display: none;
             display: flex;
-            gap: 20px;
+            gap: 15px;
         }
         #ui div {
             margin: 0;
-            text-shadow: 0 0 8px #00ffff;
+            text-shadow: 0 0 6px #00ffff;
             transition: transform 0.2s;
             text-align: center;
-            min-width: 100px;
+            min-width: 80px;
         }
         #ui div:hover {
             transform: scale(1.05);
@@ -101,7 +121,7 @@
         #ui span {
             color: #00ffff;
             font-weight: bold;
-            text-shadow: 0 0 10px #00ffff;
+            text-shadow: 0 0 8px #00ffff;
         }
         #title {
             position: absolute;
@@ -109,6 +129,7 @@
             left: 50%;
             transform: translateX(-50%);
             display: flex;
+            flex-direction: column;
             align-items: center;
             font-family: 'Neuropol', sans-serif;
             font-size: 64px;
@@ -120,28 +141,36 @@
             text-align: center;
             animation: glow 2s ease-in-out infinite alternate;
             display: none;
-        }
-        #title img {
-            width: 80px;
-            margin-right: 15px;
-            filter: drop-shadow(0 0 20px #00ffff);
-            animation: pulse 3s ease-in-out infinite;
+            gap: 10px;
         }
         #subtitle {
             position: absolute;
-            top: 90px;
+            top: 180px;
             left: 50%;
             transform: translateX(-50%);
-            color: #e0e0e0;
             font-family: 'Neuropol', sans-serif;
-            font-size: 20px;
-            text-shadow: 0 0 10px #00ffff;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff;
+            color: rgb(255, 0, 0);
             display: none;
+            animation: colorTransition 6s infinite, throb 1.5s ease-in-out infinite;
+        }
+        @keyframes colorTransition {
+            0% { color: rgb(255, 0, 0); }
+            33% { color: rgb(0, 255, 0); }
+            66% { color: rgb(0, 0, 255); }
+            100% { color: rgb(255, 0, 0); }
+        }
+        @keyframes throb {
+            0%, 100% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.2); }
         }
         #autoplay-toggle {
             position: absolute;
-            top: 20px;
-            right: 20px;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
             padding: 8px 16px;
             background: linear-gradient(45deg, #00ffff, #0077ff);
             color: #000;
@@ -155,7 +184,7 @@
             display: none;
         }
         #autoplay-toggle:hover {
-            transform: scale(1.1);
+            transform: translateX(-50%) scale(1.1);
         }
         #level-display {
             position: absolute;
@@ -193,13 +222,16 @@
             font-weight: bold;
             text-shadow: 0 0 15px #00ff00;
             display: none;
+            left: 50%;
+            transform: translateX(-50%);
         }
         @import url('https://fonts.googleapis.com/css2?family=Neuropol&display=swap');
     </style>
 </head>
 <body>
     <div id="welcome-screen">
-        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZGllbnQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjZmYwMDAwIiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjI1JSIgc3RvcC1jb2xvcj0iIzAwZmYwMCIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSI1MCUiIHN0b3AtY29sb3I9IiMwMDAwZmYiIC8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI2ZmZmYwMCIgLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ4IiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZ3JhZGllbnQpIiBzdHJva2Utd2lkdGg9IjEwIiBzdHJva2UtbWl0ZXJsaW1pdD0iMTAiIHN0cm9rZS1kYXNoYXJyYXk9IjE1LDEwIj4KICAgIDxhbmltYXRlVHJhbnNmb3JtIGF0dHJpYnV0ZU5hbWU9InRyYW5zZm9ybSIgdHlwZT0icm90YXRlIiBkdXI9IjQuNXMiIGZyb209IjAgNTAgNTAiIHRvPSIzNjAgNTAgNTAiIHJlcGVhdENvdW50PSJpbmRlZmluaXRlIiAvPgogIDwvY2lyY2xlPgogIDxwb2x5Z29uIHBvaW50cz0iNTAsMjUgNzUsNTAgNTAsNzUgMjUsNTAiIGZpbGw9InVybCgjZ3JhZGllbnQpIiBvcGFjaXR5PSIwLjciPgogICAgPGFuaW1hdGVUcmFuc2Zvcm0gYXR0cmlidXRlTmFtZT0idHJhbnNmb3JtIiB0eXBlPSJyb3RhdGUiIGR1cj0iNXMiIGZyb209IjAgNTAgNTAiIHRvPSItMzYwIDUwIDUwIiByZXBlYXRDb3VudD0iaW5kZWZpbml0ZSIgLz4KICA8L3BvbHlnb24+CiAgPGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMTUiIGZpbGw9IiNmZmZmZmYiIG9wYWNpdHk9IjAuOCI+CiAgICA8YW5pbWF0ZSBhdHRyaWJ1dGVOYW1lPSJyIiB2YWx1ZXM9IjE1OzE4OzE1IiBkdXI9IjMuNXMiIHJlcGVhdENvdW50PSJpbmRlZmluaXRlIiAvPgogIDwvY2lyY2xlPgo8L3N2Zz4=" alt="SaiMON Logo">
+        <canvas id="welcome-vortex"></canvas>
+        <canvas id="mini-scene-welcome"></canvas>
         <h1>SaiMON</h1>
         <p>Watch the sequence of colored shapes and repeat it by clicking them in the correct order.</p>
         <p>Earn points for each correct move and bonus points for completing levels quickly.</p>
@@ -207,7 +239,7 @@
         <button id="start-button">Start Game</button>
     </div>
     <div id="summary-screen" style="display: none;">
-        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZGllbnQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjZmYwMDAwIiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjI1JSIgc3RvcC1jb2xvcj0iIzAwZmYwMCIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSI1MCUiIHN0b3AtY29sb3I9IiMwMDAwZmYiIC8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI2ZmZmYwMCIgLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ4IiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZ3JhZGllbnQpIiBzdHJva2Utd2lkdGg9IjEwIiBzdHJva2UtbWl0ZXJsaW1pdD0iMTAiIHN0cm9rZS1kYXNoYXJyYXk9IjE1LDEwIj4KICAgIDxhbmltYXRlVHJhbnNmb3JtIGF0dHJpYnV0ZU5hbWU9InRyYW5zZm9ybSIgdHlwZT0icm90YXRlIiBkdXI9IjQuNXMiIGZyb209IjAgNTAgNTAiIHRvPSIzNjAgNTAgNTAiIHJlcGVhdENvdW50PSJpbmRlZmluaXRlIiAvPgogIDwvY2lyY2xlPgogIDxwb2x5Z29uIHBvaW50cz0iNTAsMjUgNzUsNTAgNTAsNzUgMjUsNTAiIGZpbGw9InVybCgjZ3JhZGllbnQpIiBvcGFjaXR5PSIwLjciPgogICAgPGFuaW1hdGVUcmFuc2Zvcm0gYXR0cmlidXRlTmFtZT0idHJhbnNmb3JtIiB0eXBlPSJyb3RhdGUiIGR1cj0iNXMiIGZyb209IjAgNTAgNTAiIHRvPSItMzYwIDUwIDUwIiByZXBlYXRDb3VudD0iaW5kZWZpbml0ZSIgLz4KICA8L3BvbHlnb24+CiAgPGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMTUiIGZpbGw9IiNmZmZmZmYiIG9wYWNpdHk9IjAuOCI+CiAgICA8YW5pbWF0ZSBhdHRyaWJ1dGVOYW1lPSJyIiB2YWx1ZXM9IjE1OzE4OzE1IiBkdXI9IjMuNXMiIHJlcGVhdENvdW50PSJpbmRlZmluaXRlIiAvPgogIDwvY2lyY2xlPgo8L3N2Zz4=" alt="SaiMON Logo">
+        <canvas id="mini-scene-summary"></canvas>
         <h1>Game Over!</h1>
         <p>Highest Level: <span id="summary-level"></span></p>
         <p>Total Time: <span id="summary-time"></span>s</p>
@@ -215,7 +247,7 @@
         <button id="play-again-button">Play Again</button>
     </div>
     <div id="title">
-        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZGllbnQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjZmYwMDAwIiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjI1JSIgc3RvcC1jb2xvcj0iIzAwZmYwMCIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSI1MCUiIHN0b3AtY29sb3I9IiMwMDAwZmYiIC8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI2ZmZmYwMCIgLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ4IiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZ3JhZGllbnQpIiBzdHJva2Utd2lkdGg9IjEwIiBzdHJva2UtbWl0ZXJsaW1pdD0iMTAiIHN0cm9rZS1kYXNoYXJyYXk9IjE1LDEwIj4KICAgIDxhbmltYXRlVHJhbnNmb3JtIGF0dHJpYnV0ZU5hbWU9InRyYW5zZm9ybSIgdHlwZT0icm90YXRlIiBkdXI9IjQuNXMiIGZyb209IjAgNTAgNTAiIHRvPSIzNjAgNTAgNTAiIHJlcGVhdENvdW50PSJpbmRlZmluaXRlIiAvPgogIDwvY2lyY2xlPgogIDxwb2x5Z29uIHBvaW50cz0iNTAsMjUgNzUsNTAgNTAsNzUgMjUsNTAiIGZpbGw9InVybCgjZ3JhZGllbnQpIiBvcGFjaXR5PSIwLjciPgogICAgPGFuaW1hdGVUcmFuc2Zvcm0gYXR0cmlidXRlTmFtZT0idHJhbnNmb3JtIiB0eXBlPSJyb3RhdGUiIGR1cj0iNXMiIGZyb209IjAgNTAgNTAiIHRvPSItMzYwIDUwIDUwIiByZXBlYXRDb3VudD0iaW5kZWZpbml0ZSIgLz4KICA8L3BvbHlnb24+CiAgPGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMTUiIGZpbGw9IiNmZmZmZmYiIG9wYWNpdHk9IjAuOCI+CiAgICA8YW5pbWF0ZSBhdHRyaWJ1dGVOYW1lPSJyIiB2YWx1ZXM9IjE1OzE4OzE1IiBkdXI9IjMuNXMiIHJlcGVhdENvdW50PSJpbmRlZmluaXRlIiAvPgogIDwvY2lyY2xlPgo8L3N2Zz4=" alt="SaiMON Logo">
+        <canvas id="mini-scene-title"></canvas>
         SaiMON
     </div>
     <div id="subtitle">Copy me!</div>
@@ -233,7 +265,177 @@
     <div id="bonus-display"></div>
 
     <script>
-        // Scene setup
+        // Setup welcome screen vortex
+        function setupWelcomeVortex() {
+            const canvas = document.getElementById('welcome-vortex');
+            if (!canvas) {
+                console.warn('Welcome vortex canvas not found');
+                return;
+            }
+
+            try {
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setClearColor(0x000000, 0);
+
+                // Vortex
+                const vortexGeometry = new THREE.BufferGeometry();
+                const vortexCount = 2000;
+                const vortexPosArray = new Float32Array(vortexCount * 3);
+                const vortexColors = new Float32Array(vortexCount * 3);
+                const vortexVelocities = new Float32Array(vortexCount * 3);
+                const vortexSizes = new Float32Array(vortexCount);
+
+                for (let i = 0; i < vortexCount * 3; i += 3) {
+                    const radius = Math.random() * 30 + 10;
+                    const angle = Math.random() * Math.PI * 2;
+                    vortexPosArray[i] = Math.cos(angle) * radius;
+                    vortexPosArray[i + 1] = Math.sin(angle) * radius;
+                    vortexPosArray[i + 2] = (Math.random() - 0.5) * 100;
+
+                    vortexVelocities[i] = (Math.random() - 0.5) * 0.05;
+                    vortexVelocities[i + 1] = (Math.random() - 0.5) * 0.05;
+                    vortexVelocities[i + 2] = Math.random() * 0.1 + 0.05;
+                    vortexSizes[i] = Math.random() * 0.2 + 0.05;
+
+                    const color = new THREE.Color().setHSL(0.5, 0.8, 0.5);
+                    vortexColors[i] = color.r;
+                    vortexColors[i + 1] = color.g;
+                    vortexColors[i + 2] = color.b;
+                }
+
+                vortexGeometry.setAttribute('position', new THREE.BufferAttribute(vortexPosArray, 3));
+                vortexGeometry.setAttribute('color', new THREE.BufferAttribute(vortexColors, 3));
+                vortexGeometry.setAttribute('size', new THREE.BufferAttribute(vortexSizes, 1));
+
+                const vortexMaterial = new THREE.PointsMaterial({
+                    vertexColors: true,
+                    size: 0.2,
+                    transparent: true,
+                    opacity: 0.7,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+
+                const vortex = new THREE.Points(vortexGeometry, vortexMaterial);
+                scene.add(vortex);
+
+                camera.position.z = 50;
+
+                let isWelcomeVisible = true;
+
+                function animateVortex() {
+                    if (!isWelcomeVisible) return;
+                    requestAnimationFrame(animateVortex);
+                    const positions = vortexGeometry.attributes.position.array;
+                    for (let i = 0; i < vortexCount * 3; i += 3) {
+                        const radius = Math.sqrt(positions[i] ** 2 + positions[i + 1] ** 2);
+                        const angle = Math.atan2(positions[i + 1], positions[i]) + vortexVelocities[i] * (1 + 1 / radius);
+                        positions[i] = Math.cos(angle) * radius;
+                        positions[i + 1] = Math.sin(angle) * radius;
+                        positions[i + 2] += vortexVelocities[i + 2];
+                        if (positions[i + 2] > 50) {
+                            positions[i + 2] -= 100;
+                            const newRadius = Math.random() * 30 + 10;
+                            const newAngle = Math.random() * Math.PI * 2;
+                            positions[i] = Math.cos(newAngle) * newRadius;
+                            positions[i + 1] = Math.sin(newAngle) * newRadius;
+                        }
+                    }
+                    vortexGeometry.attributes.position.needsUpdate = true;
+                    renderer.render(scene, camera);
+                }
+                animateVortex();
+
+                // Stop animation when welcome screen is hidden
+                document.getElementById('start-button').addEventListener('click', () => {
+                    isWelcomeVisible = false;
+                });
+
+                // Handle resize
+                window.addEventListener('resize', () => {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            } catch (error) {
+                console.error('Error setting up welcome vortex:', error);
+            }
+        }
+
+        // Setup mini scene for welcome, summary, and title
+        function setupMiniScene(canvasId, width, height) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                console.warn(`Canvas with ID ${canvasId} not found`);
+                return;
+            }
+
+            try {
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+                const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+                renderer.setSize(width, height);
+                renderer.setClearColor(0x000000, 0);
+
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+                scene.add(ambientLight);
+                const pointLight = new THREE.PointLight(0xffffff, 1.5, 100);
+                pointLight.position.set(5, 5, 5);
+                scene.add(pointLight);
+
+                // Mini objects (first level shapes: box, sphere, cylinder, torus)
+                const shapes = [
+                    new THREE.BoxGeometry(1, 1, 1),
+                    new THREE.SphereGeometry(0.75, 16, 16),
+                    new THREE.CylinderGeometry(0.75, 0.75, 1, 16),
+                    new THREE.TorusGeometry(0.75, 0.25, 8, 50)
+                ];
+                const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00];
+                const positions = [
+                    { x: -1.5, y: 0 }, { x: 1.5, y: 0 },
+                    { x: 0, y: 1.5 }, { x: 0, y: -1.5 }
+                ];
+                const objects = [];
+
+                colors.forEach((color, i) => {
+                    const material = new THREE.MeshPhongMaterial({ color, emissive: 0x000000, shininess: 100 });
+                    const mesh = new THREE.Mesh(shapes[i], material);
+                    mesh.position.set(positions[i].x, positions[i].y, 0);
+                    mesh.scale.set(0.5, 0.5, 0.5);
+                    scene.add(mesh);
+                    objects.push(mesh);
+                });
+
+                camera.position.z = canvasId === 'mini-scene-welcome' ? 8 : 6;
+
+                // Animation loop
+                function animateMini() {
+                    requestAnimationFrame(animateMini);
+                    objects.forEach(obj => {
+                        obj.rotation.x += 0.01;
+                        obj.rotation.y += 0.01;
+                    });
+                    renderer.render(scene, camera);
+                }
+                animateMini();
+            } catch (error) {
+                console.error(`Error setting up mini scene for ${canvasId}:`, error);
+            }
+        }
+
+        // Initialize mini scenes and welcome vortex
+        document.addEventListener('DOMContentLoaded', () => {
+            setupMiniScene('mini-scene-welcome', 400, 400);
+            setupMiniScene('mini-scene-summary', 200, 200);
+            setupMiniScene('mini-scene-title', 80, 80);
+            setupWelcomeVortex();
+        });
+
+        // Main game scene setup
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -352,6 +554,33 @@
         particles.visible = false;
         scene.add(particles);
 
+        // Explosion particle system
+        const explosionGeometry = new THREE.BufferGeometry();
+        const explosionCount = 200;
+        const explosionPosArray = new Float32Array(explosionCount * 3);
+        const explosionVelArray = new Float32Array(explosionCount * 3);
+        for (let i = 0; i < explosionCount * 3; i += 3) {
+            explosionPosArray[i] = 0;
+            explosionPosArray[i + 1] = 0;
+            explosionPosArray[i + 2] = 0;
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 2 + 1;
+            explosionVelArray[i] = Math.cos(angle) * speed;
+            explosionVelArray[i + 1] = Math.sin(angle) * speed;
+            explosionVelArray[i + 2] = (Math.random() - 0.5) * 2;
+        }
+        explosionGeometry.setAttribute('position', new THREE.BufferAttribute(explosionPosArray, 3));
+        const explosionMaterial = new THREE.PointsMaterial({
+            color: 0xff3333,
+            size: 0.2,
+            transparent: true,
+            opacity: 1,
+            blending: THREE.AdditiveBlending
+        });
+        const explosion = new THREE.Points(explosionGeometry, explosionMaterial);
+        explosion.visible = false;
+        scene.add(explosion);
+
         camera.position.z = 12;
 
         // Game logic
@@ -412,9 +641,7 @@
         function showBonusDisplay(bonus) {
             const bonusDisplay = document.getElementById('bonus-display');
             bonusDisplay.textContent = `Bonus: +${bonus}`;
-            bonusDisplay.style.left = '50%';
             bonusDisplay.style.top = '60%';
-            bonusDisplay.style.transform = 'translate(-50%, -50%)';
             bonusDisplay.style.display = 'block';
             gsap.to(bonusDisplay, {
                 opacity: 1,
@@ -423,7 +650,7 @@
                 onComplete: () => {
                     bonusDisplay.style.display = 'none';
                     bonusDisplay.style.opacity = '0.8';
-                    bonusDisplay.style.transform = 'translate(-50%, -50%)';
+                    bonusDisplay.style.transform = 'translateX(-50%)';
                 }
             });
         }
@@ -500,6 +727,39 @@
             });
         }
 
+        function showExplosion(x, y) {
+            explosion.position.set(x, y, 0);
+            explosion.visible = true;
+            const positions = explosionGeometry.attributes.position.array;
+            const velocities = explosionVelArray;
+            for (let i = 0; i < explosionCount * 3; i += 3) {
+                positions[i] = 0;
+                positions[i + 1] = 0;
+                positions[i + 2] = 0;
+            }
+            explosionGeometry.attributes.position.needsUpdate = true;
+            explosionMaterial.opacity = 1;
+
+            function animateExplosion() {
+                for (let i = 0; i < explosionCount * 3; i += 3) {
+                    positions[i] += velocities[i] * 0.1;
+                    positions[i + 1] += velocities[i + 1] * 0.1;
+                    positions[i + 2] += velocities[i + 2] * 0.1;
+                }
+                explosionGeometry.attributes.position.needsUpdate = true;
+            }
+
+            gsap.to(explosionMaterial, {
+                opacity: 0,
+                duration: 0.8,
+                onUpdate: animateExplosion,
+                onComplete: () => {
+                    explosion.visible = false;
+                    explosionMaterial.opacity = 1;
+                }
+            });
+        }
+
         function handleClick(index) {
             if (!isPlayerTurn || !gameActive) return;
             flashAndBounceButton(index);
@@ -514,7 +774,7 @@
 
             if (playerSequence[playerSequence.length - 1] !== sequence[playerSequence.length - 1]) {
                 // Incorrect
-                showParticles(button.position.x, button.position.y, 0xff3333, false);
+                showExplosion(button.position.x, button.position.y);
                 gameOver();
             } else {
                 // Correct move
@@ -624,7 +884,7 @@
             }
         }, 100);
 
-        // Animation loop
+        // Main animation loop
         function animate() {
             requestAnimationFrame(animate);
             buttons.forEach(button => {
