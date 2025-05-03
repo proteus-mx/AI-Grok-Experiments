@@ -314,6 +314,9 @@
           opacity: 0.8;
           animation: none;
         }
+        #leaderboardButton {
+            display: none;
+        }
 
         @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@700&family=Neuropol&display=swap');
     </style>
@@ -329,6 +332,7 @@
         <p>Use the Autoplay toggle to watch the game play itself or take control!</p>
         <button id="start-button">Start Game</button>
         <small>Version 0.1</small>
+        <button id="leaderboardButton">Show Leaderboard</button>
     </div>
     <div id="summary-screen" style="display: none;">
         <canvas id="mini-scene-summary"></canvas>
@@ -338,6 +342,7 @@
         <p>Score: <span id="summary-score"></span></p>
         <button id="play-again-button">Play Again</button>
         <button id="submitScoreBtn">Submit Score to Leaderboard</button>
+        <button id="leaderboardButton">Show Leaderboard</button>
     </div>
     <div id="title">
         <canvas id="mini-scene-title"></canvas>
