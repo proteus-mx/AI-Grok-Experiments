@@ -21,7 +21,7 @@
             align-items: center;
             justify-content: center;
             color: #fff;
-            font-family: 'Neuropol', sans-serif;
+            font-family: 'Orbitron', sans-serif;
             text-align: center;
             z-index: 10;
         }
@@ -39,6 +39,7 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             animation: glow 2s ease-in-out infinite alternate;
+            font-family: 'Orbitron', sans-serif;
         }
         @keyframes glow {
             from { text-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff; }
@@ -73,6 +74,7 @@
             max-width: 600px;
             text-shadow: 0 0 10px #000;
             margin: 10px;
+            font-family: 'Neuropol', sans-serif;
         }
         #start-button, #play-again-button {
             padding: 12px 32px;
@@ -131,7 +133,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            font-family: 'Neuropol', sans-serif;
+            font-family: 'Orbitron', sans-serif;
             font-size: 64px;
             font-weight: bold;
             text-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff;
@@ -155,6 +157,7 @@
             color: rgb(255, 0, 0);
             display: none;
             animation: colorTransition 6s infinite, throb 1.5s ease-in-out infinite;
+            text-align: center;
         }
         @keyframes colorTransition {
             0% { color: rgb(255, 0, 0); }
@@ -214,7 +217,7 @@
             display: none;
             width: 100%;
         }
-        #points-display, #bonus-display {
+        #points-display {
             position: absolute;
             color: #00ff00;
             font-size: 48px;
@@ -225,7 +228,20 @@
             left: 50%;
             transform: translateX(-50%);
         }
-        @import url('https://fonts.googleapis.com/css2?family=Neuropol&display=swap');
+        #bonus-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00ff00;
+            font-size: 48px;
+            font-family: 'Neuropol', sans-serif;
+            font-weight: bold;
+            text-shadow: 0 0 15px #00ff00;
+            display: none;
+            text-align: center;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Neuropol&family=Orbitron:wght@700&display=swap');
     </style>
 </head>
 <body>
@@ -405,7 +421,8 @@
                     const material = new THREE.MeshPhongMaterial({ color, emissive: 0x000000, shininess: 100 });
                     const mesh = new THREE.Mesh(shapes[i], material);
                     mesh.position.set(positions[i].x, positions[i].y, 0);
-                    mesh.scale.set(0.5, 0.5, 0.5);
+                    const scale = canvasId === 'mini-scene-welcome' ? 1.0 : 0.5;
+                    mesh.scale.set(scale, scale, scale);
                     scene.add(mesh);
                     objects.push(mesh);
                 });
@@ -607,6 +624,8 @@
                 sequence.push(Math.floor(Math.random() * 4));
             }
             document.getElementById('level-timer').textContent = levelTimer.toFixed(1);
+            const subtitle = document.getElementById('subtitle');
+            if (subtitle) subtitle.textContent = "Watch me!";
             showLevelDisplay();
             setTimeout(playSequence, 2000);
         }
@@ -622,6 +641,7 @@
 
         function showPointsDisplay(points, x, y) {
             const pointsDisplay = document.getElementById('points-display');
+            if (!pointsDisplay) return;
             pointsDisplay.textContent = `+${points}`;
             pointsDisplay.style.left = `${x}px`;
             pointsDisplay.style.top = `${y}px`;
@@ -640,8 +660,8 @@
 
         function showBonusDisplay(bonus) {
             const bonusDisplay = document.getElementById('bonus-display');
-            bonusDisplay.textContent = `Bonus: +${bonus}`;
-            bonusDisplay.style.top = '60%';
+            if (!bonusDisplay) return;
+            bonusDisplay.textContent = `Speed Bonus: +${bonus}`;
             bonusDisplay.style.display = 'block';
             gsap.to(bonusDisplay, {
                 opacity: 1,
@@ -650,12 +670,14 @@
                 onComplete: () => {
                     bonusDisplay.style.display = 'none';
                     bonusDisplay.style.opacity = '0.8';
-                    bonusDisplay.style.transform = 'translateX(-50%)';
+                    bonusDisplay.style.transform = 'translate(-50%, -50%)';
                 }
             });
         }
 
         function playSequence() {
+            const subtitle = document.getElementById('subtitle');
+            if (subtitle) subtitle.textContent = "Watch me!";
             let i = 0;
             function next() {
                 if (i < sequence.length) {
@@ -664,6 +686,10 @@
                         setTimeout(next, 200);
                     });
                 } else {
+                    if (subtitle) subtitle.textContent = "";
+                    setTimeout(() => {
+                        if (subtitle) subtitle.textContent = "Copy me!";
+                    }, 500);
                     isPlayerTurn = true;
                     if (autoplay) {
                         setTimeout(autoPlaySequence, 500);
@@ -675,6 +701,8 @@
 
         function autoPlaySequence() {
             if (!autoplay || !isPlayerTurn || !gameActive) return;
+            const subtitle = document.getElementById('subtitle');
+            if (subtitle) subtitle.textContent = "Copy me!";
             let i = 0;
             function next() {
                 if (i < sequence.length) {
@@ -762,6 +790,8 @@
 
         function handleClick(index) {
             if (!isPlayerTurn || !gameActive) return;
+            const subtitle = document.getElementById('subtitle');
+            if (subtitle) subtitle.textContent = "Copy me!";
             flashAndBounceButton(index);
             playerSequence.push(index);
             moves++;
