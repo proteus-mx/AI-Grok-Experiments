@@ -1,43 +1,4 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -48,24 +9,91 @@
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
         canvas { display: block; }
+        #welcome-screen, #summary-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-family: 'Neuropol', sans-serif;
+            text-align: center;
+            z-index: 10;
+        }
+        #welcome-screen h1, #summary-screen h1 {
+            font-size: 80px;
+            text-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff;
+            margin: 20px;
+            background: linear-gradient(45deg, #ff0000, #00ff00, #0000ff, #ffff00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        @keyframes glow {
+            from { text-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff; }
+            to { text-shadow: 0 0 40px #00ffff, 0 0 80px #00ffff; }
+        }
+        #welcome-screen img, #summary-screen img {
+            width: 200px;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 0 25px #00ffff);
+            animation: pulse 3s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        #welcome-screen p, #summary-screen p {
+            font-size: 20px;
+            max-width: 600px;
+            text-shadow: 0 0 10px #000;
+            margin: 10px;
+        }
+        #start-button, #play-again-button {
+            padding: 12px 32px;
+            background: linear-gradient(45deg, #00ffff, #0077ff);
+            color: #000;
+            font-family: 'Neuropol', sans-serif;
+            font-size: 20px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.7);
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+        #start-button:hover, #play-again-button:hover {
+            transform: scale(1.1);
+        }
         #ui {
             position: absolute;
-            top: 100px;
-            left: 20px;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             color: #e0e0e0;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 22px;
+            font-family: 'Neuropol', sans-serif;
+            font-size: 18px;
             background: linear-gradient(45deg, rgba(0, 0, 50, 0.8), rgba(0, 50, 100, 0.8));
-            padding: 20px;
-            border-radius: 15px;
+            padding: 15px;
+            border-radius: 12px;
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.3);
             border: 2px solid #00ffff;
             backdrop-filter: blur(5px);
+            display: none;
+            display: flex;
+            gap: 20px;
         }
         #ui div {
-            margin: 8px 0;
+            margin: 0;
             text-shadow: 0 0 8px #00ffff;
             transition: transform 0.2s;
+            text-align: center;
+            min-width: 100px;
         }
         #ui div:hover {
             transform: scale(1.05);
@@ -80,37 +108,51 @@
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            color: #00ffff;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 60px;
+            display: flex;
+            align-items: center;
+            font-family: 'Neuropol', sans-serif;
+            font-size: 64px;
             font-weight: bold;
-            text-shadow: 0 0 20px #00ffff;
+            text-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff;
+            background: linear-gradient(45deg, #ff0000, #00ff00, #0000ff, #ffff00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
             text-align: center;
+            animation: glow 2s ease-in-out infinite alternate;
+            display: none;
+        }
+        #title img {
+            width: 80px;
+            margin-right: 15px;
+            filter: drop-shadow(0 0 20px #00ffff);
+            animation: pulse 3s ease-in-out infinite;
         }
         #subtitle {
             position: absolute;
-            top: 80px;
+            top: 90px;
             left: 50%;
             transform: translateX(-50%);
             color: #e0e0e0;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 24px;
+            font-family: 'Neuropol', sans-serif;
+            font-size: 20px;
             text-shadow: 0 0 10px #00ffff;
+            display: none;
         }
         #autoplay-toggle {
             position: absolute;
             top: 20px;
             right: 20px;
-            padding: 10px 20px;
+            padding: 8px 16px;
             background: linear-gradient(45deg, #00ffff, #0077ff);
             color: #000;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 18px;
+            font-family: 'Neuropol', sans-serif;
+            font-size: 16px;
             border: none;
-            border-radius: 10px;
+            border-radius: 8px;
             cursor: pointer;
             box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
             transition: transform 0.2s;
+            display: none;
         }
         #autoplay-toggle:hover {
             transform: scale(1.1);
@@ -121,11 +163,13 @@
             left: 50%;
             transform: translate(-50%, -50%);
             color: #ffd700;
-            font-size: 120px;
-            font-family: 'Orbitron', sans-serif;
+            font-size: 96px;
+            font-family: 'Neuropol', sans-serif;
             font-weight: bold;
             text-shadow: 0 0 30px #ffd700;
+            text-align: center;
             display: none;
+            width: 100%;
         }
         #game-over {
             position: absolute;
@@ -133,28 +177,49 @@
             left: 50%;
             transform: translate(-50%, -50%);
             color: #ff3333;
-            font-size: 100px;
-            font-family: 'Orbitron', sans-serif;
+            font-size: 80px;
+            font-family: 'Neuropol', sans-serif;
             font-weight: bold;
             text-shadow: 0 0 30px #ff3333;
+            text-align: center;
             display: none;
+            width: 100%;
         }
         #points-display, #bonus-display {
             position: absolute;
             color: #00ff00;
-            font-size: 60px;
-            font-family: 'Orbitron', sans-serif;
+            font-size: 48px;
+            font-family: 'Neuropol', sans-serif;
             font-weight: bold;
             text-shadow: 0 0 15px #00ff00;
             display: none;
         }
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Neuropol&display=swap');
     </style>
 </head>
 <body>
-    <div id="title">SaiMON</div>
+    <div id="welcome-screen">
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZGllbnQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjZmYwMDAwIiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjI1JSIgc3RvcC1jb2xvcj0iIzAwZmYwMCIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSI1MCUiIHN0b3AtY29sb3I9IiMwMDAwZmYiIC8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI2ZmZmYwMCIgLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ4IiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZ3JhZGllbnQpIiBzdHJva2Utd2lkdGg9IjEwIiBzdHJva2UtbWl0ZXJsaW1pdD0iMTAiIHN0cm9rZS1kYXNoYXJyYXk9IjE1LDEwIj4KICAgIDxhbmltYXRlVHJhbnNmb3JtIGF0dHJpYnV0ZU5hbWU9InRyYW5zZm9ybSIgdHlwZT0icm90YXRlIiBkdXI9IjQuNXMiIGZyb209IjAgNTAgNTAiIHRvPSIzNjAgNTAgNTAiIHJlcGVhdENvdW50PSJpbmRlZmluaXRlIiAvPgogIDwvY2lyY2xlPgogIDxwb2x5Z29uIHBvaW50cz0iNTAsMjUgNzUsNTAgNTAsNzUgMjUsNTAiIGZpbGw9InVybCgjZ3JhZGllbnQpIiBvcGFjaXR5PSIwLjciPgogICAgPGFuaW1hdGVUcmFuc2Zvcm0gYXR0cmlidXRlTmFtZT0idHJhbnNmb3JtIiB0eXBlPSJyb3RhdGUiIGR1cj0iNXMiIGZyb209IjAgNTAgNTAiIHRvPSItMzYwIDUwIDUwIiByZXBlYXRDb3VudD0iaW5kZWZpbml0ZSIgLz4KICA8L3BvbHlnb24+CiAgPGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMTUiIGZpbGw9IiNmZmZmZmYiIG9wYWNpdHk9IjAuOCI+CiAgICA8YW5pbWF0ZSBhdHRyaWJ1dGVOYW1lPSJyIiB2YWx1ZXM9IjE1OzE4OzE1IiBkdXI9IjMuNXMiIHJlcGVhdENvdW50PSJpbmRlZmluaXRlIiAvPgogIDwvY2lyY2xlPgo8L3N2Zz4=" alt="SaiMON Logo">
+        <h1>SaiMON</h1>
+        <p>Watch the sequence of colored shapes and repeat it by clicking them in the correct order.</p>
+        <p>Earn points for each correct move and bonus points for completing levels quickly.</p>
+        <p>Use the Autoplay toggle to watch the game play itself or take control!</p>
+        <button id="start-button">Start Game</button>
+    </div>
+    <div id="summary-screen" style="display: none;">
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZGllbnQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjZmYwMDAwIiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjI1JSIgc3RvcC1jb2xvcj0iIzAwZmYwMCIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSI1MCUiIHN0b3AtY29sb3I9IiMwMDAwZmYiIC8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI2ZmZmYwMCIgLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ4IiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZ3JhZGllbnQpIiBzdHJva2Utd2lkdGg9IjEwIiBzdHJva2UtbWl0ZXJsaW1pdD0iMTAiIHN0cm9rZS1kYXNoYXJyYXk9IjE1LDEwIj4KICAgIDxhbmltYXRlVHJhbnNmb3JtIGF0dHJpYnV0ZU5hbWU9InRyYW5zZm9ybSIgdHlwZT0icm90YXRlIiBkdXI9IjQuNXMiIGZyb209IjAgNTAgNTAiIHRvPSIzNjAgNTAgNTAiIHJlcGVhdENvdW50PSJpbmRlZmluaXRlIiAvPgogIDwvY2lyY2xlPgogIDxwb2x5Z29uIHBvaW50cz0iNTAsMjUgNzUsNTAgNTAsNzUgMjUsNTAiIGZpbGw9InVybCgjZ3JhZGllbnQpIiBvcGFjaXR5PSIwLjciPgogICAgPGFuaW1hdGVUcmFuc2Zvcm0gYXR0cmlidXRlTmFtZT0idHJhbnNmb3JtIiB0eXBlPSJyb3RhdGUiIGR1cj0iNXMiIGZyb209IjAgNTAgNTAiIHRvPSItMzYwIDUwIDUwIiByZXBlYXRDb3VudD0iaW5kZWZpbml0ZSIgLz4KICA8L3BvbHlnb24+CiAgPGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMTUiIGZpbGw9IiNmZmZmZmYiIG9wYWNpdHk9IjAuOCI+CiAgICA8YW5pbWF0ZSBhdHRyaWJ1dGVOYW1lPSJyIiB2YWx1ZXM9IjE1OzE4OzE1IiBkdXI9IjMuNXMiIHJlcGVhdENvdW50PSJpbmRlZmluaXRlIiAvPgogIDwvY2lyY2xlPgo8L3N2Zz4=" alt="SaiMON Logo">
+        <h1>Game Over!</h1>
+        <p>Highest Level: <span id="summary-level"></span></p>
+        <p>Total Time: <span id="summary-time"></span>s</p>
+        <p>Score: <span id="summary-score"></span></p>
+        <button id="play-again-button">Play Again</button>
+    </div>
+    <div id="title">
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZGllbnQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjZmYwMDAwIiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjI1JSIgc3RvcC1jb2xvcj0iIzAwZmYwMCIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSI1MCUiIHN0b3AtY29sb3I9IiMwMDAwZmYiIC8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI2ZmZmYwMCIgLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ4IiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZ3JhZGllbnQpIiBzdHJva2Utd2lkdGg9IjEwIiBzdHJva2UtbWl0ZXJsaW1pdD0iMTAiIHN0cm9rZS1kYXNoYXJyYXk9IjE1LDEwIj4KICAgIDxhbmltYXRlVHJhbnNmb3JtIGF0dHJpYnV0ZU5hbWU9InRyYW5zZm9ybSIgdHlwZT0icm90YXRlIiBkdXI9IjQuNXMiIGZyb209IjAgNTAgNTAiIHRvPSIzNjAgNTAgNTAiIHJlcGVhdENvdW50PSJpbmRlZmluaXRlIiAvPgogIDwvY2lyY2xlPgogIDxwb2x5Z29uIHBvaW50cz0iNTAsMjUgNzUsNTAgNTAsNzUgMjUsNTAiIGZpbGw9InVybCgjZ3JhZGllbnQpIiBvcGFjaXR5PSIwLjciPgogICAgPGFuaW1hdGVUcmFuc2Zvcm0gYXR0cmlidXRlTmFtZT0idHJhbnNmb3JtIiB0eXBlPSJyb3RhdGUiIGR1cj0iNXMiIGZyb209IjAgNTAgNTAiIHRvPSItMzYwIDUwIDUwIiByZXBlYXRDb3VudD0iaW5kZWZpbml0ZSIgLz4KICA8L3BvbHlnb24+CiAgPGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMTUiIGZpbGw9IiNmZmZmZmYiIG9wYWNpdHk9IjAuOCI+CiAgICA8YW5pbWF0ZSBhdHRyaWJ1dGVOYW1lPSJyIiB2YWx1ZXM9IjE1OzE4OzE1IiBkdXI9IjMuNXMiIHJlcGVhdENvdW50PSJpbmRlZmluaXRlIiAvPgogIDwvY2lyY2xlPgo8L3N2Zz4=" alt="SaiMON Logo">
+        SaiMON
+    </div>
     <div id="subtitle">Copy me!</div>
-    <button id="autoplay-toggle">Autoplay: ON</button>
+    <button id="autoplay-toggle">Autoplay: OFF</button>
     <div id="ui">
         <div>Level: <span id="level">1</span></div>
         <div>Level Time: <span id="level-timer">0</span>s</div>
@@ -287,7 +352,7 @@
         particles.visible = false;
         scene.add(particles);
 
-        camera.position.z = 10;
+        camera.position.z = 12;
 
         // Game logic
         let sequence = [];
@@ -299,7 +364,7 @@
         let timer = 0;
         let levelTimer = 0;
         let gameActive = true;
-        let autoplay = true;
+        let autoplay = false;
 
         function startLevel() {
             sequence = [];
@@ -338,7 +403,7 @@
                 duration: 1,
                 onComplete: () => {
                     pointsDisplay.style.display = 'none';
-                    pointsDisplay.style.opacity = 0.8;
+                    pointsDisplay.style.opacity = '0.8';
                     pointsDisplay.style.transform = 'translateY(0)';
                 }
             });
@@ -357,7 +422,7 @@
                 duration: 1.5,
                 onComplete: () => {
                     bonusDisplay.style.display = 'none';
-                    bonusDisplay.style.opacity = 0.8;
+                    bonusDisplay.style.opacity = '0.8';
                     bonusDisplay.style.transform = 'translate(-50%, -50%)';
                 }
             });
@@ -396,8 +461,10 @@
 
         function flashAndBounceButton(index, callback) {
             const button = buttons[index];
+            const originalColor = new THREE.Color(button.userData.originalColor);
             gsap.to(button.material.emissive, {
-                r: 1, g: 1, b: 1, duration: 0.3, yoyo: true, repeat: 1,
+                r: originalColor.r * 0.8, g: originalColor.g * 0.8, b: originalColor.b * 0.8,
+                duration: 0.3, yoyo: true, repeat: 1,
                 onComplete: () => {
                     button.material.emissive.set(0);
                 }
@@ -481,6 +548,14 @@
             gsap.to(gameOverText, { opacity: 1, duration: 0.5, yoyo: true, repeat: 1 });
             setTimeout(() => {
                 gameOverText.style.display = 'none';
+                document.getElementById('summary-level').textContent = level;
+                document.getElementById('summary-time').textContent = timer.toFixed(1);
+                document.getElementById('summary-score').textContent = score;
+                document.getElementById('summary-screen').style.display = 'flex';
+                document.getElementById('ui').style.display = 'none';
+                document.getElementById('title').style.display = 'none';
+                document.getElementById('subtitle').style.display = 'none';
+                document.getElementById('autoplay-toggle').style.display = 'none';
                 level = 1;
                 score = 0;
                 timer = 0;
@@ -491,9 +566,28 @@
                 document.getElementById('score').textContent = score;
                 document.getElementById('moves').textContent = moves;
                 document.getElementById('level-timer').textContent = levelTimer.toFixed(1);
-                startLevel();
             }, 2000);
         }
+
+        // Welcome screen start button
+        document.getElementById('start-button').addEventListener('click', () => {
+            document.getElementById('welcome-screen').style.display = 'none';
+            document.getElementById('ui').style.display = 'flex';
+            document.getElementById('title').style.display = 'flex';
+            document.getElementById('subtitle').style.display = 'block';
+            document.getElementById('autoplay-toggle').style.display = 'block';
+            startLevel();
+        });
+
+        // Play again button
+        document.getElementById('play-again-button').addEventListener('click', () => {
+            document.getElementById('summary-screen').style.display = 'none';
+            document.getElementById('ui').style.display = 'flex';
+            document.getElementById('title').style.display = 'flex';
+            document.getElementById('subtitle').style.display = 'block';
+            document.getElementById('autoplay-toggle').style.display = 'block';
+            startLevel();
+        });
 
         // Autoplay toggle
         const autoplayButton = document.getElementById('autoplay-toggle');
@@ -557,9 +651,6 @@
             renderer.render(scene, camera);
         }
         animate();
-
-        // Start game
-        startLevel();
 
         // Handle window resize
         window.addEventListener('resize', () => {
