@@ -38,7 +38,8 @@
     </script>
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
-        canvas { display: block; touch-action: none; }
+        canvas { display: block; }
+        #game-canvas { touch-action: none; }
         #welcome-screen, #summary-screen {
             position: absolute;
             top: 0;
@@ -496,6 +497,7 @@
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.domElement.id = 'game-canvas';
         document.body.appendChild(renderer.domElement);
         const vortexGeometry = new THREE.BufferGeometry();
         const vortexCount = 5000;
@@ -894,14 +896,19 @@
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
         function handleInteraction(event) {
-            event.preventDefault();
+            const canvas = renderer.domElement;
+            const rect = canvas.getBoundingClientRect();
             const clientX = event.type === 'touchstart' ? event.touches[0].clientX : event.clientX;
             const clientY = event.type === 'touchstart' ? event.touches[0].clientY : event.clientY;
-            mouse.x = (clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+            if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+                return;
+            }
+            mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObjects(buttons);
             if (intersects.length > 0) {
+                event.preventDefault();
                 const index = intersects[0].object.userData.index;
                 handleClick(index);
             }
