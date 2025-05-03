@@ -21,7 +21,7 @@
             align-items: center;
             justify-content: center;
             color: #fff;
-            font-family: 'Orbitron', sans-serif;
+            font-family: 'Exo 2', sans-serif;
             text-align: center;
             z-index: 10;
         }
@@ -39,7 +39,15 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             animation: glow 2s ease-in-out infinite alternate;
-            font-family: 'Orbitron', sans-serif;
+            font-family: 'Exo 2', sans-serif;
+        }
+        #welcome-screen h2 {
+            font-family: 'Exo 2', sans-serif;
+            font-size: 30px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 20px #00ffff;
+            margin: 10px 0;
         }
         @keyframes glow {
             from { text-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff; }
@@ -70,7 +78,7 @@
             50% { transform: scale(1.1); }
         }
         #welcome-screen p, #summary-screen p {
-            font-size: 20px;
+            font-size: 16px;
             max-width: 600px;
             text-shadow: 0 0 10px #000;
             margin: 10px;
@@ -88,6 +96,13 @@
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.7);
             margin-top: 20px;
             transition: transform 0.2s;
+        }
+        #start-button {
+            animation: throbButton 1.5s ease-in-out infinite;
+        }
+        @keyframes throbButton {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
         }
         #start-button:hover, #play-again-button:hover {
             transform: scale(1.1);
@@ -133,7 +148,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            font-family: 'Orbitron', sans-serif;
+            font-family: 'Exo 2', sans-serif;
             font-size: 64px;
             font-weight: bold;
             text-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff;
@@ -147,9 +162,9 @@
         }
         #subtitle {
             position: absolute;
-            top: 180px;
+            top: 50%;
             left: 50%;
-            transform: translateX(-50%);
+            transform: translate(-50%, -50%);
             font-family: 'Neuropol', sans-serif;
             font-size: 24px;
             font-weight: bold;
@@ -166,8 +181,8 @@
             100% { color: rgb(255, 0, 0); }
         }
         @keyframes throb {
-            0%, 100% { transform: translateX(-50%) scale(1); }
-            50% { transform: translateX(-50%) scale(1.2); }
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.2); }
         }
         #autoplay-toggle {
             position: absolute;
@@ -241,7 +256,7 @@
             display: none;
             text-align: center;
         }
-        @import url('https://fonts.googleapis.com/css2?family=Neuropol&family=Orbitron:wght@700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@700&family=Neuropol&display=swap');
     </style>
 </head>
 <body>
@@ -249,6 +264,7 @@
         <canvas id="welcome-vortex"></canvas>
         <canvas id="mini-scene-welcome"></canvas>
         <h1>SaiMON</h1>
+        <h2>Watch me, copy me!</h2>
         <p>Watch the sequence of colored shapes and repeat it by clicking them in the correct order.</p>
         <p>Earn points for each correct move and bonus points for completing levels quickly.</p>
         <p>Use the Autoplay toggle to watch the game play itself or take control!</p>
