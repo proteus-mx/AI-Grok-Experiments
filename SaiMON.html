@@ -1,14 +1,53 @@
 <!DOCTYPE html>
+
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D SaiMON Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SaiMON Game - Watch me, copy me!</title>
+    <link rel="icon" type="image/x-icon" href="/AI-Grok-Experiments/favicon-saimon.ico">
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/gsap.min.js"></script> 
+
+    <script type="text/javascript">  
+    function submitScoreToGameCenter(score, leaderboardId) {
+        window.webkit?.messageHandlers.saimonHandler.postMessage({
+            action: "submitScore",
+            score: score,
+            leaderboardId: leaderboardId
+        });
+    }  
+    
+    function showLeaderboard() {
+        window.webkit?.messageHandlers.saimonHandler.postMessage("showLeaderboard");
+    }
+    
+    document.addEventListener("DOMContentLoaded", function () {
+        const leaderboardButton = document.getElementById("leaderboardButton");
+    
+        if (leaderboardButton) {
+            leaderboardButton.addEventListener("click", function () {
+                if (window.webkit?.messageHandlers?.saimonHandler) {
+                    window.webkit.messageHandlers.saimonHandler.postMessage("showLeaderboard");
+                } else {
+                    console.log("saimonHandler not available — running in browser?");
+                }
+            });
+        } else {
+            console.warn("leaderboardButton not found in DOM");
+        }
+    });
+    </script>
+
+    
     <style>
-        body { margin: 0; overflow: hidden; background: #000; touch-action: none; }
-        canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+        body { margin: 0; overflow: hidden; background: #000; }
+        canvas { display: block; }
         #welcome-screen, #summary-screen {
             position: absolute;
             top: 0;
@@ -24,7 +63,6 @@
             font-family: 'Exo 2', sans-serif;
             text-align: center;
             z-index: 10;
-            touch-action: none;
         }
         #welcome-vortex {
             position: absolute;
@@ -257,6 +295,29 @@
             display: none;
             text-align: center;
         }
+    
+        #submitScoreBtn {
+          padding: 10px 16px;
+          font-size: 16px;
+          background-color: #4CAF50;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          margin-top: 10px;
+          animation: pulse 1.5s infinite;
+          transition: all 0.3s ease;
+        }
+        
+        #submitScoreBtn:disabled {
+          cursor: not-allowed;
+          opacity: 0.8;
+          animation: none;
+        }
+        #leaderboardButton {
+            display: none;
+        }
+
         @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@700&family=Neuropol&display=swap');
     </style>
 </head>
@@ -270,6 +331,9 @@
         <p>Earn points for each correct move and bonus points for completing levels quickly.</p>
         <p>Use the Autoplay toggle to watch the game play itself or take control!</p>
         <button id="start-button">Start Game</button>
+        <p></p>
+        <small>Version 0.1</small>
+        <button id="leaderboardButton">Show Leaderboard</button>
     </div>
     <div id="summary-screen" style="display: none;">
         <canvas id="mini-scene-summary"></canvas>
@@ -278,6 +342,8 @@
         <p>Total Time: <span id="summary-time"></span>s</p>
         <p>Score: <span id="summary-score"></span></p>
         <button id="play-again-button">Play Again</button>
+        <button id="submitScoreBtn">Submit Score to Leaderboard</button>
+        <button id="leaderboardButton">Show Leaderboard</button>
     </div>
     <div id="title">
         <canvas id="mini-scene-title"></canvas>
@@ -849,6 +915,8 @@
         }
 
         function gameOver() {
+            submitScoreToGameCenter(score, "saimonLeaderboard1");
+
             gameActive = false;
             const gameOverText = document.getElementById('game-over');
             gameOverText.style.display = 'block';
@@ -874,6 +942,19 @@
                 document.getElementById('moves').textContent = moves;
                 document.getElementById('level-timer').textContent = levelTimer.toFixed(1);
             }, 2000);
+
+
+            document.getElementById("submitScoreBtn").addEventListener("click", (e) => {
+              submitScoreToGameCenter(score, "saimonLeaderboard1");
+              e.target.disabled = true;
+              e.target.innerText = "Score Submitted!";
+              e.target.style.animation = "pop 0.5s ease";
+              setTimeout(() => {
+                e.target.style.backgroundColor = "#ccc";
+              }, 500);
+            });
+
+            
         }
 
         // Welcome screen start button
@@ -906,37 +987,20 @@
             }
         });
 
-        // Raycaster for mouse and touch events
+        // Raycaster for mouse clicks
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
 
-        function handleInteraction(event) {
-            event.preventDefault();
-            let clientX, clientY;
-            if (event.type === 'touchstart' && event.touches.length > 0) {
-                clientX = event.touches[0].clientX;
-                clientY = event.touches[0].clientY;
-            } else if (event.type === 'click') {
-                clientX = event.clientX;
-                clientY = event.clientY;
-            } else {
-                return;
-            }
-
-            const canvasRect = renderer.domElement.getBoundingClientRect();
-            mouse.x = ((clientX - canvasRect.left) / canvasRect.width) * 2 - 1;
-            mouse.y = -((clientY - canvasRect.top) / canvasRect.height) * 2 + 1;
-
+        window.addEventListener('click', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObjects(buttons);
             if (intersects.length > 0) {
                 const index = intersects[0].object.userData.index;
                 handleClick(index);
             }
-        }
-
-        window.addEventListener('click', handleInteraction);
-        window.addEventListener('touchstart', handleInteraction, { passive: false });
+        });
 
         // Timers
         setInterval(() => {
