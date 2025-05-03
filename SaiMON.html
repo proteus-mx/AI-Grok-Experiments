@@ -52,7 +52,7 @@
             align-items: center;
             justify-content: center;
             color: #fff;
-            font-family: 'Exo 2', sans-serif;
+            font-family: 'fantasy';
             text-align: center;
             z-index: 10;
         }
@@ -63,17 +63,17 @@
             z-index: -1;
         }
         #welcome-screen h1, #summary-screen h1 {
-            font-size: 80px;
+            font-size: 60px;
             text-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff;
-            margin: 20px;
+            margin: 0px;
             background: linear-gradient(45deg, #ff0000, #00ff00, #0000ff, #ffff00);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             animation: glow 2s ease-in-out infinite alternate;
-            font-family: 'Exo 2', sans-serif;
+            font-family: 'fantasy';
         }
         #welcome-screen h2 {
-            font-family: 'Exo 2', sans-serif;
+            font-family: 'fantasy';
             font-size: 30px;
             font-weight: bold;
             color: #fff;
@@ -145,7 +145,7 @@
             transform: translateX(-50%);
             color: #e0e0e0;
             font-family: 'Neuropol', sans-serif;
-            font-size: 14px;
+            font-size: 12px;
             background: linear-gradient(45deg, rgba(0, 0, 50, 0.8), rgba(0, 50, 100, 0.8));
             padding: 10px;
             border-radius: 10px;
@@ -179,8 +179,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            font-family: 'Exo 2', sans-serif;
-            font-size: 64px;
+            font-family: 'fantasy";
+            font-size: 60px;
             font-weight: bold;
             text-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff;
             background: linear-gradient(45deg, #ff0000, #00ff00, #0000ff, #ffff00);
@@ -317,11 +317,10 @@
         <h1>SaiMON</h1>
         <h2>Watch me, copy me!</h2>
         <p>Watch the sequence of colored shapes and repeat it by clicking them in the correct order.</p>
-        <p>Earn points for each correct move and bonus points for completing levels quickly.</p>
-        <p>Use the Autoplay toggle to watch the game play itself or take control!</p>
+        <p><small>Earn points for each correct move and bonus points for completing levels quickly.</small></p>
         <button id="start-button">Start Game</button>
         <p></p>
-        <small>Version 0.3.1</small>
+        <small>Version 0.3.2</small>
         <button id="leaderboardButton">Show Leaderboard</button>
     </div>
     <div id="summary-screen" style="display: none;">
