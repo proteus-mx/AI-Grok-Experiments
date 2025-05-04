@@ -120,8 +120,11 @@
         function startWelcomeCountdown() {
             const countdownInterval = setInterval(() => {
                 countdownValue--;
-                countdownDisplay.textContent = countdownValue;
-
+                
+                if (countdownValue > 5) {
+                    countdownDisplay.textContent = countdownValue;
+                ]
+                    
                 // DEFCON messages and effects
                 if (countdownValue === 5) {
                     defconMessage.textContent = 'DEFCON 5';
@@ -139,7 +142,7 @@
                 } else if (countdownValue === 1) {
                     defconMessage.textContent = 'DEFCON 1 - Maximum readiness; nuclear war is imminent or has already started';
                     defconMessage.style.textSize = '40px'; 
-                }
+                } 
 
                 if (countdownValue <= 0) {
                     clearInterval(countdownInterval);
