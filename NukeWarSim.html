@@ -8,13 +8,14 @@
         body { margin: 0; overflow: hidden; background: #000; }
         canvas { display: block; }
         #stats {
+            width: 100%;
             position: absolute;
             top: 10px;
-            left: 10px;
+            left: 120px;
             color: #00FF00; /* WarGames green */
             font-family: 'VT323', monospace;
-            font-size: 18px;
-            background: rgba(0, 0, 0, 0.8);
+            font-size: 14px;
+            background: transparent;
             padding: 15px;
             border: 2px solid #00FF00;
             border-radius: 5px;
@@ -25,10 +26,12 @@
             background-size: 100% 4px; /* Subtle scanlines */
             display: none; /* Hidden until game starts */
         }
+
+        
         #cameraButton {
             position: absolute;
-            bottom: 50px; /* Bottom right */
-            right: 10px;
+            bottom: -500px; /* Bottom right */
+            right: 0px;
             color: #00FF00;
             font-family: 'VT323', monospace;
             font-size: 18px;
@@ -58,7 +61,7 @@
         #progressBar {
             width: 0%;
             height: 100%;
-            background: #00FF00;
+            background: red;
             border-radius: 3px;
             transition: width 0.3s ease;
         }
@@ -127,12 +130,15 @@
                 } else if (countdownValue === 3) {
                     defconMessage.textContent = 'DEFCON 3 - Air Force ready to mobilize in 15 minutes';
                     defconMessage.style.color = '#FF0000'; // Red text
+                    defconMessage.style.textSize = '20px'; 
                     defconMessage.style.textShadow = '0 0 5px rgba(255, 0, 0, 0.7)';
                 } else if (countdownValue === 2) {
                     defconMessage.textContent = 'DEFCON 2 - Armed forces ready to deploy and engage in less than 6 hours';
+                    defconMessage.style.textSize = '30px'; 
                     defconMessage.classList.add('flash'); // Flash text
                 } else if (countdownValue === 1) {
                     defconMessage.textContent = 'DEFCON 1 - Maximum readiness; nuclear war is imminent or has already started';
+                    defconMessage.style.textSize = '40px'; 
                 }
 
                 if (countdownValue <= 0) {
