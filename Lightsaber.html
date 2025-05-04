@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Wars Lightsaber Duel</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: url('https://wallpapercave.com/wp/wp374752.jpg') no-repeat center center fixed;
+            background-size: cover;
+            font-family: 'Arial', sans-serif;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #welcome-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 10;
+            perspective: 1000px;
+            font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+        }
+        .crawl {
+            position: relative;
+            top: 100%;
+            transform-origin: 50% 100%;
+            animation: crawl 20s linear forwards;
+            width: 80%;
+            max-width: 800px;
+            color: #ffe81f;
+            font-size: 1.5em;
+            text-align: justify;
+        }
+        @keyframes crawl {
+            0% {
+                top: 100%;
+                transform: rotateX(20deg) translateZ(0);
+            }
+            100% {
+                top: -600%;
+                transform: rotateX(25deg) translateZ(-2500px);
+            }
+        }
+        #start-button {
+            position: absolute;
+            bottom: 20px;
+            padding: 10px 20px;
+            font-size: 1.2em;
+            background: #ffe81f;
+            color: #000;
+            border: none;
+            cursor: pointer;
+            font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+        }
+        #game-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+        }
+        canvas {
+            border: 2px solid #ffe81f;
+            background: #000;
+        }
+        #controls {
+            margin-top: 10px;
+            text-align: center;
+        }
+        #auto-play {
+            padding: 10px 20px;
+            font-size: 1em;
+            background: #ffe81f;
+            color: #000;
+            border: none;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        #stats {
+            margin-top: 10px;
+            font-size: 1.2em;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="welcome-screen">
+        <div class="crawl">
+            <h1>STAR WARS</h1>
+            <h2>Lightsaber Duel</h2>
+            <p>It is a period of intense conflict. Two warriors, a Jedi and a Sith, face off in a legendary lightsaber duel. Wielding their iconic weapons, they clash under the stars, each striving for victory.</p>
+            <p>Choose your side: the light or the dark. Strike swiftly, block wisely, and claim glory in this epic battle. May the Force be with you...</p>
+        </div>
+        <button id="start-button">Start Duel</button>
+    </div>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="controls">
+            <button id="auto-play">Toggle Auto-Play</button>
+            <div id="stats">
+                <p>Jedi Wins: <span id="jedi-wins">0</span> | Sith Wins: <span id="sith-wins">0</span></p>
+                <p>Jedi Hits: <span id="jedi-hits">0</span> | Sith Hits: <span id="sith-hits">0</span></p>
+            </div>
+        </div>
+    </div>
+    <audio id="saber-sound" src="https://www.soundjay.com/buttons/sci-fi-weapon-01.mp3"></audio>
+    <audio id="bg-music" src="https://www.bensound.com/bensound-music/bensound-scifi.mp3" loop></audio>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const gameContainer = document.getElementById('game-container');
+        const startButton = document.getElementById('start-button');
+        const autoPlayButton = document.getElementById('auto-play');
+        const saberSound = document.getElementById('saber-sound');
+        const bgMusic = document.getElementById('bg-music');
+        const stats = {
+            jediWins: 0,
+            sithWins: 0,
+            jediHits: 0,
+            sithHits: 0
+        };
+
+        let autoPlay = false;
+        let gameRunning = false;
+
+        // Player objects
+        const jedi = {
+            x: 200,
+            y: canvas.height / 2,
+            angle: 0,
+            swinging: false,
+            swingDirection: 1,
+            color: 'blue',
+            keys: { swing: 'KeyQ', block: 'KeyW' }
+        };
+        const sith = {
+            x: 600,
+            y: canvas.height / 2,
+            angle: 0,
+            swinging: false,
+            swingDirection: -1,
+            color: 'red',
+            keys: { swing: 'KeyP', block: 'KeyO' }
+        };
+
+        // Game logic
+        function drawLightsaber(player) {
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            ctx.rotate(player.angle);
+            ctx.fillStyle = player.color;
+            ctx.fillRect(0, -5, 100, 10);
+            ctx.restore();
+        }
+
+        function checkCollision() {
+            if (jedi.swinging && sith.swinging) {
+                const jediTip = {
+                    x: jedi.x + Math.cos(jedi.angle) * 100,
+                    y: jedi.y + Math.sin(jedi.angle) * 100
+                };
+                const sithTip = {
+                    x: sith.x + Math.cos(sith.angle) * 100,
+                    y: sith.y + Math.sin(sith.angle) * 100
+                };
+                const distance = Math.hypot(jediTip.x - sithTip.x, jediTip.y - sithTip.y);
+                if (distance < 20) {
+                    saberSound.play();
+                    if (!sith.blocking) {
+                        stats.jediHits++;
+                        if (stats.jediHits >= 3) {
+                            stats.jediWins++;
+                            resetRound();
+                        }
+                    }
+                    if (!jedi.blocking) {
+                        stats.sithHits++;
+                        if (stats.sithHits >= 3) {
+                            stats.sithWins++;
+                            resetRound();
+                        }
+                    }
+                    updateStats();
+                }
+            }
+        }
+
+        function resetRound() {
+            jedi.angle = 0;
+            sith.angle = 0;
+            jedi.swinging = false;
+            sith.swinging = false;
+            jedi.blocking = false;
+            sith.blocking = false;
+            stats.jediHits = 0;
+            stats.sithHits = 0;
+            updateStats();
+        }
+
+        function updateStats() {
+            document.getElementById('jedi-wins').textContent = stats.jediWins;
+            document.getElementById('sith-wins').textContent = stats.sithWins;
+            document.getElementById('jedi-hits').textContent = stats.jediHits;
+            document.getElementById('sith-hits').textContent = stats.sithHits;
+        }
+
+        function autoPlayUpdate() {
+            if (autoPlay) {
+                if (Math.random() < 0.05) {
+                    jedi.swinging = true;
+                    jedi.swingDirection = Math.random() > 0.5 ? 1 : -1;
+                }
+                if (Math.random() < 0.05) {
+                    sith.swinging = true;
+                    sith.swingDirection = Math.random() > 0.5 ? 1 : -1;
+                }
+                if (Math.random() < 0.03) jedi.blocking = true;
+                if (Math.random() < 0.03) sith.blocking = true;
+                if (Math.random() < 0.03) jedi.blocking = false;
+                if (Math.random() < 0.03) sith.blocking = false;
+            }
+        }
+
+        function update() {
+            if (!gameRunning) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw players
+            drawLightsaber(jedi);
+            drawLightsaber(sith);
+
+            // Update swing
+            if (jedi.swinging) {
+                jedi.angle += 0.1 * jedi.swingDirection;
+                if (Math.abs(jedi.angle) > Math.PI / 2) {
+                    jedi.swinging = false;
+                    jedi.angle = 0;
+                }
+            }
+            if (sith.swinging) {
+                sith.angle += 0.1 * sith.swingDirection;
+                if (Math.abs(sith.angle) > Math.PI / 2) {
+                    sith.swinging = false;
+                    sith.angle = 0;
+                }
+            }
+
+            checkCollision();
+            autoPlayUpdate();
+            requestAnimationFrame(update);
+        }
+
+        // Event listeners
+        startButton.addEventListener('click', () => {
+            welcomeScreen.style.display = 'none';
+            gameContainer.style.display = 'flex';
+            gameRunning = true;
+            bgMusic.play();
+            update();
+        });
+
+        autoPlayButton.addEventListener('click', () => {
+            autoPlay = !autoPlay;
+            autoPlayButton.textContent = autoPlay ? 'Stop Auto-Play' : 'Toggle Auto-Play';
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === jedi.keys.swing && !autoPlay) {
+                jedi.swinging = true;
+                jedi.swingDirection = Math.random() > 0.5 ? 1 : -1;
+            }
+            if (e.code === sith.keys.swing && !autoPlay) {
+                sith.swinging = true;
+                sith.swingDirection = Math.random() > 0.5 ? 1 : -1;
+            }
+            if (e.code === jedi.keys.block && !autoPlay) jedi.blocking = true;
+            if (e.code === sith.keys.block && !autoPlay) sith.blocking = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.code === jedi.keys.block && !autoPlay) jedi.blocking = false;
+            if (e.code === sith.keys.block && !autoPlay) sith.blocking = false;
+        });
+    </script>
+</body>
+</html>
