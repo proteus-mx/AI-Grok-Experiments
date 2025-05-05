@@ -1,68 +1,278 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Tic-Tac-Toe</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        #welcome-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(0, 0, 50, 0.8), rgba(0, 0, 100, 0.8));
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-family: 'Orbitron', sans-serif;
+            text-align: center;
+            z-index: 10;
+            text-shadow: 0 0 10px #00f, 0 0 20px #00f;
+        }
+        #welcome-screen h1 {
+            font-size: 4em;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+        }
+        #welcome-screen p {
+            font-size: 1.3em;
+            max-width: 700px;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+        .mode-button {
+            background: linear-gradient(#1e90ff, #4682b4);
+            border: none;
+            color: white;
+            padding: 15px 40px;
+            margin: 10px;
+            font-size: 1.1em;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: transform 0.2s, background 0.3s;
+            box-shadow: 0 0 10px #1e90ff;
+        }
+        .mode-button:hover {
+            background: linear-gradient(#4682b4, #1e90ff);
+            transform: scale(1.05);
+        }
+        .mode-button.selected {
+            background: linear-gradient(#ff4500, #ff6347);
+            box-shadow: 0 0 15px #ff4500;
+        }
+        #start-button {
+            background: linear-gradient(#ff4500, #ff6347);
+            border: none;
+            color: white;
+            padding: 20px 50px;
+            font-size: 1.4em;
+            cursor: pointer;
+            border-radius: 10px;
+            animation: throb 1.5s ease-in-out infinite;
+            box-shadow: 0 0 20px #ff4500;
+            text-shadow: 0 0 5px #000;
+        }
+        #start-button:hover {
+            background: linear-gradient(#ff6347, #ff4500);
+        }
+        @keyframes throb {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        #stats-x, #stats-o {
+            position: absolute;
+            bottom: 80px;
+            color: #ffffff;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1em;
+            padding: 15px;
+            background: rgba(0, 0, 50, 0.7);
+            border-radius: 10px;
+            z-index: 5;
+            box-shadow: 0 0 10px #00f;
+            text-shadow: 0 0 5px #00f;
+        }
+        #stats-x { left: 20px; }
+        #stats-o { right: 20px; }
+        .response-time {
+            font-size: 0.8em;
+        }
+        #game-summary {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(rgba(0, 0, 50, 0.9), rgba(0, 0, 100, 0.9));
+            color: #ffffff;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            font-family: 'Orbitron', sans-serif;
+            z-index: 10;
+            display: none;
+            box-shadow: 0 0 20px #00f;
+        }
+        #game-summary h2 {
+            margin: 0 0 20px;
+            font-size: 2.5em;
+            text-shadow: 0 0 10px #ff4500;
+        }
+        #play-again-button {
+            background: linear-gradient(#ff4500, #ff6347);
+            border: none;
+            color: white;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: background 0.3s, transform 0.2s;
+            box-shadow: 0 0 10px #ff4500;
+        }
+        #play-again-button:hover {
+            background: linear-gradient(#ff6347, #ff4500);
+            transform: scale(1.05);
+        }
+        #win-percentage-bar {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 50px;
+            background: rgba(0, 0, 50, 0.7);
+            display: flex;
+            z-index: 5;
+        }
+        #x-bar {
+            height: 100%;
+            background: linear-gradient(#ff0000, #ff4500);
+            transition: width 0.5s;
+            text-align: left;
+            padding-left: 10px;
+            line-height: 50px;
+            color: white;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1em;
+            text-shadow: 0 0 5px #000;
+        }
+        #o-bar {
+            height: 100%;
+            background: linear-gradient(#0000ff, #1e90ff);
+            transition: width: 0.5s;
+            text-align: right;
+            padding-right: 10px;
+            line-height: 50px;
+            color: white;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1em;
+            text-shadow: 0 0 5px #000;
+        }
+        #game-title {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5em;
+            text-shadow: 0 0 10px #00f, 0 0 20px #00f;
+            z-index: 5;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+        }
+        #game-timer {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2em;
+            text-shadow: 0 0 5px #00f;
+            z-index: 5;
+        }
+        #game-number-flash, #bonus-flash-x, #bonus-flash-o {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffffff;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 5em;
+            text-shadow: 0 0 20px #ff4500;
+            z-index: 10;
+            display: none;
+            animation: flash 2s ease-in-out;
+        }
+        #bonus-flash-x, #bonus-flash-o {
+            font-size: 3em;
+            top: 60%;
+        }
+        #bonus-flash-x { color: #ff4500; }
+        #bonus-flash-o { color: #1e90ff; }
+        @keyframes flash {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+    </style>
 </head>
 <body>
+    <div id="welcome-screen">
+        <h1>tAc-tIc-toe</h1>
+        <p>Welcome to 3D Tic-Tac-Toe! Play on a 3x3x3 grid. Win by aligning three symbols in a row, column, or diagonal across any dimension. Tap and drag cubes to move them (they snap back). Tap and drag elsewhere to control the camera. Double-tap to restart the game.</p>
+        <div>
+            <button class="mode-button" id="one-player">1 Player</button>
+            <button class="mode-button" id="two-players">2 Players</button>
+            <button class="mode-button selected" id="ai-players">AI Players</button>
+        </div>
+        <button id="start-button">Start Game</button>
+    </div>
+    <div id="stats-x">Red<br>Wins: 0<br>Score: 0<br>Game: 1<br><span class="response-time">Response: 0.00s<br>Avg Response: 0.00s</span></div>
+    <div id="stats-o">Blue<br>Wins: 0<br>Score: 0<br>Game: 1<br><span class="response-time">Response: 0.00s<br>Avg Response: 0.00s</span></div>
+    <div id="game-summary">
+        <h2 id="summary-text"></h2>
+        <button id="play-again-button">Play Again</button>
+    </div>
+    <div id="win-percentage-bar">
+        <div id="x-bar" style="width: 50%;">Red: 0%</div>
+        <div id="o-bar" style="width: 50%;">Blue: 0%</div>
+    </div>
+    <div id="game-title">tAc-tIc-toe</div>
+    <div id="game-timer">Time: 00:00</div>
+    <div id="game-number-flash"></div>
+    <div id="bonus-flash-x"></div>
+    <div id="bonus-flash-o"></div>
     <script>
         // Scene setup
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer();
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
 
+        // Star field background
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 2000;
+        const starPositions = new Float32Array(starCount * 3);
+        for (let i = 0; i < starCount * 3; i += 3) {
+            starPositions[i] = (Math.random() - 0.5) * 300;
+            starPositions[i + 1] = (Math.random() - 0.5) * 300;
+            starPositions[i + 2] = (Math.random() - 0.5) * 300;
+        }
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.15, transparent: true, opacity: 0.8 });
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+
         // Lighting
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
         scene.add(ambientLight);
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7);
         directionalLight.position.set(5, 5, 5);
+        directionalLight.castShadow = true;
         scene.add(directionalLight);
-        const spotlight = new THREE.SpotLight(0xffffff, 1, 20, Math.PI / 4, 0.5);
+        const spotlight = new THREE.SpotLight(0xffffff, 1.5, 20, Math.PI / 4, 0.5);
         spotlight.position.copy(camera.position);
         spotlight.target.position.set(0, 0, 0);
+        spotlight.castShadow = true;
         scene.add(spotlight);
         scene.add(spotlight.target);
 
@@ -78,13 +288,19 @@
             for (let y = 0; y < 3; y++) {
                 for (let z = 0; z < 3; z++) {
                     const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
-                    const material = new THREE.MeshPhongMaterial({ 
+                    geometry.computeVertexNormals();
+                    const material = new THREE.MeshStandardMaterial({ 
                         color: 0x888888, 
                         transparent: true, 
-                        opacity: 0.3,
-                        shininess: 100
+                        opacity: 0.4,
+                        metalness: 0.5,
+                        roughness: 0.3,
+                        emissive: 0x222222,
+                        emissiveIntensity: 0.2
                     });
                     const cube = new THREE.Mesh(geometry, material);
+                    cube.castShadow = true;
+                    cube.receiveShadow = true;
                     const pos = new THREE.Vector3(
                         (x - 1) * spacing,
                         (y - 1) * spacing,
@@ -109,6 +325,19 @@
         let winningCubes = [];
         let selectedCube = null;
         let flashTime = 0;
+        let gameMode = 'ai';
+        let gameNumber = 1;
+        let xWins = 0;
+        let oWins = 0;
+        let xBonusPoints = 0;
+        let oBonusPoints = 0;
+        let gameStartTime = Date.now();
+        let lastMoveTime = Date.now();
+        let xResponseTimes = [];
+        let oResponseTimes = [];
+        let xLastResponseTime = 0;
+        let oLastResponseTime = 0;
+        let moveTimeout = null;
 
         // Camera control state
         let isCameraDragging = false;
@@ -123,27 +352,193 @@
         let tapTimeout = null;
 
         // Materials for players
-        const xMaterial = new THREE.MeshPhongMaterial({ 
+        const xMaterial = new THREE.MeshStandardMaterial({ 
             color: 0xff0000, 
             transparent: true, 
-            opacity: 0.7,
-            shininess: 100
+            opacity: 0.8,
+            metalness: 0.6,
+            roughness: 0.2,
+            emissive: 0xff3333,
+            emissiveIntensity: 0.3
         });
-        const oMaterial = new THREE.MeshPhongMaterial({ 
+        const oMaterial = new THREE.MeshStandardMaterial({ 
             color: 0x0000ff, 
             transparent: true, 
-            opacity: 0.7,
-            shininess: 100
+            opacity: 0.8,
+            metalness: 0.6,
+            roughness: 0.2,
+            emissive: 0x3333ff,
+            emissiveIntensity: 0.3
         });
-        const selectedMaterial = new THREE.MeshPhongMaterial({
+        const selectedMaterial = new THREE.MeshStandardMaterial({
             color: 0xffffff,
             transparent: true,
-            opacity: 0.7,
-            shininess: 100
+            opacity: 0.8,
+            metalness: 0.5,
+            roughness: 0.3,
+            emissive: 0xaaaaaa,
+            emissiveIntensity: 0.5
         });
 
         // Winning line
         let winningLine = null;
+
+        // UI elements
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const onePlayerButton = document.getElementById('one-player');
+        const twoPlayersButton = document.getElementById('two-players');
+        const aiPlayersButton = document.getElementById('ai-players');
+        const startButton = document.getElementById('start-button');
+        const statsX = document.getElementById('stats-x');
+        const statsO = document.getElementById('stats-o');
+        const gameSummary = document.getElementById('game-summary');
+        const summaryText = document.getElementById('summary-text');
+        const playAgainButton = document.getElementById('play-again-button');
+        const xBar = document.getElementById('x-bar');
+        const oBar = document.getElementById('o-bar');
+        const gameTimer = document.getElementById('game-timer');
+        const gameNumberFlash = document.getElementById('game-number-flash');
+        const bonusFlashX = document.getElementById('bonus-flash-x');
+        const bonusFlashO = document.getElementById('bonus-flash-o');
+
+        // Flash game number
+        function flashGameNumber() {
+            gameNumberFlash.textContent = `Game ${gameNumber}`;
+            gameNumberFlash.style.display = 'block';
+            setTimeout(() => {
+                gameNumberFlash.style.display = 'none';
+            }, 2000);
+        }
+
+        // Flash bonus points with reason
+        function flashBonusPoints(player, points, reason) {
+            const flashElement = player === 'X' ? bonusFlashX : bonusFlashO;
+            flashElement.textContent = `+${points} ${reason}!`;
+            flashElement.style.display = 'block';
+            setTimeout(() => {
+                flashElement.style.display = 'none';
+            }, 2000);
+        }
+
+        // Update game timer
+        function updateGameTimer() {
+            const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
+            const minutes = String(Math.floor(elapsed / 60)).padStart(2, '0');
+            const seconds = String(elapsed % 60).padStart(2, '0');
+            gameTimer.textContent = `Time: ${minutes}:${seconds}`;
+        }
+
+        // Calculate average response time
+        function getAverageResponseTime(times) {
+            if (times.length === 0) return 0;
+            const sum = times.reduce((a, b) => a + b, 0);
+            return (sum / times.length).toFixed(2);
+        }
+
+        // Update stats and win percentage bar
+        function updateStats() {
+            const xScore = xWins * 100 + xBonusPoints;
+            const oScore = oWins * 100 + oBonusPoints;
+            statsX.innerHTML = `Red<br>Wins: ${xWins}<br>Score: ${xScore}<br>Game: ${gameNumber}<br><span class="response-time">Response: ${xLastResponseTime.toFixed(2)}s<br>Avg Response: ${getAverageResponseTime(xResponseTimes)}s</span>`;
+            statsO.innerHTML = `Blue<br>Wins: ${oWins}<br>Score: ${oScore}<br>Game: ${gameNumber}<br><span class="response-time">Response: ${oLastResponseTime.toFixed(2)}s<br>Avg Response: ${getAverageResponseTime(oResponseTimes)}s</span>`;
+            const totalWins = xWins + oWins || 1;
+            const xPercent = (xWins / totalWins) * 100;
+            const oPercent = (oWins / totalWins) * 100;
+            xBar.style.width = `${xPercent}%`;
+            oBar.style.width = `${oPercent}%`;
+            xBar.textContent = `Red: ${Math.round(xPercent)}%`;
+            oBar.textContent = `Blue: ${Math.round(oPercent)}%`;
+        }
+
+        // Show game summary
+        function showGameSummary() {
+            summaryText.textContent = winner === 'Draw' ? 'Game is a Draw!' : winner === 'X' ? 'Red Wins!' : 'Blue Wins!';
+            gameSummary.style.display = 'block';
+            if (gameMode === 'ai') {
+                setTimeout(() => {
+                    hideGameSummary();
+                    gameNumber++;
+                    resetGame();
+                    flashGameNumber();
+                    updateStats();
+                    if (gameMode === 'ai') {
+                        scheduleNextMove();
+                    }
+                }, 2000);
+            }
+        }
+
+        // Hide game summary
+        function hideGameSummary() {
+            gameSummary.style.display = 'none';
+        }
+
+        // Game mode handling
+        function setGameMode(mode) {
+            gameMode = mode;
+            onePlayerButton.classList.remove('selected');
+            twoPlayersButton.classList.remove('selected');
+            aiPlayersButton.classList.remove('selected');
+            if (mode === 'one') onePlayerButton.classList.add('selected');
+            else if (mode === 'two') twoPlayersButton.classList.add('selected');
+            else aiPlayersButton.classList.add('selected');
+        }
+
+        onePlayerButton.addEventListener('click', () => setGameMode('one'));
+        twoPlayersButton.addEventListener('click', () => setGameMode('two'));
+        aiPlayersButton.addEventListener('click', () => setGameMode('ai'));
+
+        startButton.addEventListener('click', () => {
+            welcomeScreen.style.display = 'none';
+            gameNumber = 1;
+            xWins = 0;
+            oWins = 0;
+            xBonusPoints = 0;
+            oBonusPoints = 0;
+            xResponseTimes = [];
+            oResponseTimes = [];
+            xLastResponseTime = 0;
+            oLastResponseTime = 0;
+            gameStartTime = Date.now();
+            updateStats();
+            flashGameNumber();
+            resetGame();
+            if (gameMode === 'ai') {
+                scheduleNextMove();
+            }
+        });
+
+        playAgainButton.addEventListener('click', () => {
+            hideGameSummary();
+            gameNumber++;
+            gameStartTime = Date.now();
+            xLastResponseTime = 0;
+            oLastResponseTime = 0;
+            resetGame();
+            flashGameNumber();
+            updateStats();
+            if (gameMode === 'ai') {
+                scheduleNextMove();
+            }
+        });
+
+        // Schedule next AI move with random delay
+        function scheduleNextMove() {
+            if (gameOver) return;
+            if (moveTimeout) clearTimeout(moveTimeout);
+            const delay = Math.random() * (1.25 - 0.2) + 0.2; // Random delay between 0.2s and 1.25s
+            if (currentPlayer === 'X') {
+                xLastResponseTime = delay;
+            } else {
+                oLastResponseTime = delay;
+            }
+            moveTimeout = setTimeout(() => {
+                if (!gameOver) {
+                    makeMove();
+                    scheduleNextMove();
+                }
+            }, delay * 1000);
+        }
 
         // Mouse interaction
         const raycaster = new THREE.Raycaster();
@@ -249,14 +644,14 @@
             const geometry = new THREE.TubeGeometry(
                 new THREE.LineCurve3(start, end),
                 20,
-                0.1,
+                0.15,
                 8,
                 false
             );
             const material = new THREE.MeshBasicMaterial({ 
                 color: 0xffff00, 
                 transparent: true, 
-                opacity: 0.8,
+                opacity: 0.9,
                 blending: THREE.AdditiveBlending
             });
             winningLine = new THREE.Mesh(geometry, material);
@@ -279,13 +674,17 @@
             }
         }
 
-        // Flash selected cube
+        // Flash and throb selected cube
         function flashSelectedCube(time) {
             if (selectedCube) {
                 const flashSpeed = 5;
-                const opacity = 0.7 + Math.sin(time * flashSpeed) * 0.2;
+                const throbSpeed = 2;
+                const opacity = 0.8 + Math.sin(time * flashSpeed) * 0.2;
+                const scale = 1 + Math.sin(time * throbSpeed) * 0.1;
                 selectedMaterial.opacity = opacity;
+                selectedMaterial.emissiveIntensity = 0.5 + Math.sin(time * flashSpeed) * 0.3;
                 selectedCube.material = selectedMaterial;
+                selectedCube.scale.set(scale, scale, scale);
             }
         }
 
@@ -305,9 +704,25 @@
             if (emptyCells.length === 0) {
                 gameOver = true;
                 winner = 'Draw';
+                showGameSummary();
                 return;
             }
             const move = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+            const responseTime = currentPlayer === 'X' ? xLastResponseTime : oLastResponseTime;
+            if (currentPlayer === 'X') {
+                xResponseTimes.push(responseTime);
+                if (responseTime < 0.5) {
+                    xBonusPoints += 10;
+                    flashBonusPoints('X', 10, 'Quick Response');
+                }
+            } else {
+                oResponseTimes.push(responseTime);
+                if (responseTime < 0.5) {
+                    oBonusPoints += 10;
+                    flashBonusPoints('O', 10, 'Quick Response');
+                }
+            }
+            lastMoveTime = Date.now();
             board[move.x][move.y][move.z] = currentPlayer;
             const index = move.x * 9 + move.y * 3 + move.z;
             cubes[index].material = currentPlayer === 'X' ? xMaterial : oMaterial;
@@ -316,10 +731,22 @@
             if (winResult.win) {
                 gameOver = true;
                 winner = currentPlayer;
+                if (winner === 'X') {
+                    xWins++;
+                    xBonusPoints += 100;
+                    flashBonusPoints('X', 100, 'Win');
+                } else if (winner === 'O') {
+                    oWins++;
+                    oBonusPoints += 100;
+                    flashBonusPoints('O', 100, 'Win');
+                }
                 drawWinningLine(winResult.start, winResult.end);
+                showGameSummary();
+                updateStats();
                 return;
             }
             currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            updateStats();
         }
 
         // Reset game
@@ -330,14 +757,24 @@
             winner = null;
             winningCubes = [];
             selectedCube = null;
+            gameStartTime = Date.now();
+            lastMoveTime = Date.now();
+            xLastResponseTime = 0;
+            oLastResponseTime = 0;
+            if (moveTimeout) clearTimeout(moveTimeout);
+            moveTimeout = null;
 
             cubes.forEach((cube, index) => {
                 cube.position.copy(originalPositions[index]);
-                cube.material = new THREE.MeshPhongMaterial({ 
+                cube.scale.set(1, 1, 1);
+                cube.material = new THREE.MeshStandardMaterial({ 
                     color: 0x888888, 
                     transparent: true, 
-                    opacity: 0.3,
-                    shininess: 100
+                    opacity: 0.4,
+                    metalness: 0.5,
+                    roughness: 0.3,
+                    emissive: 0x222222,
+                    emissiveIntensity: 0.2
                 });
             });
 
@@ -359,6 +796,7 @@
 
         // Mouse and touch events
         function onMouseDown(event) {
+            if (welcomeScreen.style.display !== 'none' || gameSummary.style.display !== 'none') return;
             event.preventDefault();
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -376,6 +814,7 @@
         }
 
         function onMouseMove(event) {
+            if (welcomeScreen.style.display !== 'none' || gameSummary.style.display !== 'none') return;
             event.preventDefault();
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -397,12 +836,22 @@
         }
 
         function onMouseUp() {
+            if (welcomeScreen.style.display !== 'none' || gameSummary.style.display !== 'none') return;
             if (selectedCube) {
                 const index = cubes.indexOf(selectedCube);
                 selectedCube.position.copy(originalPositions[index]);
+                selectedCube.scale.set(1, 1, 1);
                 selectedCube.material = board[Math.floor(index / 9)][Math.floor((index % 9) / 3)][index % 3] === 'X' ? xMaterial : 
                                         board[Math.floor(index / 9)][Math.floor((index % 9) / 3)][index % 3] === 'O' ? oMaterial : 
-                                        new THREE.MeshPhongMaterial({ color: 0x888888, transparent: true, opacity: 0.3, shininess: 100 });
+                                        new THREE.MeshStandardMaterial({ 
+                                            color: 0x888888, 
+                                            transparent: true, 
+                                            opacity: 0.4,
+                                            metalness: 0.5,
+                                            roughness: 0.3,
+                                            emissive: 0x222222,
+                                            emissiveIntensity: 0.2
+                                        });
                 selectedCube = null;
                 isCubeDragging = false;
             }
@@ -410,12 +859,17 @@
         }
 
         function onTouchStart(event) {
+            if (welcomeScreen.style.display !== 'none' || gameSummary.style.display !== 'none') return;
             event.preventDefault();
             const touch = event.touches[0];
             const currentTime = Date.now();
             if (currentTime - lastTapTime < 300) {
                 resetGame();
+                flashGameNumber();
                 if (tapTimeout) clearTimeout(tapTimeout);
+                if (gameMode === 'ai') {
+                    scheduleNextMove();
+                }
             } else {
                 tapTimeout = setTimeout(() => {
                     mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
@@ -437,6 +891,7 @@
         }
 
         function onTouchMove(event) {
+            if (welcomeScreen.style.display !== 'none' || gameSummary.style.display !== 'none') return;
             event.preventDefault();
             const touch = event.touches[0];
             mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
@@ -459,6 +914,7 @@
         }
 
         function onTouchEnd() {
+            if (welcomeScreen.style.display !== 'none' || gameSummary.style.display !== 'none') return;
             onMouseUp();
         }
 
@@ -482,13 +938,9 @@
             }
             shakeWinningCubes(time);
             flashSelectedCube(time);
+            updateGameTimer();
             renderer.render(scene, camera);
         }
-
-        // Auto-play
-        setInterval(() => {
-            if (!gameOver) makeMove();
-        }, 300);
 
         animate();
 
