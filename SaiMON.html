@@ -319,7 +319,7 @@
         <p><small>Earn points for each correct move and bonus points for completing levels quickly.</small></p>
         <button id="start-button">Start Game</button>
         <p></p>
-        <small>Version 1.0.4</small>
+        <small>Version 1.0.5</small>
         <button id="leaderboardButton">Show Leaderboard</button>
     </div>
     <div id="summary-screen" style="display: none;">
@@ -779,7 +779,7 @@
             function animateExplosion() {
                 for (let i = 0; i < explosionCount * 3; i += 3) {
                     positions[i] += velocities[i] * 0.1;
-                    positions[i + 1] += velocities[i + 1] * 0.1;
+                    positions[i + 1] = velocities[i + 1] * 0.1;
                     positions[i + 2] += velocities[i + 2] * 0.1;
                 }
                 explosionGeometry.attributes.position.needsUpdate = true;
@@ -830,6 +830,29 @@
                 }
             }
         }
+        function resetGame() {
+            level = 1;
+            score = 0;
+            timer = 0;
+            levelTimer = 0;
+            moves = 0;
+            sequence = [];
+            playerSequence = [];
+            isPlayerTurn = false;
+            gameActive = true;
+            autoplay = false;
+            document.getElementById('level').textContent = level;
+            document.getElementById('score').textContent = score;
+            document.getElementById('moves').textContent = moves;
+            document.getElementById('level-timer').textContent = levelTimer.toFixed(1);
+            document.getElementById('timer').textContent = timer.toFixed(1);
+            document.getElementById('autoplay-toggle').textContent = 'Autoplay: OFF';
+            const submitScoreBtn = document.getElementById('submitScoreBtn');
+            submitScoreBtn.disabled = false;
+            submitScoreBtn.innerText = 'Submit Score to Leaderboard';
+            submitScoreBtn.style.backgroundColor = '#4CAF50';
+            submitScoreBtn.style.animation = 'pulse 1.5s infinite';
+        }
         function gameOver() {
             submitScoreToGameCenter(score, "saimonLeaderboard1");
             gameActive = false;
@@ -846,16 +869,6 @@
                 document.getElementById('title').style.display = 'none';
                 document.getElementById('subtitle').style.display = 'none';
                 document.getElementById('autoplay-toggle').style.display = 'none';
-                level = 1;
-                score = 0;
-                timer = 0;
-                levelTimer = 0;
-                moves = 0;
-                gameActive = true;
-                document.getElementById('level').textContent = level;
-                document.getElementById('score').textContent = score;
-                document.getElementById('moves').textContent = moves;
-                document.getElementById('level-timer').textContent = levelTimer.toFixed(1);
             }, 2000);
             document.getElementById("submitScoreBtn").addEventListener("click", (e) => {
               submitScoreToGameCenter(score, "saimonLeaderboard1");
@@ -873,6 +886,7 @@
             document.getElementById('title').style.display = 'flex';
             document.getElementById('subtitle').style.display = 'block';
             document.getElementById('autoplay-toggle').style.display = 'block';
+            resetGame();
             startLevel();
         });
         document.getElementById('play-again-button').addEventListener('click', () => {
@@ -881,9 +895,9 @@
             document.getElementById('title').style.display = 'flex';
             document.getElementById('subtitle').style.display = 'block';
             document.getElementById('autoplay-toggle').style.display = 'block';
+            resetGame();
             startLevel();
         });
-
         const autoplayButton = document.getElementById('autoplay-toggle');
         autoplayButton.addEventListener('click', () => {
             autoplay = !autoplay;
@@ -895,7 +909,6 @@
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
         function handleInteraction(event) {
-        
             const canvas = renderer.domElement;
             const rect = canvas.getBoundingClientRect();
             const clientX = event.type === 'touchstart' ? event.touches[0].clientX : event.clientX;
@@ -912,7 +925,6 @@
                 const index = intersects[0].object.userData.index;
                 handleClick(index);
             }
-            
         }
         window.addEventListener('click', handleInteraction);
         window.addEventListener('touchstart', handleInteraction, { passive: false });
