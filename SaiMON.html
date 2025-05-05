@@ -319,7 +319,7 @@
         <p><small>Earn points for each correct move and bonus points for completing levels quickly.</small></p>
         <button id="start-button">Start Game</button>
         <p></p>
-        <small>Version 1.0</small>
+        <small>Version 1.0.1</small>
         <button id="leaderboardButton">Show Leaderboard</button>
     </div>
     <div id="summary-screen" style="display: none;">
@@ -882,6 +882,17 @@
             document.getElementById('subtitle').style.display = 'block';
             document.getElementById('autoplay-toggle').style.display = 'block';
             startLevel();
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+          // Attach the event listener to the document
+          document.addEventListener('click', function (event) {
+            // Check if the clicked element has the ID 'playAgain'
+            if (event.target && event.target.id === 'playAgain') {
+              // Reset the game state here
+              location.reload(); // or call your game reset function
+            }
+          });
         });
         const autoplayButton = document.getElementById('autoplay-toggle');
         autoplayButton.addEventListener('click', () => {
