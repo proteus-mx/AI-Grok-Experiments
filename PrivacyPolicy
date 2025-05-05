@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Verdana', sans-serif;
+      background: linear-gradient(to bottom right, #111, #222);
+      color: #00ffff;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 40px auto;
+      background-color: rgba(34, 34, 34, 0.95);
+      padding: 2rem;
+      border-radius: 16px;
+      box-shadow: 0 0 15px rgba(255, 204, 0, 0.3);
+      border: 1px solid #00ffff;
+    }
+
+    h1, h2 {
+      color: #ffcc00;
+      font-family: 'Orbitron', sans-serif;
+      text-shadow: 1px 1px 2px black;
+    }
+
+    p {
+      line-height: 1.6;
+      font-size: 1rem;
+      margin-bottom: 1.2rem;
+    }
+
+    a {
+      color: #80d0ff;
+      text-decoration: underline;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        margin: 20px;
+        padding: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Privacy Policy</h1>
+    <p><strong>Effective Date:</strong> May 4, 2025</p>
+
+    <p>tAc-tIc-toe does not collect any personally identifiable information from users. Your gameplay experience is entirely local and your data is not stored or transmitted to any servers.</p>
+
+    <h2>Game Center</h2>
+    <p>The tAc-tIc-toe app uses Apple’s Game Center to allow you to track your scores and achievements, and compete on leaderboards. All data handled by Game Center is managed by Apple, and we do not store or access any personal Game Center data.</p>
+
+    <h2>Third-Party Content</h2>
+    <p>This app does not access or display third-party content other than Apple Game Center features integrated via official APIs. All necessary rights for such integrations are covered under Apple's developer agreements.</p>
+
+    <h2>Data Collection</h2>
+    <p>No personal or analytics data is collected by the app. No cookies, tracking scripts, or advertisements are used.</p>
+
+    <h2>Changes to This Policy</h2>
+    <p>This privacy policy may be updated from time to time. Any changes will be reflected on this page.</p>
+
+    <h2>Contact</h2>
+    <p>If you have any questions or concerns about this policy, please contact the developer via the App Store support link or at: <a href="mailto:paul.thornton@gmail.com">paul.thornton@gmail.com</a></p>
+  </div>
+</body>
+</html>
