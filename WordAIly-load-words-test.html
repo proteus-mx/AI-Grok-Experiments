@@ -2,11 +2,12 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>CSV File Loader from URL</title>
-</head> 
+  <title>CSV Loader</title>
+</head>
 <body>
-  <h2>Loading CSV File from URL...</h2>
-  <pre id="output">Loading...</pre>
+  <h2>Load CSV from URL</h2>
+  <button id="loadCsvBtn">Load CSV File</button>
+  <pre id="output"></pre>
 
   <script>
     // Your function and variables
@@ -22,28 +23,32 @@
       return gk_fileData[filename] || "";
     }
 
-    // Fetch CSV from URL and load
-    const csvUrl = "https://proteus-mx.github.io/AI-Grok-Experiments/WordAIly-WordPack.csv";
-    const filename = "WordAIly-WordPack.csv";
+    // Button click event
+    document.getElementById('loadCsvBtn').addEventListener('click', function () {
+      const csvUrl = "https://proteus-mx.github.io/AI-Grok-Experiments/WordAIly-WordPack.csv";
+      const filename = "WordAIly-WordPack.csv";
 
-    fetch(csvUrl)
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        return response.text();
-      })
-      .then(text => {
-        gk_isXlsx = false;
-        gk_fileData[filename] = text;
+      document.getElementById('output').textContent = "Loading...";
 
-        const result = loadFileData(filename);
-        document.getElementById('output').textContent = result;
-      })
-      .catch(error => {
-        document.getElementById('output').textContent = "Failed to load CSV: " + error;
-        console.error(error);
-      });
+      fetch(csvUrl)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.text();
+        })
+        .then(text => {
+          gk_isXlsx = false;
+          gk_fileData[filename] = text;
+
+          const result = loadFileData(filename);
+          document.getElementById('output').textContent = result;
+        })
+        .catch(error => {
+          document.getElementById('output').textContent = "Failed to load CSV: " + error;
+          console.error(error);
+        });
+    });
   </script>
 </body>
 </html>
