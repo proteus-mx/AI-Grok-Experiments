@@ -11,6 +11,11 @@ var gk_fileData = {};
 function filledCell(cell) {
   return cell !== '' && cell != null;
 }
+
+// Fetch CSV from URL and load
+const csvUrl = "https://proteus-mx.github.io/AI-Grok-Experiments/WordAIly-WordPack.csv";
+const filename = "WordAIly-WordPack.csv";
+  
 function loadFileData(filename) { 
 if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
     try {
@@ -214,7 +219,7 @@ document.addEventListener("DOMContentLoaded", function () {
       <button id="hardBtn" class="button difficulty-button">Hard</button>
     </div>
     <p></p>
-    <small>Version 1.0</small>
+    <small>Version 1.0.1</small>
     <small style="color:grey">Total Words: 152</small>
     <button id="leaderboardButton">Show Leaderboard</button>
 
@@ -1097,7 +1102,7 @@ function restartGame() {
       <button id="hardBtn" class="button difficulty-button">Hard</button> 
     </div>
     <p></p>
-    <small>Version 1.0</small>
+    <small>Version 1.0.1</small>
     <small style="color:grey">Total Words: ${totalWords}</small>
     <button id="leaderboardButton">Show Leaderboard</button>
   `;
