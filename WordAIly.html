@@ -11,10 +11,6 @@ var gk_fileData = {};
 function filledCell(cell) {
   return cell !== '' && cell != null;
 }
-
-// Fetch CSV from URL and load
-const csvUrl = "https://proteus-mx.github.io/AI-Grok-Experiments/WordAIly-WordPack.csv";
-const filename = "WordAIly-WordPack.csv";
   
 function loadFileData(filename) { 
 if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
