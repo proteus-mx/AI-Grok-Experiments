@@ -206,7 +206,7 @@
             100% { color: rgb(255, 0, 0); }
         }
         @keyframes throb {
-            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            0%, 100% { transformcodes: translate(-50%, -50%) scale(1); }
             50% { transform: translate(-50%, -50%) scale(1.2); }
         }
         #autoplay-toggle {
@@ -313,7 +313,7 @@
         <p><small>Earn points for each correct move and bonus points for completing levels quickly.</small></p>
         <button id="start-button">Start Game</button>
         <p></p>
-        <small>Version 1.0.9</small>
+        <small>Version 1.0.10</small>
         <button id="leaderboardButton">Show Leaderboard</button>
     </div>
     <div id="summary-screen" style="display: none;">
@@ -430,7 +430,7 @@
         function setupMiniScene(canvasId, width, height) {
             const canvas = document.getElementById(canvasId);
             if (!canvas) {
-                console.warn(`Canvas with ID ${canvasId} not found`);
+                console.warn(`Canvasthe Canvas with ID ${canvasId} not found`);
                 return;
             }
             try {
@@ -858,11 +858,20 @@
                 document.getElementById('summary-level').textContent = level;
                 document.getElementById('summary-time').textContent = timer.toFixed(1);
                 document.getElementById('summary-score').textContent = score;
-                document.getElementById('summary-screen').style.display = 'flex';
+                const summaryScreen = document.getElementById('summary-screen');
+                summaryScreen.style.display = 'flex';
                 document.getElementById('ui').style.display = 'none';
                 document.getElementById('title').style.display = 'none';
                 document.getElementById('subtitle').style.display = 'none';
                 document.getElementById('autoplay-toggle').style.display = 'none';
+                // Reattach play-again button event listeners to ensure reliability
+                const playAgainButton = document.getElementById('play-again-button');
+                // Remove existing listeners by cloning the element
+                const newButton = playAgainButton.cloneNode(true);
+                playAgainButton.parentNode.replaceChild(newButton, playAgainButton);
+                // Add new listeners for both click and touchstart
+                newButton.addEventListener('click', handlePlayAgain);
+                newButton.addEventListener('touchstart', handlePlayAgain, { passive: false });
             }, 2000);
             document.getElementById("submitScoreBtn").addEventListener("click", (e) => {
               submitScoreToGameCenter(score, "saimonLeaderboard1");
@@ -874,17 +883,18 @@
               }, 500);
             });
         }
-        document.getElementById('start-button').addEventListener('click', () => {
-            document.getElementById('welcome-screen').style.display = 'none';
+        function handlePlayAgain(event) {
+            event.preventDefault();
+            document.getElementById('summary-screen').style.display = 'none';
             document.getElementById('ui').style.display = 'flex';
             document.getElementById('title').style.display = 'flex';
             document.getElementById('subtitle').style.display = 'block';
             document.getElementById('autoplay-toggle').style.display = 'block';
             resetGame();
             startLevel();
-        });
-        document.getElementById('play-again-button').addEventListener('click', () => {
-            document.getElementById('summary-screen').style.display = 'none';
+        }
+        document.getElementById('start-button').addEventListener('click', () => {
+            document.getElementById('welcome-screen').style.display = 'none';
             document.getElementById('ui').style.display = 'flex';
             document.getElementById('title').style.display = 'flex';
             document.getElementById('subtitle').style.display = 'block';
