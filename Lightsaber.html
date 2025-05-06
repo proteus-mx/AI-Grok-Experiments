@@ -5,295 +5,1272 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Star Wars Lightsaber Duel</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background: url('https://wallpapercave.com/wp/wp374752.jpg') no-repeat center center fixed;
-            background-size: cover;
-            font-family: 'Arial', sans-serif;
-            color: #fff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
+        body { margin: 0; overflow: hidden; background: black; color: white; font-family: 'Arial Black', sans-serif; }
+        canvas { display: block; }
         #welcome-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            z-index: 10;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: url('https://images.unsplash.com/photo-1451187580459-43490279c0fa') no-repeat center center; background-size: cover; display: flex;
+            flex-direction: column; justify-content: center; align-items: center; text-align: center; z-index: 10;
             perspective: 1000px;
-            font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
         }
-        .crawl {
-            position: relative;
-            top: 100%;
-            transform-origin: 50% 100%;
-            animation: crawl 20s linear forwards;
-            width: 80%;
-            max-width: 800px;
-            color: #ffe81f;
-            font-size: 1.5em;
-            text-align: justify;
+        #welcome-text {
+            transform: translateZ(-200px) scale(2); opacity: 0; animation: crawl 15s linear forwards;
+            max-width: 700px; font-size: 28px; color: #FFE81F; text-shadow: 0 0 15px #FFE81F, 0 0 30px #ff0000;
+            background: transparent; padding: 20px; text-align: justify;
         }
         @keyframes crawl {
-            0% {
-                top: 100%;
-                transform: rotateX(20deg) translateZ(0);
-            }
-            100% {
-                top: -600%;
-                transform: rotateX(25deg) translateZ(-2500px);
-            }
+            0% { transform: translateY(100%) translateZ(-200px) scale(2); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-200%) translateZ(-200px) scale(0.3); opacity: 0; }
         }
-        #start-button {
-            position: absolute;
-            bottom: 20px;
-            padding: 10px 20px;
-            font-size: 1.2em;
-            background: #ffe81f;
-            color: #000;
-            border: none;
-            cursor: pointer;
-            font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+        #start-ai-button, #start-manual-button {
+            position: absolute; font-size: 16px; padding: 10px 20px; background: #FFE81F; color: black;
+            border: none; cursor: pointer; z-index: 11; border-radius: 5px; box-shadow: 0 0 10px #FFE81F; opacity: 1;
+            animation: throb 1.5s infinite ease-in-out;
         }
-        #game-container {
-            display: none;
-            flex-direction: column;
-            align-items: center;
+        #start-ai-button { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        #start-manual-button { top: 60%; left: 50%; transform: translate(-50%, -50%); }
+        @keyframes throb {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 10px #FFE81F; }
+            50% { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 0 15px #FFE81F; }
         }
-        canvas {
-            border: 2px solid #ffe81f;
-            background: #000;
+        #autoplay-button, #camera-toggle, #saber-toggle {
+            position: absolute; top: 10px; font-size: 16px; padding: 10px 20px; background: #FFE81F; color: black;
+            border: none; cursor: pointer; z-index: 11; border-radius: 5px; box-shadow: 0 0 10px #FFE81F; display: none;
         }
-        #controls {
-            margin-top: 10px;
-            text-align: center;
+        #autoplay-button { right: 10px; }
+        #camera-toggle { left: 120px; }
+        #saber-toggle { left: 10px; }
+        #stats-p1 {
+            position: absolute; bottom: 10px; left: 10px; background: rgba(0, 0, 0, 0.7); padding: 10px;
+            border-radius: 5px; font-size: 14px; color: #0066cc;
         }
-        #auto-play {
-            padding: 10px 20px;
-            font-size: 1em;
-            background: #ffe81f;
-            color: #000;
-            border: none;
-            cursor: pointer;
-            margin-bottom: 10px;
+        #stats-p2 {
+            position: absolute; bottom: 10px; right: 10px; background: rgba(0, 0, 0, 0.7); padding: 10px;
+            border-radius: 5px; font-size: 14px; color: #cc0000;
         }
-        #stats {
-            margin-top: 10px;
-            font-size: 1.2em;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px;
-            border-radius: 5px;
+        .progress-bar {
+            width: 100px; height: 10px; background: #333; border-radius: 5px; overflow: hidden;
+            margin-top: 5px;
         }
+        .progress {
+            height: 100%; background: #00ff00; transition: width 0.3s, background-color 0.3s;
+        }
+        .progress.low { background: #ff9900; }
+        .progress.critical { background: #ff0000; animation: flash 0.5s infinite; }
+        @keyframes flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        #game-over {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9);
+            display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 12;
+            color: #FFE81F; text-shadow: 0 0 10px #FFE81F; font-size: 24px;
+        }
+        #restart-button {
+            font-size: 18px; padding: 10px 20px; background: #FFE81F; color: black; border: none;
+            cursor: pointer; border-radius: 5px; margin-top: 20px; box-shadow: 0 0 10px #FFE81F;
+        }
+        #reenergising-message-p1, #reenergising-message-p2 {
+            position: absolute; display: none; color: #FFE81F; font-size: 20px; text-shadow: 0 0 10px #FFE81F;
+            background: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 5px; z-index: 10;
+        }
+        #reenergising-bar-p1, #reenergising-bar-p2 {
+            position: absolute; display: none; width: 100px; height: 10px; background: #333; border-radius: 5px; overflow: hidden;
+            z-index: 10; margin-top: 5px;
+        }
+        #reenergising-progress-p1, #reenergising-progress-p2 {
+            height: 100%; background: #00ff00; transition: width 0.3s;
+        }
+        #reenergising-message-p1 { top: 50px; left: 10px; }
+        #reenergising-message-p2 { top: 50px; right: 10px; }
+        #reenergising-bar-p1 { top: 80px; left: 10px; }
+        #reenergising-bar-p2 { top: 80px; right: 10px; }
+        #reenergising-energy-p1, #reenergising-energy-p2 {
+            position: absolute; display: none; color: #FFE81F; font-size: 14px; text-shadow: 0 0 5px #FFE81F;
+            background: rgba(0, 0, 0, 0.5); padding: 5px; border-radius: 5px; z-index: 10;
+        }
+        #reenergising-energy-p1 { top: 95px; left: 10px; }
+        #reenergising-energy-p2 { top: 95px; right: 10px; }
     </style>
 </head>
 <body>
     <div id="welcome-screen">
-        <div class="crawl">
-            <h1>STAR WARS</h1>
-            <h2>Lightsaber Duel</h2>
-            <p>It is a period of intense conflict. Two warriors, a Jedi and a Sith, face off in a legendary lightsaber duel. Wielding their iconic weapons, they clash under the stars, each striving for victory.</p>
-            <p>Choose your side: the light or the dark. Strike swiftly, block wisely, and claim glory in this epic battle. May the Force be with you...</p>
-        </div>
-        <button id="start-button">Start Duel</button>
-    </div>
-    <div id="game-container">
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
-        <div id="controls">
-            <button id="auto-play">Toggle Auto-Play</button>
-            <div id="stats">
-                <p>Jedi Wins: <span id="jedi-wins">0</span> | Sith Wins: <span id="sith-wins">0</span></p>
-                <p>Jedi Hits: <span id="jedi-hits">0</span> | Sith Hits: <span id="sith-hits">0</span></p>
-            </div>
+        <div id="welcome-text">
+            <h1 style="text-align: center; font-size: 48px;">A long time ago in a galaxy far,<br>far away....</h1>
+            <p style="color: #4B9CD3; font-size: 36px; text-align: center;">STAR WARS</p>
+            <p style="text-align: center; font-size: 28px;">Episode X<br>Lightsaber Duel</p>
+            <p>It is a period of galactic strife. Two warriors, one Jedi, one Sith, face off in a deadly duel on a remote asteroid arena.</p>
+            <p>Armed with radiant lightsabers, their skills are matched only by their resolve. The fate of the Force hangs in the balance.</p>
+            <p>As the stars bear witness, only one will emerge victorious. Will you wield the light, or embrace the dark?</p>
         </div>
     </div>
-    <audio id="saber-sound" src="https://www.soundjay.com/buttons/sci-fi-weapon-01.mp3"></audio>
-    <audio id="bg-music" src="https://www.bensound.com/bensound-music/bensound-scifi.mp3" loop></audio>
+    <button id="start-ai-button">Start AI Duel</button>
+    <button id="start-manual-button">Start Duel</button>
+    <button id="autoplay-button">Toggle Auto-Play</button>
+    <button id="camera-toggle">Toggle Camera</button>
+    <button id="saber-toggle">Toggle Saber</button>
+    <div id="stats-p1">
+        <p>Player 1 Energy: <span id="p1-energy">100%</span></p>
+        <div class="progress-bar"><div class="progress" id="p1-progress" style="width: 100%"></div></div>
+        <p>Player 1 Score: <span id="p1-score">0</span></p>
+        <p>Time: <span id="time">0</span>s</p>
+    </div>
+    <div id="stats-p2">
+        <p>Player 2 Energy: <span id="p2-energy">100%</span></p>
+        <div class="progress-bar"><div class="progress" id="p2-progress" style="width: 100%"></div></div>
+        <p>Player 2 Score: <span id="p2-score">0</span></p>
+    </div>
+    <div id="game-over">
+        <h1>Game Over</h1>
+        <p id="winner-text"></p>
+        <p>Player 1 Score: <span id="final-p1-score"></span></p>
+        <p>Player 2 Score: <span id="final-p2-score"></span></p>
+        <p>Time: <span id="final-time"></span>s</p>
+        <button id="restart-button">Return to Main Menu</button>
+    </div>
+    <div id="reenergising-message-p1">Reenergising</div>
+    <div id="reenergising-message-p2">Reenergising</div>
+    <div id="reenergising-bar-p1"><div id="reenergising-progress-p1" style="width: 100%"></div></div>
+    <div id="reenergising-bar-p2"><div id="reenergising-progress-p2" style="width: 100%"></div></div>
+    <div id="reenergising-energy-p1">100%</div>
+    <div id="reenergising-energy-p2">100%</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const welcomeScreen = document.getElementById('welcome-screen');
-        const gameContainer = document.getElementById('game-container');
-        const startButton = document.getElementById('start-button');
-        const autoPlayButton = document.getElementById('auto-play');
-        const saberSound = document.getElementById('saber-sound');
-        const bgMusic = document.getElementById('bg-music');
-        const stats = {
-            jediWins: 0,
-            sithWins: 0,
-            jediHits: 0,
-            sithHits: 0
-        };
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const player1Camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const player2Camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const orbitCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
 
-        let autoPlay = false;
-        let gameRunning = false;
+        // Starfield
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 20000;
+        const starPositions = new Float32Array(starCount * 3);
+        const starColors = new Float32Array(starCount * 3);
+        const starSizes = new Float32Array(starCount);
+        for (let i = 0; i < starCount; i++) {
+            starPositions[i * 3] = (Math.random() - 0.5) * 3000;
+            starPositions[i * 3 + 1] = (Math.random() - 0.5) * 3000;
+            starPositions[i * 3 + 2] = (Math.random() - 0.5) * 3000;
+            const color = Math.random() < 0.1 ? [1, 0.5, 0.5] : [1, 1, 1];
+            starColors[i * 3] = color[0];
+            starColors[i * 3 + 1] = color[1];
+            starColors[i * 3 + 2] = color[2];
+            starSizes[i] = Math.random() * 0.2 + 0.05;
+        }
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        starGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+        starGeometry.setAttribute('size', new THREE.BufferAttribute(starSizes, 1));
+        const starMaterial = new THREE.PointsMaterial({ 
+            size: 0.1, 
+            vertexColors: true, 
+            transparent: true,
+            sizeAttenuation: true 
+        });
+        const starField = new THREE.Points(starGeometry, starMaterial);
+        scene.add(starField);
 
-        // Player objects
-        const jedi = {
-            x: 200,
-            y: canvas.height / 2,
-            angle: 0,
-            swinging: false,
-            swingDirection: 1,
-            color: 'blue',
-            keys: { swing: 'KeyQ', block: 'KeyW' }
-        };
-        const sith = {
-            x: 600,
-            y: canvas.height / 2,
-            angle: 0,
-            swinging: false,
-            swingDirection: -1,
-            color: 'red',
-            keys: { swing: 'KeyP', block: 'KeyO' }
-        };
+        // Arena
+        const textureLoader = new THREE.TextureLoader();
+        const arenaTexture = textureLoader.load('https://threejsfundamentals.org/threejs/resources/images/wall.jpg');
+        arenaTexture.colorSpace = THREE.SRGBColorSpace;
+        const arenaGeometry = new THREE.CylinderGeometry(50, 50, 5, 32);
+        const arenaMaterial = new THREE.MeshStandardMaterial({ 
+            map: arenaTexture, 
+            roughness: 0.9, 
+            color: 0x333333
+        });
+        const arena = new THREE.Mesh(arenaGeometry, arenaMaterial);
+        arena.position.y = -2.5;
+        scene.add(arena);
 
-        // Game logic
-        function drawLightsaber(player) {
-            ctx.save();
-            ctx.translate(player.x, player.y);
-            ctx.rotate(player.angle);
-            ctx.fillStyle = player.color;
-            ctx.fillRect(0, -5, 100, 10);
-            ctx.restore();
+        // Lightsaber materials
+        const coreMaterial1 = new THREE.MeshBasicMaterial({ color: 0x0066cc });
+        const coreMaterial2 = new THREE.MeshBasicMaterial({ color: 0xcc0000 });
+        const neonGlowMaterial1 = new THREE.ShaderMaterial({
+            uniforms: { 
+                color: { value: new THREE.Color(0x0066cc) },
+                intensity: { value: 3.0 },
+                time: { value: 0 },
+                neonFactor: { value: 2.0 },
+                glowRadius: { value: 0.3 },
+                pulseSpeed: { value: 0.6 }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                varying vec3 vPosition;
+                void main() {
+                    vUv = uv;
+                    vPosition = position;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }`,
+            fragmentShader: `
+                uniform vec3 color;
+                uniform float intensity;
+                uniform float time;
+                uniform float neonFactor;
+                uniform float glowRadius;
+                uniform float pulseSpeed;
+                varying vec2 vUv;
+                varying vec3 vPosition;
+                void main() {
+                    float glow = 1.0 - length(vUv - 0.5);
+                    glow = pow(glow, 5.0) * intensity;
+                    float flicker = 1.0 + 0.3 * sin(time * 20.0 + vPosition.y * 4.5);
+                    float pulse = 1.0 + 0.2 * sin(time * pulseSpeed);
+                    float neonGlow = glow * neonFactor * flicker * pulse;
+                    vec3 neonColor = color * neonGlow;
+                    float dist = length(vUv - 0.5);
+                    float alpha = clamp(neonGlow * (1.0 - dist / glowRadius), 0.0, 1.0);
+                    gl_FragColor = vec4(neonColor, alpha);
+                }`,
+            transparent: true, 
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending
+        });
+        const neonGlowMaterial2 = neonGlowMaterial1.clone();
+        neonGlowMaterial2.uniforms.color.value = new THREE.Color(0xcc0000);
+
+        // Lightsaber trail
+        const trailMaterial1 = new THREE.ShaderMaterial({
+            uniforms: {
+                color: { value: new THREE.Color(0x0066cc) },
+                time: { value: 0 },
+                fade: { value: 2.0 }
+            },
+            vertexShader: `
+                attribute float age;
+                varying float vAge;
+                varying vec3 vPosition;
+                void main() {
+                    vAge = age;
+                    vPosition = position;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }`,
+            fragmentShader: `
+                uniform vec3 color;
+                uniform float time;
+                uniform float fade;
+                varying float vAge;
+                varying vec3 vPosition;
+                void main() {
+                    float alpha = exp(-fade * vAge) * (1.0 - vAge);
+                    alpha *= 0.9 + 0.3 * sin(time * 10.0 + vPosition.y * 2.0);
+                    gl_FragColor = vec4(color, alpha * 0.8);
+                }`,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide
+        });
+        const trailMaterial2 = trailMaterial1.clone();
+        trailMaterial2.uniforms.color.value = new THREE.Color(0xcc0000);
+
+        const maxTrailPoints = 100;
+        const trailWidth = 0.1;
+        let trailPositions1 = new Float32Array(maxTrailPoints * 3 * 2);
+        let trailPositions2 = new Float32Array(maxTrailPoints * 3 * 2);
+        let trailAges1 = new Float32Array(maxTrailPoints * 2);
+        let trailAges2 = new Float32Array(maxTrailPoints * 2);
+        let trailIndices1 = new Uint16Array((maxTrailPoints - 1) * 6);
+        let trailIndices2 = new Uint16Array((maxTrailPoints - 1) * 6);
+        let trailIndex1 = 0;
+        let trailIndex2 = 0;
+
+        for (let i = 0; i < maxTrailPoints - 1; i++) {
+            trailIndices1[i * 6] = i * 2;
+            trailIndices1[i * 6 + 1] = i * 2 + 1;
+            trailIndices1[i * 6 + 2] = (i + 1) * 2;
+            trailIndices1[i * 6 + 3] = i * 2 + 1;
+            trailIndices1[i * 6 + 4] = (i + 1) * 2 + 1;
+            trailIndices1[i * 6 + 5] = (i + 1) * 2;
+            trailIndices2[i * 6] = i * 2;
+            trailIndices2[i * 6 + 1] = i * 2 + 1;
+            trailIndices2[i * 6 + 2] = (i + 1) * 2;
+            trailIndices2[i * 6 + 3] = i * 2 + 1;
+            trailIndices2[i * 6 + 4] = (i + 1) * 2 + 1;
+            trailIndices2[i * 6 + 5] = (i + 1) * 2;
+        }
+
+        const trailGeometry1 = new THREE.BufferGeometry();
+        const trailGeometry2 = new THREE.BufferGeometry();
+        trailGeometry1.setAttribute('position', new THREE.BufferAttribute(trailPositions1, 3));
+        trailGeometry1.setAttribute('age', new THREE.BufferAttribute(trailAges1, 1));
+        trailGeometry1.setIndex(new THREE.BufferAttribute(trailIndices1, 1));
+        trailGeometry2.setAttribute('position', new THREE.BufferAttribute(trailPositions2, 3));
+        trailGeometry2.setAttribute('age', new THREE.BufferAttribute(trailAges2, 1));
+        trailGeometry2.setIndex(new THREE.BufferAttribute(trailIndices2, 1));
+        const trail1 = new THREE.Mesh(trailGeometry1, trailMaterial1);
+        const trail2 = new THREE.Mesh(trailGeometry2, trailMaterial2);
+        scene.add(trail1, trail2);
+
+        // Player movement trail
+        const maxMoveTrailPoints = 200;
+        const moveTrailPositions1 = new Float32Array(maxMoveTrailPoints * 3);
+        const moveTrailPositions2 = new Float32Array(maxMoveTrailPoints * 3);
+        const moveTrailAges1 = new Float32Array(maxMoveTrailPoints);
+        const moveTrailAges2 = new Float32Array(maxMoveTrailPoints);
+        let moveTrailIndex1 = 0;
+        let moveTrailIndex2 = 0;
+
+        const moveTrailGeometry1 = new THREE.BufferGeometry();
+        const moveTrailGeometry2 = new THREE.BufferGeometry();
+        moveTrailGeometry1.setAttribute('position', new THREE.BufferAttribute(moveTrailPositions1, 3));
+        moveTrailGeometry1.setAttribute('age', new THREE.BufferAttribute(moveTrailAges1, 1));
+        moveTrailGeometry2.setAttribute('position', new THREE.BufferAttribute(moveTrailPositions2, 3));
+        moveTrailGeometry2.setAttribute('age', new THREE.BufferAttribute(moveTrailAges2, 1));
+
+        const moveTrailMaterial1 = new THREE.PointsMaterial({
+            color: 0x0066cc,
+            size: 0.3,
+            transparent: true,
+            opacity: 0.5,
+            sizeAttenuation: true,
+            vertexColors: false,
+            blending: THREE.AdditiveBlending
+        });
+        const moveTrailMaterial2 = moveTrailMaterial1.clone();
+        moveTrailMaterial2.color.set(0xcc0000);
+
+        const moveTrail1 = new THREE.Points(moveTrailGeometry1, moveTrailMaterial1);
+        const moveTrail2 = new THREE.Points(moveTrailGeometry2, moveTrailMaterial2);
+        scene.add(moveTrail1, moveTrail2);
+
+        function updateTrail(player, trail, trailPositions, trailAges, trailIndex) {
+            const segments = 3;
+            const saberLength = 3 * player.saber.scale.y;
+            for (let i = 0; i < segments; i++) {
+                const t = i / (segments - 1);
+                const saberPoint = new THREE.Vector3(0, saberLength * t, 0);
+                player.saber.localToWorld(saberPoint);
+                
+                const offset = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(trailWidth);
+                const pos1 = saberPoint.clone().add(offset);
+                const pos2 = saberPoint.clone().sub(offset);
+                
+                trailPositions[trailIndex * 6] = pos1.x;
+                trailPositions[trailIndex * 6 + 1] = pos1.y;
+                trailPositions[trailIndex * 6 + 2] = pos1.z;
+                trailPositions[trailIndex * 6 + 3] = pos2.x;
+                trailPositions[trailIndex * 6 + 4] = pos2.y;
+                trailPositions[trailIndex * 6 + 5] = pos2.z;
+                
+                trailAges[trailIndex * 2] = 0;
+                trailAges[trailIndex * 2 + 1] = 0;
+                
+                trailIndex = (trailIndex + 1) % maxTrailPoints;
+            }
+            for (let i = 0; i < maxTrailPoints * 2; i++) {
+                trailAges[i] = Math.min(trailAges[i] + 0.02, 1.0);
+            }
+            trail.geometry.attributes.position.needsUpdate = true;
+            trail.geometry.attributes.age.needsUpdate = true;
+            return trailIndex;
+        }
+
+        function updateMoveTrail(player, moveTrail, moveTrailPositions, moveTrailAges, moveTrailIndex) {
+            const pos = player.group.position;
+            moveTrailPositions[moveTrailIndex * 3] = pos.x;
+            moveTrailPositions[moveTrailIndex * 3 + 1] = pos.y + 0.1;
+            moveTrailPositions[moveTrailIndex * 3 + 2] = pos.z;
+            moveTrailAges[moveTrailIndex] = 0;
+            moveTrailIndex = (moveTrailIndex + 1) % maxMoveTrailPoints;
+            for (let i = 0; i < maxMoveTrailPoints; i++) {
+                moveTrailAges[i] = Math.min(moveTrailAges[i] + 0.05, 1.0);
+            }
+            moveTrail.geometry.attributes.position.needsUpdate = true;
+            moveTrail.geometry.attributes.age.needsUpdate = true;
+            return moveTrailIndex;
+        }
+
+        // Hit effect
+        function createHitEffect(position, color) {
+            const geometry = new THREE.SphereGeometry(0.5, 32, 32);
+            const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8 });
+            const effect = new THREE.Mesh(geometry, material);
+            effect.position.copy(position);
+            scene.add(effect);
+            let scale = 0.5;
+            const animateEffect = () => {
+                scale += 0.05;
+                effect.scale.set(scale, scale, scale);
+                effect.material.opacity -= 0.05;
+                if (effect.material.opacity <= 0) {
+                    scene.remove(effect);
+                } else {
+                    requestAnimationFrame(animateEffect);
+                }
+            };
+            animateEffect();
+            const particleGeometry = new THREE.BufferGeometry();
+            const particleCount = 20;
+            const positions = new Float32Array(particleCount * 3);
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3] = position.x + (Math.random() - 0.5) * 1;
+                positions[i * 3 + 1] = position.y + (Math.random() - 0.5) * 1;
+                positions[i * 3 + 2] = position.z + (Math.random() - 0.5) * 1;
+            }
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const particleMaterial = new THREE.PointsMaterial({ color, size: 0.1, transparent: true });
+            const particles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particles);
+            let particleOpacity = 1;
+            const animateParticles = () => {
+                particleOpacity -= 0.05;
+                particleMaterial.opacity = particleOpacity;
+                if (particleOpacity <= 0) {
+                    scene.remove(particles);
+                } else {
+                    requestAnimationFrame(animateParticles);
+                }
+            };
+            animateParticles();
+        }
+
+        // Points flash effect
+        function createPointsFlash(position, points, color) {
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array([position.x, position.y + 0.5, position.z]);
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const material = new THREE.PointsMaterial({
+                color: color,
+                size: 0.5,
+                transparent: true,
+                opacity: 1.0,
+                sizeAttenuation: true
+            });
+            const textSprite = new THREE.Points(geometry, material);
+            scene.add(textSprite);
+            let opacity = 1;
+            let scale = 0.5;
+            const animateText = () => {
+                opacity -= 0.05;
+                scale += 0.02;
+                material.opacity = opacity;
+                material.size = scale;
+                textSprite.position.y += 0.05;
+                if (opacity <= 0) {
+                    scene.remove(textSprite);
+                } else {
+                    requestAnimationFrame(animateText);
+                }
+            };
+            animateText();
+        }
+
+        // Explosion effect
+        function createExplosion(player, color) {
+            const parts = [player.head, player.torso, player.leftArm, player.rightArm, player.leftLeg, player.rightLeg];
+            const velocities = parts.map(() => ({
+                x: (Math.random() - 0.5) * 0.5,
+                y: (Math.random() - 0.5) * 0.5,
+                z: (Math.random() - 0.5) * 0.5,
+                rotX: (Math.random() - 0.5) * 0.05,
+                rotY: (Math.random() - 0.5) * 0.05,
+                rotZ: (Math.random() - 0.5) * 0.05
+            }));
+            player.group.remove(...parts);
+            parts.forEach(part => scene.add(part));
+            let time = 0;
+            const animateExplosion = () => {
+                time += 1 / 60;
+                parts.forEach((part, i) => {
+                    part.position.x += velocities[i].x * 0.1;
+                    part.position.y += velocities[i].y * 0.1;
+                    part.position.z += velocities[i].z * 0.1;
+                    part.rotation.x += velocities[i].rotX;
+                    part.rotation.y += velocities[i].rotY;
+                    part.rotation.z += velocities[i].rotZ;
+                });
+                if (time < 2) {
+                    requestAnimationFrame(animateExplosion);
+                } else {
+                    parts.forEach(part => scene.remove(part));
+                }
+            };
+            animateExplosion();
+            const particleCount = 50;
+            const particleGeometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const particleVelocities = new Float32Array(particleCount * 3);
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3] = player.group.position.x;
+                positions[i * 3 + 1] = player.group.position.y;
+                positions[i * 3 + 2] = player.group.position.z;
+                particleVelocities[i * 3] = (Math.random() - 0.5) * 0.5;
+                particleVelocities[i * 3 + 1] = (Math.random() - 0.5) * 0.5;
+                particleVelocities[i * 3 + 2] = (Math.random() - 0.5) * 0.5;
+            }
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const particleMaterial = new THREE.PointsMaterial({ color, size: 0.2, transparent: true });
+            const particles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particles);
+            let opacity = 1;
+            const animateParticles = () => {
+                opacity -= 0.01;
+                particleMaterial.opacity = opacity;
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i * 3] += particleVelocities[i * 3] * 0.05;
+                    positions[i * 3 + 1] += particleVelocities[i * 3 + 1] * 0.05;
+                    positions[i * 3 + 2] += particleVelocities[i * 3 + 2] * 0.05;
+                }
+                particleGeometry.attributes.position.needsUpdate = true;
+                if (opacity <= 0) {
+                    scene.remove(particles);
+                } else {
+                    requestAnimationFrame(animateParticles);
+                }
+            };
+            animateParticles();
+        }
+
+        // Player model
+        function createPlayer(coreMaterial, glowMaterial, bodyColor, saberSide) {
+            const player = new THREE.Group();
+            const headGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+            const headMaterial = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.5 });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 2;
+            const torsoGeometry = new THREE.CylinderGeometry(0.5, 0.5, 1.5, 32);
+            const torsoMaterial = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.6 });
+            const torso = new THREE.Mesh(torsoGeometry, torsoMaterial);
+            torso.position.y = 1;
+            const armGeometry = new THREE.CylinderGeometry(0.2, 0.2, 1, 32);
+            const armMaterial = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.6 });
+            const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+            leftArm.position.set(-0.7, 1.5, 0);
+            leftArm.rotation.z = Math.PI / 4;
+            const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+            rightArm.position.set(saberSide === 'right' ? 0.7 : -0.7, 1.5, 0);
+            rightArm.rotation.z = saberSide === 'right' ? -Math.PI / 4 : Math.PI / 4;
+            const legGeometry = new THREE.CylinderGeometry(0.25, 0.25, 1.5, 32);
+            const legMaterial = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.6 });
+            const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+            leftLeg.position.set(-0.3, 0, 0);
+            const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+            rightLeg.position.set(0.3, 0, 0);
+            
+            // Lightsaber
+            const coreGeometry = new THREE.CylinderGeometry(0.05, 0.05, 3, 64);
+            const glowGeometry = new THREE.CylinderGeometry(0.12, 0.12, 3, 64, 1, true);
+            const saberCore = new THREE.Mesh(coreGeometry, coreMaterial);
+            const saberGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+            saberCore.position.set(0, -0.5, 0);
+            saberGlow.position.set(0, -0.5, 0);
+            saberCore.rotation.x = Math.PI / 2;
+            saberGlow.rotation.x = Math.PI / 2;
+            saberCore.scale.y = 0.1;
+            saberGlow.scale.y = 0.1;
+            
+            const outerGlowGeometry = new THREE.CylinderGeometry(0.18, 0.18, 3, 64, 1, true);
+            const outerGlowMaterial = glowMaterial.clone();
+            outerGlowMaterial.uniforms.intensity.value = 1.2;
+            outerGlowMaterial.uniforms.glowRadius.value = 0.4;
+            outerGlowMaterial.uniforms.neonFactor.value = 1.5;
+            const outerGlow = new THREE.Mesh(outerGlowGeometry, outerGlowMaterial);
+            outerGlow.position.set(0, -0.5, 0);
+            outerGlow.rotation.x = Math.PI / 2;
+            outerGlow.scale.y = 0.1;
+
+            rightArm.add(saberCore, saberGlow, outerGlow);
+            player.add(head, torso, leftArm, rightArm, leftLeg, rightLeg);
+            return { 
+                group: player, 
+                saber: saberCore, 
+                rightArm, 
+                head, 
+                torso, 
+                leftArm, 
+                rightArm, 
+                leftLeg, 
+                rightLeg,
+                saberGlow,
+                outerGlow
+            };
+        }
+
+        let player1 = createPlayer(coreMaterial1, neonGlowMaterial1, 0x0066cc, 'right');
+        let player2 = createPlayer(coreMaterial2, neonGlowMaterial2, 0xcc0000, 'left');
+        player1.group.position.set(-10, 0, 0);
+        player2.group.position.set(10, 0, 0);
+        scene.add(player1.group, player2.group);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 20, 10);
+        scene.add(directionalLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+        pointLight.position.set(0, 10, 0);
+        scene.add(pointLight);
+
+        // Camera controls
+        let isDragging = false;
+        let previousX = 0, previousY = 0;
+        let theta = Math.PI / 4, phi = Math.PI / 3;
+        let radius = 100;
+        let targetRadius = 20;
+        let isDeathAnimation = false;
+        let deathAnimationTime = 0;
+        let activeCamera = 0;
+        const cameras = [camera, player1Camera, player2Camera, orbitCamera];
+        let isZooming = false;
+        let zoomStartTime = 0;
+        const zoomDuration = 10;
+        let orbitTime = 0;
+
+        function updateCamera(normalMode = true) {
+            const focusPoint = new THREE.Vector3()
+                .addVectors(player1.group.position, player2.group.position)
+                .multiplyScalar(0.5);
+            if (activeCamera === 0) {
+                if (normalMode) {
+                    let currentRadius = radius;
+                    if (isZooming) {
+                        const elapsed = (performance.now() / 1000) - zoomStartTime;
+                        const t = Math.min(elapsed / zoomDuration, 1);
+                        currentRadius = THREE.MathUtils.lerp(radius, targetRadius, t);
+                        radius = currentRadius;
+                        if (elapsed >= 2) {
+                            isZooming = false;
+                            activeCamera = 3;
+                            document.getElementById('camera-toggle').textContent = `Camera: Orbit`;
+                        }
+                    }
+                    camera.position.x = focusPoint.x + currentRadius * Math.sin(theta) * Math.cos(phi);
+                    camera.position.y = focusPoint.y + currentRadius * Math.sin(phi);
+                    camera.position.z = focusPoint.z + currentRadius * Math.cos(theta) * Math.cos(phi);
+                    camera.lookAt(focusPoint);
+                } else {
+                    const angle = (deathAnimationTime / 2) * 2 * Math.PI;
+                    camera.position.x = focusPoint.x + radius * Math.sin(angle);
+                    camera.position.y = focusPoint.y + 10;
+                    camera.position.z = focusPoint.z + radius * Math.cos(angle);
+                    camera.lookAt(focusPoint);
+                }
+            } else if (activeCamera === 1) {
+                player1Camera.position.set(
+                    player1.group.position.x - Math.sin(player1.group.rotation.y) * 2,
+                    player1.group.position.y + 3,
+                    player1.group.position.z - Math.cos(player1.group.rotation.y) * 2
+                );
+                player1Camera.lookAt(player2.group.position);
+            } else if (activeCamera === 2) {
+                const offset = new THREE.Vector3(
+                    -Math.sin(player2.group.rotation.y) * 3,
+                    4,
+                    -Math.sin(player2.group.rotation.y) * 3
+                );
+                player2Camera.position.copy(player2.group.position).add(offset);
+                player2Camera.lookAt(player1.group.position);
+            } else if (activeCamera === 3) {
+                const orbitRadius = 15 + 5 * Math.sin(orbitTime * 0.2);
+                const orbitHeight = 5 + 3 * Math.cos(orbitTime * 0.3);
+                orbitCamera.position.x = focusPoint.x + orbitRadius * Math.sin(orbitTime * 0.1);
+                orbitCamera.position.y = focusPoint.y + orbitHeight;
+                orbitCamera.position.z = focusPoint.z + orbitRadius * Math.cos(orbitTime * 0.1);
+                orbitCamera.lookAt(focusPoint);
+            }
+        }
+        updateCamera();
+
+        document.addEventListener('mousedown', (e) => {
+            if (!autoPlay && gameStarted && !isPlayer1Retreating && hasSaber1Grown && hasSaber2Grown) {
+                const raycaster = new THREE.Raycaster();
+                const mouse = new THREE.Vector2();
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, cameras[activeCamera]);
+                const intersects = raycaster.intersectObject(arena);
+                if (intersects.length > 0) {
+                    targetPosition.set(intersects[0].point.x, 0, intersects[0].point.z);
+                    keys.space = true;
+                    setTimeout(() => keys.space = false, 100);
+                }
+            } else {
+                isDragging = true;
+                previousX = e.clientX;
+                previousY = e.clientY;
+            }
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging && activeCamera === 0) {
+                const deltaX = e.clientX - previousX;
+                const deltaY = e.clientY - previousY;
+                theta -= deltaX * 0.005;
+                phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi + deltaY * 0.005));
+                updateCamera();
+                previousX = e.clientX;
+                previousY = e.clientY;
+            }
+        });
+        document.addEventListener('mouseup', () => { isDragging = false; });
+
+        let targetPosition = new THREE.Vector3(player1.group.position.x, 0, player1.group.position.z);
+        let saberOn = true;
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1 && !autoPlay && gameStarted && !isPlayer1Retreating && hasSaber1Grown && hasSaber2Grown) {
+                const touch = e.touches[0];
+                const raycaster = new THREE.Raycaster();
+                const mouse = new THREE.Vector2();
+                mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, cameras[activeCamera]);
+                const intersects = raycaster.intersectObject(arena);
+                if (intersects.length > 0) {
+                    targetPosition.set(intersects[0].point.x, 0, intersects[0].point.z);
+                    keys.space = true;
+                    setTimeout(() => keys.space = false, 100);
+                }
+            } else if (e.touches.length === 1) {
+                isDragging = true;
+                previousX = e.touches[0].clientX;
+                previousY = e.touches[0].clientY;
+            }
+        });
+        document.addEventListener('touchmove', (e) => {
+            if (isDragging && e.touches.length === 1 && activeCamera === 0) {
+                const deltaX = e.touches[0].clientX - previousX;
+                const deltaY = e.touches[0].clientY - previousY;
+                theta -= deltaX * 0.005;
+                phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi + deltaY * 0.005));
+                updateCamera();
+                previousX = e.touches[0].clientX;
+                previousY = e.touches[0].clientY;
+            }
+        });
+        document.addEventListener('touchend', () => { isDragging = false; });
+
+        document.getElementById('camera-toggle').addEventListener('click', () => {
+            activeCamera = (activeCamera + 1) % 4;
+            document.getElementById('camera-toggle').textContent = `Camera: ${activeCamera === 0 ? 'Main' : activeCamera === 1 ? 'Player 1' : activeCamera === 2 ? 'Player 2' : 'Orbit'}`;
+        });
+
+        document.getElementById('saber-toggle').addEventListener('click', () => {
+            saberOn = !saberOn;
+            document.getElementById('saber-toggle').textContent = `Saber: ${saberOn ? 'ON' : 'OFF'}`;
+        });
+
+        const keys = { w: false, s: false, a: false, d: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, space: false, Enter: false };
+        document.addEventListener('keydown', (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key] = true; });
+        document.addEventListener('keyup', (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key] = false; });
+
+        let p1Energy = 1000, p2Energy = 1000, p1Score = 0, p2Score = 0, time = 0, autoPlay = true;
+        let gameStarted = false;
+        let p1Swing = 0, p2Swing = 0;
+        let p1RandomSwing = 0, p2RandomSwing = 0;
+        let p1SwingSpeed = 0.03, p2SwingSpeed = 0.03;
+        let p1LastSaberPos = new THREE.Vector3();
+        let p2LastSaberPos = new THREE.Vector3();
+        let isPlayer1Retreating = false, isPlayer2Retreating = false;
+        let retreatTimer1 = 0, retreatTimer2 = 0;
+        let wasPlayer1Retreating = false, wasPlayer2Retreating = false;
+        const retreatDuration = 3;
+        const retreatTriggerChance = 0.01;
+        const retreatEnergyThreshold = 500;
+        let saberGrowthTimer1 = 0, saberGrowthTimer2 = 0;
+        let hasSaber1Grown = false, hasSaber2Grown = false;
+        const minDistance = 15;
+        let p1SaberTargetScale = 0.1, p2SaberTargetScale = 0.1;
+
+        function startGame(autoPlayMode) {
+            document.getElementById('welcome-screen').style.display = 'none';
+            document.getElementById('start-ai-button').style.display = 'none';
+            document.getElementById('start-manual-button').style.display = 'none';
+            document.getElementById('autoplay-button').style.display = 'block';
+            document.getElementById('camera-toggle').style.display = 'block';
+            document.getElementById('saber-toggle').style.display = 'block';
+            document.getElementById('autoplay-button').textContent = `Auto-Play: ${autoPlayMode ? 'ON' : 'OFF'}`;
+            document.getElementById('camera-toggle').textContent = `Camera: Main`;
+            document.getElementById('saber-toggle').textContent = `Saber: ${saberOn ? 'ON' : 'OFF'}`;
+            autoPlay = autoPlayMode;
+            gameStarted = true;
+            isZooming = true;
+            zoomStartTime = performance.now() / 1000;
+            radius = 100;
+            p1LastSaberPos.set(0, -0.5, 0);
+            p2LastSaberPos.set(0, -0.5, 0);
+            player1.saber.localToWorld(p1LastSaberPos);
+            player2.saber.localToWorld(p2LastSaberPos);
+            saberGrowthTimer1 = 0;
+            saberGrowthTimer2 = 0;
+            hasSaber1Grown = false;
+            hasSaber2Grown = false;
+            targetPosition.set(player1.group.position.x, 0, player1.group.position.z);
+            p1SaberTargetScale = 0.1;
+            p2SaberTargetScale = 0.1;
+        }
+
+        document.getElementById('start-ai-button').addEventListener('click', () => startGame(true));
+        document.getElementById('start-manual-button').addEventListener('click', () => startGame(false));
+
+        document.getElementById('autoplay-button').addEventListener('click', () => {
+            autoPlay = !autoPlay;
+            document.getElementById('autoplay-button').textContent = `Auto-Play: ${autoPlay ? 'ON' : 'OFF'}`;
+        });
+
+        document.getElementById('restart-button').addEventListener('click', () => {
+            document.getElementById('game-over').style.display = 'none';
+            document.getElementById('welcome-screen').style.display = 'flex';
+            document.getElementById('start-ai-button').style.display = 'block';
+            document.getElementById('start-manual-button').style.display = 'block';
+            document.getElementById('autoplay-button').style.display = 'none';
+            document.getElementById('camera-toggle').style.display = 'none';
+            document.getElementById('saber-toggle').style.display = 'none';
+            p1Energy = 1000; p2Energy = 1000; p1Score = 0; p2Score = 0; time = 0;
+            scene.remove(player1.group, player2.group, trail1, trail2, moveTrail1, moveTrail2);
+            player1 = createPlayer(coreMaterial1, neonGlowMaterial1, 0x0066cc, 'right');
+            player2 = createPlayer(coreMaterial2, neonGlowMaterial2, 0xcc0000, 'left');
+            player1.group.position.set(-10, 0, 0);
+            player2.group.position.set(10, 0, 0);
+            trailPositions1 = new Float32Array(maxTrailPoints * 3 * 2);
+            trailPositions2 = new Float32Array(maxTrailPoints * 3 * 2);
+            trailAges1 = new Float32Array(maxTrailPoints * 2);
+            trailAges2 = new Float32Array(maxTrailPoints * 2);
+            trailIndex1 = 0;
+            trailIndex2 = 0;
+            moveTrailPositions1.fill(0);
+            moveTrailPositions2.fill(0);
+            moveTrailAges1.fill(0);
+            moveTrailAges2.fill(0);
+            moveTrailIndex1 = 0;
+            moveTrailIndex2 = 0;
+            trailGeometry1.setAttribute('position', new THREE.BufferAttribute(trailPositions1, 3));
+            trailGeometry1.setAttribute('age', new THREE.BufferAttribute(trailAges1, 1));
+            trailGeometry2.setAttribute('position', new THREE.BufferAttribute(trailPositions2, 3));
+            trailGeometry2.setAttribute('age', new THREE.BufferAttribute(trailAges2, 1));
+            moveTrailGeometry1.setAttribute('position', new THREE.BufferAttribute(moveTrailPositions1, 3));
+            moveTrailGeometry1.setAttribute('age', new THREE.BufferAttribute(moveTrailAges1, 1));
+            moveTrailGeometry2.setAttribute('position', new THREE.BufferAttribute(moveTrailPositions2, 3));
+            moveTrailGeometry2.setAttribute('age', new THREE.BufferAttribute(moveTrailAges2, 1));
+            scene.add(player1.group, player2.group, trail1, trail2, moveTrail1, moveTrail2);
+            gameStarted = false;
+            isDeathAnimation = false;
+            deathAnimationTime = 0;
+            activeCamera = 0;
+            radius = 100;
+            p1LastSaberPos.set(0, 0, 0);
+            p2LastSaberPos.set(0, 0, 0);
+            isPlayer1Retreating = false;
+            isPlayer2Retreating = false;
+            retreatTimer1 = 0;
+            retreatTimer2 = 0;
+            wasPlayer1Retreating = false;
+            wasPlayer2Retreating = false;
+            saberGrowthTimer1 = 0;
+            saberGrowthTimer2 = 0;
+            hasSaber1Grown = false;
+            hasSaber2Grown = false;
+            saberOn = true;
+            p1SaberTargetScale = 0.1;
+            p2SaberTargetScale = 0.1;
+            document.getElementById('reenergising-message-p1').style.display = 'none';
+            document.getElementById('reenergising-message-p2').style.display = 'none';
+            document.getElementById('reenergising-bar-p1').style.display = 'none';
+            document.getElementById('reenergising-bar-p2').style.display = 'none';
+            document.getElementById('reenergising-energy-p1').style.display = 'none';
+            document.getElementById('reenergising-energy-p2').style.display = 'none';
+            updateStats();
+        });
+
+        function updateStats() {
+            const p1Percent = Math.round((p1Energy / 1000) * 100);
+            const p2Percent = Math.round((p2Energy / 1000) * 100);
+            document.getElementById('p1-energy').textContent = `${p1Percent}%`;
+            document.getElementById('p2-energy').textContent = `${p2Percent}%`;
+            document.getElementById('p1-score').textContent = p1Score;
+            document.getElementById('p2-score').textContent = p2Score;
+            document.getElementById('time').textContent = Math.floor(time);
+            document.getElementById('p1-progress').style.width = `${p1Percent}%`;
+            document.getElementById('p2-progress').style.width = `${p2Percent}%`;
+            document.getElementById('reenergising-progress-p1').style.width = `${p1Percent}%`;
+            document.getElementById('reenergising-progress-p2').style.width = `${p2Percent}%`;
+            document.getElementById('reenergising-energy-p1').textContent = `${p1Percent}%`;
+            document.getElementById('reenergising-energy-p2').textContent = `${p2Percent}%`;
+
+            // Update energy bar colors and flashing
+            const p1Progress = document.getElementById('p1-progress');
+            const p2Progress = document.getElementById('p2-progress');
+            p1Progress.classList.remove('low', 'critical');
+            p2Progress.classList.remove('low', 'critical');
+            if (p1Percent <= 25) {
+                p1Progress.classList.add('low');
+                if (p1Percent <= 10) {
+                    p1Progress.classList.add('critical');
+                }
+            }
+            if (p2Percent <= 25) {
+                p2Progress.classList.add('low');
+                if (p2Percent <= 10) {
+                    p2Progress.classList.add('critical');
+                }
+            }
         }
 
         function checkCollision() {
-            if (jedi.swinging && sith.swinging) {
-                const jediTip = {
-                    x: jedi.x + Math.cos(jedi.angle) * 100,
-                    y: jedi.y + Math.sin(jedi.angle) * 100
-                };
-                const sithTip = {
-                    x: sith.x + Math.cos(sith.angle) * 100,
-                    y: sith.y + Math.sin(sith.angle) * 100
-                };
-                const distance = Math.hypot(jediTip.x - sithTip.x, jediTip.y - sithTip.y);
-                if (distance < 20) {
-                    saberSound.play();
-                    if (!sith.blocking) {
-                        stats.jediHits++;
-                        if (stats.jediHits >= 3) {
-                            stats.jediWins++;
-                            resetRound();
-                        }
+            if (!saberOn) return;
+            const p1Box = new THREE.Box3().setFromObject(player1.saber);
+            const p2Box = new THREE.Box3().setFromObject(player2.saber);
+            const p1BodyBox = new THREE.Box3().setFromObject(player1.group);
+            const p2BodyBox = new THREE.Box3().setFromObject(player2.group);
+            if (p1Box.intersectsBox(p2BodyBox) && (keys.space || p1RandomSwing > 0.5) && p1Swing > 0.5) {
+                p2Energy -= 2;
+                p1Score += 10;
+                createHitEffect(player2.group.position, 0x0066cc);
+                createPointsFlash(player2.group.position, 10, 0x0066cc);
+            }
+            if (p2Box.intersectsBox(p1BodyBox) && (keys.Enter || p2RandomSwing > 0.5) && p2Swing > 0.5) {
+                p1Energy -= 2;
+                p2Score += 10;
+                createHitEffect(player1.group.position, 0xcc0000);
+                createPointsFlash(player1.group.position, 10, 0xcc0000);
+            }
+        }
+
+        function autoPlayMode() {
+            if (isPlayer1Retreating || isPlayer2Retreating || (!hasSaber1Grown || !hasSaber2Grown)) return;
+            const dx = player2.group.position.x - player1.group.position.x;
+            const dz = player2.group.position.z - player1.group.position.z;
+            const distance = Math.sqrt(dx * dx + dz * dz);
+            if (distance > 2) {
+                player1.group.position.x += dx * 0.005;
+                player1.group.position.z += dz * 0.005;
+                player2.group.position.x -= dx * 0.005;
+                player2.group.position.z -= dz * 0.005;
+            }
+            if (Math.random() < 0.05) keys.space = true;
+            else keys.space = false;
+            if (Math.random() < 0.05) keys.Enter = true;
+            else keys.Enter = false;
+            if (Math.random() < 0.5) {
+                const dodgeDir1 = Math.random() < 0.5 ? 0.2 : -0.2;
+                const dodgeDir2 = Math.random() < 0.5 ? 0.2 : -0.2;
+                player1.group.position.x += dodgeDir1;
+                player1.group.position.z += dodgeDir1;
+                player2.group.position.x += dodgeDir2;
+                player2.group.position.z += dodgeDir2;
+            }
+        }
+
+        function autoControlRedPlayer() {
+            if (isPlayer2Retreating || !hasSaber1Grown || !hasSaber2Grown) return;
+            const dx = player1.group.position.x - player2.group.position.x;
+            const dz = player1.group.position.z - player2.group.position.z;
+            const distance = Math.sqrt(dx * dx + dz * dz);
+            if (distance > 2) {
+                player2.group.position.x += dx * 0.005;
+                player2.group.position.z += dz * 0.005;
+            }
+            if (Math.random() < 0.05) keys.Enter = true;
+            else keys.Enter = false;
+            if (Math.random() < 0.5) {
+                const dodgeDir = Math.random() < 0.5 ? 0.2 : -0.2;
+                player2.group.position.x += dodgeDir;
+                player2.group.position.z += dodgeDir;
+            }
+        }
+
+        function moveBluePlayerToTarget() {
+            if (isPlayer1Retreating || !hasSaber1Grown || !hasSaber2Grown) return;
+            const currentPos = new THREE.Vector3(player1.group.position.x, 0, player1.group.position.z);
+            const direction = targetPosition.clone().sub(currentPos);
+            const distance = direction.length();
+            if (distance > 0.1) {
+                const moveSpeed = 0.15;
+                direction.normalize().multiplyScalar(moveSpeed);
+                player1.group.position.x += direction.x;
+                player1.group.position.z += direction.z;
+            }
+        }
+
+        function maintainMinDistance() {
+            if (hasSaber1Grown && hasSaber2Grown) return;
+            const dx = player2.group.position.x - player1.group.position.x;
+            const dz = player2.group.position.z - player1.group.position.z;
+            const distance = Math.sqrt(dx * dx + dz * dz);
+            if (distance < minDistance) {
+                const pushFactor = (minDistance - distance) / distance * 0.1;
+                player1.group.position.x -= dx * pushFactor;
+                player1.group.position.z -= dz * pushFactor;
+                player2.group.position.x += dx * pushFactor;
+                player2.group.position.z += dz * pushFactor;
+            }
+        }
+
+        function retreatPlayer(player, opponent, isRetreating, retreatTimer, playerEnergy, messageElement, barElement, energyElement, wasRetreating) {
+            if (isRetreating) {
+                retreatTimer += 1 / 60;
+                const dx = player.group.position.x - opponent.group.position.x;
+                const dz = player.group.position.z - opponent.group.position.z;
+                const distance = Math.sqrt(dx * dx + dz * dz);
+                if (distance < 10) {
+                    player.group.position.x += (dx / distance) * 0.3;
+                    player.group.position.z += (dz / distance) * 0.3;
+                }
+                if (!wasRetreating) {
+                    messageElement.style.display = 'block';
+                    barElement.style.display = 'block';
+                    energyElement.style.display = 'block';
+                    wasRetreating = true;
+                }
+                playerEnergy += 10 / 60;
+                playerEnergy = Math.min(playerEnergy, 1000);
+                if (retreatTimer >= retreatDuration) {
+                    isRetreating = false;
+                    retreatTimer = 0;
+                    messageElement.style.display = 'none';
+                    barElement.style.display = 'none';
+                    energyElement.style.display = 'none';
+                    wasRetreating = false;
+                }
+            } else if (Math.random() < retreatTriggerChance) {
+                const energyDiff = p1Energy - p2Energy;
+                if (player === player1 && p1Energy < p2Energy && p1Energy < retreatEnergyThreshold) {
+                    isRetreating = true;
+                } else if (player === player2 && p2Energy < p1Energy && p2Energy < retreatEnergyThreshold) {
+                    isRetreating = true;
+                }
+            }
+            return { isRetreating, retreatTimer, playerEnergy, wasRetreating };
+        }
+
+        function rotatePlayersToFaceEachOther() {
+            const dx = player2.group.position.x - player1.group.position.x;
+            const dz = player2.group.position.z - player1.group.position.z;
+            const angle1 = Math.atan2(dx, dz);
+            const angle2 = Math.atan2(-dx, -dz);
+            player1.group.rotation.y = angle1;
+            player2.group.rotation.y = angle2;
+        }
+
+        function randomizeSwingSpeed() {
+            const speeds = [0, 0.03, 0.1, 0.2];
+            p1SwingSpeed = speeds[Math.floor(Math.random() * speeds.length)];
+            p2SwingSpeed = speeds[Math.floor(Math.random() * speeds.length)];
+        }
+
+        setInterval(randomizeSwingSpeed, 2000);
+
+        function updateSaberLength(player, lastSaberPos, swing) {
+            const currentPos = new THREE.Vector3(0, 3 * player.saber.scale.y, 0);
+            player.saber.localToWorld(currentPos);
+            const velocity = currentPos.distanceTo(lastSaberPos) * 60;
+            lastSaberPos.copy(currentPos);
+            const lengthScale = 1.0 + velocity * 0.5;
+            const minScale = 0.8;
+            const maxScale = 1.5;
+            const targetScale = Math.max(minScale, Math.min(maxScale, lengthScale));
+            const currentScale = player.saber.scale.y;
+            const newScale = THREE.MathUtils.lerp(currentScale, targetScale, 0.1);
+            player.saber.scale.y = newScale;
+            player.saberGlow.scale.y = newScale;
+            player.outerGlow.scale.y = newScale;
+            return lastSaberPos;
+        }
+
+        function growSaber(player, timer, hasGrown) {
+            if (!hasGrown) {
+                timer += 1 / 60;
+                let targetTime = player === player1 ? 2 : 2.5;
+                if (timer >= targetTime) {
+                    let growth = Math.min((timer - targetTime) / 0.5, 1);
+                    let scale = THREE.MathUtils.lerp(0.1, 1.0, growth);
+                    player.saber.scale.y = scale;
+                    player.saberGlow.scale.y = scale;
+                    player.outerGlow.scale.y = scale;
+                    if (growth >= 1) hasGrown = true;
+                }
+            }
+            return { timer, hasGrown };
+        }
+
+        function toggleSaber(player, targetScale) {
+            const currentScale = player.saber.scale.y;
+            const newScale = saberOn ? 1.0 : 0.1;
+            targetScale = THREE.MathUtils.lerp(currentScale, newScale, 0.1);
+            player.saber.scale.y = targetScale;
+            player.saberGlow.scale.y = targetScale;
+            player.outerGlow.scale.y = targetScale;
+            return targetScale;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (!gameStarted && !isDeathAnimation) {
+                updateCamera();
+                renderer.render(scene, cameras[activeCamera]);
+                return;
+            }
+
+            neonGlowMaterial1.uniforms.time.value += 0.016;
+            neonGlowMaterial2.uniforms.time.value += 0.016;
+            trailMaterial1.uniforms.time.value += 0.016;
+            trailMaterial2.uniforms.time.value += 0.016;
+
+            orbitTime += 0.016;
+
+            if (gameStarted) {
+                time += 1 / 60;
+                updateStats();
+
+                let saber1Result = growSaber(player1, saberGrowthTimer1, hasSaber1Grown);
+                saberGrowthTimer1 = saber1Result.timer;
+                hasSaber1Grown = saber1Result.hasGrown;
+
+                let saber2Result = growSaber(player2, saberGrowthTimer2, hasSaber2Grown);
+                saberGrowthTimer2 = saber2Result.timer;
+                hasSaber2Grown = saber2Result.hasGrown;
+
+                p1SaberTargetScale = toggleSaber(player1, p1SaberTargetScale);
+                p2SaberTargetScale = toggleSaber(player2, p2SaberTargetScale);
+
+                if (hasSaber1Grown && saberOn) {
+                    p1LastSaberPos = updateSaberLength(player1, p1LastSaberPos, p1Swing);
+                }
+                if (hasSaber2Grown && saberOn) {
+                    p2LastSaberPos = updateSaberLength(player2, p2LastSaberPos, p2Swing);
+                }
+
+                trailIndex1 = updateTrail(player1, trail1, trailPositions1, trailAges1, trailIndex1);
+                trailIndex2 = updateTrail(player2, trail2, trailPositions2, trailAges2, trailIndex2);
+                moveTrailIndex1 = updateMoveTrail(player1, moveTrail1, moveTrailPositions1, moveTrailAges1, moveTrailIndex1);
+                moveTrailIndex2 = updateMoveTrail(player2, moveTrail2, moveTrailPositions2, moveTrailAges2, moveTrailIndex2);
+
+                let retreatResult1 = retreatPlayer(
+                    player1, 
+                    player2, 
+                    isPlayer1Retreating, 
+                    retreatTimer1, 
+                    p1Energy, 
+                    document.getElementById('reenergising-message-p1'), 
+                    document.getElementById('reenergising-bar-p1'), 
+                    document.getElementById('reenergising-energy-p1'),
+                    wasPlayer1Retreating
+                );
+                isPlayer1Retreating = retreatResult1.isRetreating;
+                retreatTimer1 = retreatResult1.retreatTimer;
+                p1Energy = retreatResult1.playerEnergy;
+                wasPlayer1Retreating = retreatResult1.wasRetreating;
+
+                let retreatResult2 = retreatPlayer(
+                    player2, 
+                    player1, 
+                    isPlayer2Retreating, 
+                    retreatTimer2, 
+                    p2Energy, 
+                    document.getElementById('reenergising-message-p2'), 
+                    document.getElementById('reenergising-bar-p2'), 
+                    document.getElementById('reenergising-energy-p2'),
+                    wasPlayer2Retreating
+                );
+                isPlayer2Retreating = retreatResult2.isRetreating;
+                retreatTimer2 = retreatResult2.retreatTimer;
+                p2Energy = retreatResult2.playerEnergy;
+                wasPlayer2Retreating = retreatResult2.wasRetreating;
+
+                if (!isPlayer1Retreating && (hasSaber1Grown && hasSaber2Grown)) {
+                    if (autoPlay) {
+                        if (keys.w) player1.group.position.z -= 0.15;
+                        if (keys.s) player1.group.position.z += 0.15;
+                        if (keys.a) player1.group.position.x -= 0.15;
+                        if (keys.d) player1.group.position.x += 0.15;
+                    } else {
+                        moveBluePlayerToTarget();
                     }
-                    if (!jedi.blocking) {
-                        stats.sithHits++;
-                        if (stats.sithHits >= 3) {
-                            stats.sithWins++;
-                            resetRound();
-                        }
+                }
+
+                if (!isPlayer2Retreating && (hasSaber1Grown && hasSaber2Grown)) {
+                    if (autoPlay) {
+                        if (keys.ArrowUp) player2.group.position.z -= 0.15;
+                        if (keys.ArrowDown) player2.group.position.z += 0.15;
+                        if (keys.ArrowLeft) player2.group.position.x -= 0.15;
+                        if (keys.ArrowRight) player2.group.position.x += 0.15;
+                    } else {
+                        autoControlRedPlayer();
                     }
-                    updateStats();
                 }
+
+                maintainMinDistance();
+
+                player1.group.position.x = Math.max(-49, Math.min(49, player1.group.position.x));
+                player1.group.position.z = Math.max(-49, Math.min(49, player1.group.position.z));
+                player2.group.position.x = Math.max(-49, Math.min(49, player2.group.position.x));
+                player2.group.position.z = Math.max(-49, Math.min(49, player2.group.position.z));
+
+                rotatePlayersToFaceEachOther();
+
+                p1RandomSwing += p1SwingSpeed;
+                p2RandomSwing += p2SwingSpeed;
+                const randomSwing1 = Math.sin(p1RandomSwing) * Math.PI / 4;
+                const randomSwing2 = Math.sin(p2RandomSwing) * Math.PI / 4;
+
+                if (keys.space && !isPlayer1Retreating) {
+                    p1Swing += p1SwingSpeed * 2;
+                    player1.rightArm.rotation.z = -Math.PI / 4 - Math.sin(p1Swing) * Math.PI / 4;
+                    player1.rightArm.rotation.x = Math.cos(p1Swing) * Math.PI / 8;
+                    player1.rightArm.rotation.y = Math.sin(p1Swing * 0.5) * Math.PI / 8;
+                } else {
+                    p1Swing += p1SwingSpeed;
+                    player1.rightArm.rotation.z = -Math.PI / 4 - randomSwing1;
+                    player1.rightArm.rotation.x = Math.cos(p1RandomSwing) * Math.PI / 8;
+                    player1.rightArm.rotation.y = Math.sin(p1RandomSwing * 0.5) * Math.PI / 8;
+                }
+                if (keys.Enter && !isPlayer2Retreating) {
+                    p2Swing += p2SwingSpeed * 2;
+                    player2.rightArm.rotation.z = Math.PI / 4 + Math.sin(p2Swing) * Math.PI / 4;
+                    player2.rightArm.rotation.x = Math.cos(p2Swing) * Math.PI / 8;
+                    player2.rightArm.rotation.y = Math.sin(p2Swing * 0.5) * Math.PI / 8;
+                } else {
+                    p2Swing += p2SwingSpeed;
+                    player2.rightArm.rotation.z = Math.PI / 4 + randomSwing2;
+                    player2.rightArm.rotation.x = Math.cos(p2RandomSwing) * Math.PI / 8;
+                    player2.rightArm.rotation.y = Math.sin(p2RandomSwing * 0.5) * Math.PI / 8;
+                }
+
+                if (autoPlay && !isPlayer1Retreating && !isPlayer2Retreating) autoPlayMode();
+                if (!isPlayer1Retreating && !isPlayer2Retreating && hasSaber1Grown && hasSaber2Grown) checkCollision();
             }
-        }
 
-        function resetRound() {
-            jedi.angle = 0;
-            sith.angle = 0;
-            jedi.swinging = false;
-            sith.swinging = false;
-            jedi.blocking = false;
-            sith.blocking = false;
-            stats.jediHits = 0;
-            stats.sithHits = 0;
-            updateStats();
-        }
-
-        function updateStats() {
-            document.getElementById('jedi-wins').textContent = stats.jediWins;
-            document.getElementById('sith-wins').textContent = stats.sithWins;
-            document.getElementById('jedi-hits').textContent = stats.jediHits;
-            document.getElementById('sith-hits').textContent = stats.sithHits;
-        }
-
-        function autoPlayUpdate() {
-            if (autoPlay) {
-                if (Math.random() < 0.05) {
-                    jedi.swinging = true;
-                    jedi.swingDirection = Math.random() > 0.5 ? 1 : -1;
-                }
-                if (Math.random() < 0.05) {
-                    sith.swinging = true;
-                    sith.swingDirection = Math.random() > 0.5 ? 1 : -1;
-                }
-                if (Math.random() < 0.03) jedi.blocking = true;
-                if (Math.random() < 0.03) sith.blocking = true;
-                if (Math.random() < 0.03) jedi.blocking = false;
-                if (Math.random() < 0.03) sith.blocking = false;
-            }
-        }
-
-        function update() {
-            if (!gameRunning) return;
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Draw players
-            drawLightsaber(jedi);
-            drawLightsaber(sith);
-
-            // Update swing
-            if (jedi.swinging) {
-                jedi.angle += 0.1 * jedi.swingDirection;
-                if (Math.abs(jedi.angle) > Math.PI / 2) {
-                    jedi.swinging = false;
-                    jedi.angle = 0;
-                }
-            }
-            if (sith.swinging) {
-                sith.angle += 0.1 * sith.swingDirection;
-                if (Math.abs(sith.angle) > Math.PI / 2) {
-                    sith.swinging = false;
-                    sith.angle = 0;
+            if (isDeathAnimation) {
+                deathAnimationTime += 1 / 60;
+                if (deathAnimationTime >= 2) {
+                    isDeathAnimation = false;
+                    deathAnimationTime = 0;
+                    document.getElementById('game-over').style.display = 'flex';
+                    const winner = p1Energy <= 0 ? 'Player 2' : 'Player 1';
+                    document.getElementById('winner-text').textContent = `${winner} Wins!`;
+                    document.getElementById('final-p1-score').textContent = p1Score;
+                    document.getElementById('final-p2-score').textContent = p2Score;
+                    document.getElementById('final-time').textContent = Math.floor(time);
                 }
             }
 
-            checkCollision();
-            autoPlayUpdate();
-            requestAnimationFrame(update);
+            updateCamera(!isDeathAnimation);
+
+            if (p1Energy <= 0 || p2Energy <= 0) {
+                if (!isDeathAnimation) {
+                    gameStarted = false;
+                    isDeathAnimation = true;
+                    const loser = p1Energy <= 0 ? player1 : player2;
+                    createExplosion(loser, p1Energy <= 0 ? 0xcc0000 : 0x0066cc);
+                    scene.remove(loser.group);
+                }
+            }
+
+            renderer.render(scene, cameras[activeCamera]);
         }
+        animate();
 
-        // Event listeners
-        startButton.addEventListener('click', () => {
-            welcomeScreen.style.display = 'none';
-            gameContainer.style.display = 'flex';
-            gameRunning = true;
-            bgMusic.play();
-            update();
-        });
-
-        autoPlayButton.addEventListener('click', () => {
-            autoPlay = !autoPlay;
-            autoPlayButton.textContent = autoPlay ? 'Stop Auto-Play' : 'Toggle Auto-Play';
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.code === jedi.keys.swing && !autoPlay) {
-                jedi.swinging = true;
-                jedi.swingDirection = Math.random() > 0.5 ? 1 : -1;
-            }
-            if (e.code === sith.keys.swing && !autoPlay) {
-                sith.swinging = true;
-                sith.swingDirection = Math.random() > 0.5 ? 1 : -1;
-            }
-            if (e.code === jedi.keys.block && !autoPlay) jedi.blocking = true;
-            if (e.code === sith.keys.block && !autoPlay) sith.blocking = true;
-        });
-
-        document.addEventListener('keyup', (e) => {
-            if (e.code === jedi.keys.block && !autoPlay) jedi.blocking = false;
-            if (e.code === sith.keys.block && !autoPlay) sith.blocking = false;
+        window.addEventListener('resize', () => {
+            cameras.forEach(cam => {
+                cam.aspect = window.innerWidth / window.innerHeight;
+                cam.updateProjectionMatrix();
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
         });
     </script>
 </body>
