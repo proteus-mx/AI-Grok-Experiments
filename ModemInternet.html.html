@@ -1,0 +1,508 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Modem Simulator</title>
+    <style>
+        body {
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        #terminal {
+            width: 400px;
+            height: 250px;
+            background: #000;
+            border: 2px solid #0f0;
+            padding: 8px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            line-height: 1.2;
+            box-shadow: 0 0 10px #0f0;
+            color: #0f0;
+        }
+        #input {
+            background: #000;
+            color: #0f0;
+            border: none;
+            outline: none;
+            font-family: 'Courier New', monospace;
+            width: 100%;
+            margin-top: 8px;
+        }
+        #image-display {
+            display: none;
+            margin-top: 10px;
+            image-rendering: pixelated;
+            width: 128px;
+            height: 128px;
+        }
+        #controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .btn {
+            background: #000;
+            color: #0f0;
+            border: 1px solid #0f0;
+            font-family: 'Courier New', monospace;
+            padding: 5px 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #0f0;
+            color: #000;
+        }
+        .cmd-connect { color: #00ffff; }
+        .cmd-dir { color: #ff00ff; }
+        .cmd-get { color: #ffff00; }
+        .cmd-bbs { color: #ff4040; }
+        .cmd-chat { color: #40ff40; }
+        .cmd-games { color: #4040ff; }
+        .cmd-files { color: #ff8000; }
+        .cmd-news { color: #00ff80; }
+        .cmd-disconnect { color: #ff0000; }
+        #status {
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+        }
+        #connection-time.flash {
+            animation: flash 1s infinite;
+        }
+        #phone-bill.flash {
+            animation: flash 1s infinite;
+        }
+        #phone-bill.red {
+            color: #ff0000;
+        }
+        @keyframes flash {
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div id="terminal"></div>
+        <input id="input" type="text" autocomplete="off">
+        <div id="controls">
+            <button id="autoplay-btn" class="btn">Toggle Autoplay</button>
+            <div id="status">
+                <div id="connection-time">Connected: 00:00</div>
+                <div id="phone-bill">Phone Bill: $0.00</div>
+            </div>
+            <button id="clear-btn" class="btn">Clear Terminal</button>
+        </div>
+        <canvas id="image-display"></canvas>
+    </div>
+    <audio id="modem-dial" src="https://www.soundjay.com/communication/dial-up-modem-01.mp3"></audio>
+    <audio id="modem-connect" src="https://www.soundjay.com/communication/dial-up-modem-02.mp3"></audio>
+
+    <script>
+        const terminal = document.getElementById('terminal');
+        const input = document.getElementById('input');
+        const modemDial = document.getElementById('modem-dial');
+        const modemConnect = document.getElementById('modem-connect');
+        const autoplayBtn = document.getElementById('autoplay-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const canvas = document.getElementById('image-display');
+        const ctx = canvas.getContext('2d');
+        const connectionTimeDisplay = document.getElementById('connection-time');
+        const phoneBillDisplay = document.getElementById('phone-bill');
+
+        let state = 'idle';
+        let autoplay = true;
+        let history = [];
+        let historyIndex = -1;
+        let downloading = false;
+        let colorMode = false;
+        let downloadCount = 0;
+        let connectionStart = null;
+        let timerInterval = null;
+        let phoneBill = 0;
+        let billRate = 0.01;
+
+        const images = [
+            {
+                name: 'smiley.gif',
+                pixels: [
+                    [0,0,0,0,0,0,0,0],
+                    [0,1,1,0,0,1,1,0],
+                    [0,1,1,0,0,1,1,0],
+                    [0,0,0,0,0,0,0,0],
+                    [0,1,0,0,0,0,1,0],
+                    [0,0,1,0,0,1,0,0],
+                    [0,0,0,1,1,0,0,0],
+                    [0,0,0,0,0,0,0,0]
+                ],
+                size: '1 KB',
+                color: '#0f0'
+            },
+            {
+                name: 'star.gif',
+                pixels: [
+                    [0,0,0,1,0,0,0,0],
+                    [0,0,1,1,1,0,0,0],
+                    [0,1,1,1,1,1,0,0],
+                    [1,1,1,1,1,1,1,0],
+                    [0,0,1,1,1,0,0,0],
+                    [0,0,1,1,1,0,0,0],
+                    [0,0,0,1,0,0,0,0],
+                    [0,0,0,0,0,0,0,0]
+                ],
+                size: '1.2 KB',
+                color: '#0f0'
+            },
+            {
+                name: 'heart_color.gif',
+                pixels: [
+                    [0,1,1,0,0,1,1,0],
+                    [1,1,1,1,1,1,1,1],
+                    [1,1,1,1,1,1,1,1],
+                    [0,1,1,1,1,1,1,0],
+                    [0,0,1,1,1,1,0,0],
+                    [0,0,0,1,1,0,0,0],
+                    [0,0,0,0,1,0,0,0],
+                    [0,0,0,0,0,0,0,0]
+                ],
+                size: '1.5 KB',
+                color: '#ff4040'
+            },
+            {
+                name: 'tree_color.gif',
+                pixels: [
+                    [0,0,0,1,0,0,0,0],
+                    [0,0,1,1,1,0,0,0],
+                    [0,1,1,1,1,1,0,0],
+                    [0,0,1,1,1,0,0,0],
+                    [0,0,1,1,1,0,0,0],
+                    [0,0,0,2,0,0,0,0],
+                    [0,0,0,2,0,0,0,0],
+                    [0,0,0,0,0,0,0,0]
+                ],
+                size: '1.3 KB',
+                colors: { 1: '#00ff00', 2: '#8b5a2b' }
+            }
+        ];
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const secs = (seconds % 60).toString().padStart(2, '0');
+            return `${mins}:${secs}`;
+        }
+
+        function updateStatus() {
+            if (connectionStart) {
+                const seconds = Math.floor((Date.now() - connectionStart) / 1000);
+                connectionTimeDisplay.textContent = `Connected: ${formatTime(seconds)}`;
+                connectionTimeDisplay.classList.add('flash');
+                phoneBill += billRate;
+                phoneBillDisplay.textContent = `Phone Bill: $${phoneBill.toFixed(2)}`;
+                if (phoneBill > 1) {
+                    phoneBillDisplay.classList.add('flash');
+                } else {
+                    phoneBillDisplay.classList.remove('flash');
+                }
+                if (phoneBill > 10) {
+                    phoneBillDisplay.classList.add('red');
+                } else {
+                    phoneBillDisplay.classList.remove('red');
+                }
+                if (seconds % 5 === 0 && seconds > 0) {
+                    billRate += 0.01;
+                }
+            } else {
+                connectionTimeDisplay.classList.remove('flash');
+                phoneBillDisplay.textContent = `Phone Bill: $${phoneBill.toFixed(2)}`;
+                if (phoneBill > 1) {
+                    phoneBillDisplay.classList.add('flash');
+                } else {
+                    phoneBillDisplay.classList.remove('flash');
+                }
+                if (phoneBill > 10) {
+                    phoneBillDisplay.classList.add('red');
+                } else {
+                    phoneBillDisplay.classList.remove('red');
+                }
+            }
+        }
+
+        function startTimer() {
+            connectionStart = Date.now();
+            timerInterval = setInterval(updateStatus, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            connectionStart = null;
+            connectionTimeDisplay.textContent = 'Connected: 00:00';
+            connectionTimeDisplay.classList.remove('flash');
+        }
+
+        function print(text, speed = 50, callback = null, className = '') {
+            let i = 0;
+            terminal.innerHTML += className ? `\n<span class="${className}">` : '\n';
+            const interval = setInterval(() => {
+                if (i < text.length) {
+                    terminal.innerHTML += text[i];
+                    terminal.scrollTop = terminal.scrollHeight;
+                    i++;
+                } else {
+                    clearInterval(interval);
+                    terminal.innerHTML += className ? '</span>\n' : '\n';
+                    if (callback) callback();
+                }
+            }, speed);
+        }
+
+        function connectModem() {
+            if (state !== 'idle') return;
+            state = 'connecting';
+            modemDial.play().catch(() => {});
+            print('Initializing modem... BEEP BOOP', 50, () => {
+                print('Dialing 555-0134... SCREEEEE', 50, () => {
+                    modemDial.pause();
+                    modemDial.currentTime = 0;
+                    modemConnect.play().catch(() => {});
+                    print('Connecting at 28.8 kbps... HISSSSS', 50, () => {
+                        modemConnect.pause();
+                        modemConnect.currentTime = 0;
+                        print('Connected to RetroNet! WHRRRR', 50, () => {
+                            state = 'connected';
+                            startTimer();
+                            print('> ', 0);
+                            if (autoplay) autoPlaySequence();
+                        });
+                    });
+                });
+            });
+        }
+
+        function draw8BitImage(image) {
+            canvas.style.display = 'block';
+            canvas.width = 128;
+            canvas.height = 128;
+            ctx.imageSmoothingEnabled = false;
+            const scale = 16;
+            for (let y = 0; y < 8; y++) {
+                for (let x = 0; x < 8; x++) {
+                    const pixel = image.pixels[y][x];
+                    if (image.colors) {
+                        ctx.fillStyle = pixel ? image.colors[pixel] || '#000' : '#000';
+                    } else {
+                        ctx.fillStyle = pixel ? image.color || '#0f0' : '#000';
+                    }
+                    ctx.fillRect(x * scale, y * scale, scale, scale);
+                }
+            }
+        }
+
+        function downloadImage(image) {
+            downloading = true;
+            downloadCount++;
+            if (downloadCount === 2 && !colorMode) {
+                print('Upgrading to color command display...', 50, () => {
+                    colorMode = true;
+                    print('Color command mode enabled!', 50, () => {
+                        startDownload(image);
+                    });
+                });
+            } else {
+                startDownload(image);
+            }
+        }
+
+        function startDownload(image) {
+            print(`Downloading ${image.name} (${image.size})...`, 50, () => {
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += 20;
+                    print(`[${'='.repeat(progress / 20)}${' '.repeat(5 - progress / 20)}] ${progress}%`, 50);
+                    if (progress >= 100) {
+                        clearInterval(interval);
+                        print('Download complete!', 50, () => {
+                            print(`Displaying ${image.name}...`, 50, () => {
+                                draw8BitImage(image);
+                                downloading = false;
+                            });
+                        });
+                    }
+                }, 1000);
+            });
+        }
+
+        function autoPlaySequence() {
+            if (!autoplay || state !== 'connected') return;
+            print('> dir', 50, () => {
+                print(images.map(img => img.name).join('  '), 50, () => {
+                    let index = 0;
+                    function downloadNext() {
+                        if (index >= images.length) {
+                            print('> disconnect', 50, () => {
+                                print('Disconnecting... CLUNK', 50, () => {
+                                    modemDial.pause();
+                                    modemDial.currentTime = 0;
+                                    modemConnect.pause();
+                                    modemConnect.currentTime = 0;
+                                    canvas.style.display = 'none';
+                                    state = 'idle';
+                                    stopTimer();
+                                    if (autoplay) setTimeout(connectModem, 2000);
+                                }, 'cmd-disconnect');
+                            }, 'cmd-disconnect');
+                            return;
+                        }
+                        print(`> get ${images[index].name}`, 50, () => {
+                            downloadImage(images[index]);
+                            setTimeout(() => {
+                                index++;
+                                downloadNext();
+                            }, 6000);
+                        }, 'cmd-get');
+                    }
+                    downloadNext();
+                });
+            }, 'cmd-dir');
+        }
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const command = input.value.trim().toLowerCase();
+                input.value = '';
+                if (command && !downloading) {
+                    history.push(command);
+                    historyIndex = history.length;
+                }
+
+                if (downloading) return;
+
+                if (state === 'idle') {
+                    if (command === 'connect') {
+                        print('> connect', 50, connectModem, colorMode ? 'cmd-connect' : '');
+                    } else {
+                        print('Type "connect" to dial up.');
+                    }
+                } else if (state === 'connected') {
+                    if (command === 'dir') {
+                        print('> dir', 50, () => print(images.map(img => img.name).join('  ')), colorMode ? 'cmd-dir' : '');
+                    } else if (command.startsWith('get ')) {
+                        const imgName = command.slice(4);
+                        const image = images.find(img => img.name === imgName);
+                        if (image) {
+                            print(`> get ${imgName}`, 50, () => downloadImage(image), colorMode ? 'cmd-get' : '');
+                        } else {
+                            print(`File ${imgName} not found.`);
+                        }
+                    } else if (command === 'bbs') {
+                        print('> bbs', 50, () => print('Welcome to Retro BBS!\nTopics: [chat] [games] [files] [news]'), colorMode ? 'cmd-bbs' : '');
+                    } else if (command === 'chat') {
+                        print('> chat', 50, () => print('Chatroom: Connected users - RetroFan, PixelPirate'), colorMode ? 'cmd-chat' : '');
+                    } else if (command === 'games') {
+                        print('> games', 50, () => print('Available games: Tetris, Snake, Pong'), colorMode ? 'cmd-games' : '');
+                    } else if (command === 'files') {
+                        print('> files', 50, () => print('Files: ' + images.map(img => img.name).join(', ')), colorMode ? 'cmd-files' : '');
+                    } else if (command === 'news') {
+                        print('> news', 50, () => print('News: RetroNet upgrades to 56 kbps soon!'), colorMode ? 'cmd-news' : '');
+                    } else if (command === 'disconnect') {
+                        print('> disconnect', 50, () => {
+                            print('Disconnecting... CLUNK', 50, () => {
+                                modemDial.pause();
+                                modemDial.currentTime = 0;
+                                modemConnect.pause();
+                                modemConnect.currentTime = 0;
+                                canvas.style.display = 'none';
+                                state = 'idle';
+                                stopTimer();
+                            });
+                        }, colorMode ? 'cmd-disconnect' : '');
+                    } else {
+                        print('Commands: dir, get <filename>, bbs, chat, games, files, news, disconnect');
+                    }
+                }
+            } else if (e.key === 'ArrowUp') {
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    input.value = history[historyIndex] || '';
+                }
+            } else if (e.key === 'ArrowDown') {
+                if (historyIndex < history.length - 1) {
+                    historyIndex++;
+                    input.value = history[historyIndex];
+                } else {
+                    historyIndex = history.length;
+                    input.value = '';
+                }
+            }
+        });
+
+        autoplayBtn.addEventListener('click', () => {
+            autoplay = !autoplay;
+            autoplayBtn.textContent = `Autoplay: ${autoplay ? 'ON' : 'OFF'}`;
+            if (autoplay && state === 'idle') connectModem();
+        });
+
+        clearBtn.addEventListener('click', () => {
+            terminal.innerHTML = '';
+            canvas.style.display = 'none';
+            print('Terminal cleared.', 50, () => {
+                if (state === 'connected') print('> ', 0);
+            });
+        });
+
+        input.focus();
+        print('Retro Modem Simulator v3.8\nType "connect" to begin.', 50, () => {
+            autoplayBtn.textContent = 'Autoplay: ON';
+            connectModem();
+        });
+    </script>
+</body>
+</html>
