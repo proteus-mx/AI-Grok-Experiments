@@ -11,7 +11,7 @@ document.body.addEventListener('click', () => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Retro Modem Simulator</title>
+    <title>Retro Modem Simulator - V1</title>
     <style>
         body {
             background: #000;
@@ -54,6 +54,12 @@ document.body.addEventListener('click', () => {
             image-rendering: pixelated;
         }
         #controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        #bottom-controls {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -112,33 +118,38 @@ document.body.addEventListener('click', () => {
 <body>
     <div id="modem-type">Modem: 14.4 kbps</div>
     <div>
+        <div id="controls">
+            <button id="clear-btn" class="btn">Clear Terminal</button>
+            <button id="sound-btn" class="btn">Sound: OFF</button>
+        </div>
         <div id="terminal"></div>
         <input id="input" type="text" autocomplete="off">
-        <div id="controls">
+        <div id="bottom-controls">
             <button id="autoplay-btn" class="btn">Toggle Autoplay</button>
             <div id="status">
                 <div id="connection-time">Connected: 00:00</div>
                 <div id="phone-bill">Phone Bill: $0.00</div>
             </div>
-            <button id="clear-btn" class="btn">Clear Terminal</button>
+            <div style="width: 100px;"></div>
         </div>
         <canvas id="image-display"></canvas>
     </div>
-    <audio id="modem-dial" src="https://www.soundjay.com/communication/dial-up-modem-01.mp3" preload="auto"></audio>
-    <audio id="modem-connect" src="https://www.soundjay.com/communication/dial-up-modem-02.mp3" preload="auto"></audio>
+    <audio id="modem-dial" src="data:audio/mpeg;base64,/+MYxAAAAANIAAAAAExBTUUzLjk4LjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" preload="auto"></audio>
+    <audio id="modem-connect" src="data:audio/mpeg;base64,/+MYxAAAAANIAAAAAExBTUUzLjk4LjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" preload="auto"></audio>
 
     <script>
         const terminal = document.getElementById('terminal');
         const input = document.getElementById('input');
-        const modemDial = document.getElementById('modem-dial');
-        const modemConnect = document.getElementById('modem-connect');
         const autoplayBtn = document.getElementById('autoplay-btn');
         const clearBtn = document.getElementById('clear-btn');
+        const soundBtn = document.getElementById('sound-btn');
         const canvas = document.getElementById('image-display');
         const ctx = canvas.getContext('2d');
         const connectionTimeDisplay = document.getElementById('connection-time');
         const phoneBillDisplay = document.getElementById('phone-bill');
         const modemTypeDisplay = document.getElementById('modem-type');
+        const modemDial = document.getElementById('modem-dial');
+        const modemConnect = document.getElementById('modem-connect');
 
         let state = 'idle';
         let autoplay = true;
@@ -153,13 +164,15 @@ document.body.addEventListener('click', () => {
         let billRate = 0.01;
         let connectionCount = 0;
         let usedImages = [];
-        let userInteracted = false;
+        let soundEnabled = false;
+
         const modemTypes = ['14.4 kbps', '28.8 kbps', '56 kbps', 'ISDN 128 kbps'];
         const modemSpeeds = [50, 40, 30, 20];
 
         const imagePool = [
+            // 14.4 kbps: 8x8, simple, 1-2 colors
             {
-                name: 'smiley.gif',
+                name: 'smiley_14k4.gif',
                 pixels: [
                     [0,0,0,0,0,0,0,0],
                     [0,1,1,0,0,1,1,0],
@@ -174,10 +187,11 @@ document.body.addEventListener('click', () => {
                 color: '#0f0',
                 width: 8,
                 height: 8,
-                pixelSize: 16
+                pixelSize: 16,
+                modemIndex: 0
             },
             {
-                name: 'star.gif',
+                name: 'star_14k4.gif',
                 pixels: [
                     [0,0,0,1,0,0,0,0],
                     [0,0,1,1,1,0,0,0],
@@ -192,135 +206,185 @@ document.body.addEventListener('click', () => {
                 color: '#0f0',
                 width: 8,
                 height: 8,
-                pixelSize: 16
+                pixelSize: 16,
+                modemIndex: 0
             },
+            // 28.8 kbps: 12x12, 3 colors
             {
-                name: 'heart_color.gif',
-                pixels: [
-                    [0,1,1,0,0,1,1,0],
-                    [1,1,1,1,1,1,1,1],
-                    [1,1,1,1,1,1,1,1],
-                    [0,1,1,1,1,1,1,0],
-                    [0,0,1,1,1,1,0,0],
-                    [0,0,0,1,1,0,0,0],
-                    [0,0,0,0,1,0,0,0],
-                    [0,0,0,0,0,0,0,0]
-                ],
-                size: '1.5 KB',
-                color: '#ff4040',
-                width: 8,
-                height: 8,
-                pixelSize: 16
-            },
-            {
-                name: 'tree_color.gif',
-                pixels: [
-                    [0,0,0,1,0,0,0,0],
-                    [0,0,1,1,1,0,0,0],
-                    [0,1,1,1,1,1,0,0],
-                    [0,0,1,1,1,0,0,0],
-                    [0,0,1,1,1,0,0,0],
-                    [0,0,0,2,0,0,0,0],
-                    [0,0,0,2,0,0,0,0],
-                    [0,0,0,0,0,0,0,0]
-                ],
-                size: '1.3 KB',
-                colors: { 1: '#00ff00', 2: '#8b5a2b' },
-                width: 8,
-                height: 8,
-                pixelSize: 16
-            },
-            {
-                name: 'moon_color.gif',
-                pixels: [
-                    [0,0,0,0,0,0,0,0],
-                    [0,0,1,1,1,0,0,0],
-                    [0,1,1,1,1,1,0,0],
-                    [0,1,1,1,1,1,0,0],
-                    [0,1,1,1,1,1,0,0],
-                    [0,0,1,1,1,0,0,0],
-                    [0,0,0,0,0,0,0,0],
-                    [0,0,0,0,0,0,0,0]
-                ],
-                size: '1.4 KB',
-                color: '#c0c0c0',
-                width: 8,
-                height: 8,
-                pixelSize: 16
-            },
-            {
-                name: 'earth_color.gif',
+                name: 'heart_28k8.gif',
                 pixels: [
                     [0,0,0,0,0,0,0,0,0,0,0,0],
-                    [0,0,0,1,1,1,1,1,0,0,0,0],
-                    [0,0,1,2,2,2,2,2,1,0,0,0],
-                    [0,1,2,2,2,2,2,2,2,1,0,0],
-                    [0,1,2,2,2,3,2,2,2,1,0,0],
-                    [0,1,2,2,3,3,3,2,2,1,0,0],
-                    [0,1,2,2,3,3,3,2,2,1,0,0],
-                    [0,1,2,2,2,3,2,2,2,1,0,0],
-                    [0,0,1,2,2,2,2,2,1,0,0,0],
-                    [0,0,0,1,1,1,1,1,0,0,0,0],
-                    [0,0,0,0,0,0,0,0,0,0,0,0],
+                    [0,0,1,1,0,0,0,0,1,1,0,0],
+                    [0,1,1,1,1,0,0,1,1,1,1,0],
+                    [0,1,1,1,1,1,1,1,1,1,1,0],
+                    [0,0,1,1,1,1,1,1,1,1,0,0],
+                    [0,0,0,1,1,1,1,1,1,0,0,0],
+                    [0,0,0,0,1,1,1,1,0,0,0,0],
+                    [0,0,0,0,0,1,1,0,0,0,0,0],
+                    [0,0,0,0,0,2,2,0,0,0,0,0],
+                    [0,0,0,0,2,2,2,2,0,0,0,0],
+                    [0,0,0,0,0,2,2,0,0,0,0,0],
                     [0,0,0,0,0,0,0,0,0,0,0,0]
                 ],
-                size: '2.5 KB',
-                colors: { 1: '#0000ff', 2: '#00ff00', 3: '#ffffff' },
+                size: '2.0 KB',
+                colors: { 1: '#ff4040', 2: '#ff8080' },
                 width: 12,
                 height: 12,
-                pixelSize: 12
+                pixelSize: 12,
+                modemIndex: 1
             },
             {
-                name: 'ship_color.gif',
+                name: 'tree_28k8.gif',
                 pixels: [
                     [0,0,0,0,0,0,0,0,0,0,0,0],
                     [0,0,0,0,0,1,1,0,0,0,0,0],
                     [0,0,0,0,1,1,1,1,0,0,0,0],
-                    [0,0,0,1,1,1,1,1,1,0,0,0],
-                    [0,0,1,1,2,2,2,2,1,1,0,0],
-                    [0,0,1,1,2,2,2,2,1,1,0,0],
-                    [0,0,0,1,1,1,1,1,1,0,0,0],
-                    [0,0,0,0,1,1,1,1,0,0,0,0],
-                    [0,0,0,0,0,1,1,0,0,0,0,0],
-                    [0,0,0,0,0,0,0,0,0,0,0,0],
-                    [0,0,0,0,0,0,0,0,0,0,0,0],
-                    [0,0,0,0,0,0,0,0,0,0,0,0]
-                ],
-                size: '2.7 KB',
-                colors: { 1: '#c0c0c0', 2: '#ff0000' },
-                width: 12,
-                height: 12,
-                pixelSize: 12
-            },
-            {
-                name: 'car_color.gif',
-                pixels: [
-                    [0,0,0,0,0,0,0,0,0,0,0,0],
-                    [0,0,0,0,0,0,0,0,0,0,0,0],
                     [0,0,0,1,1,1,1,1,1,0,0,0],
                     [0,0,1,1,1,1,1,1,1,1,0,0],
-                    [0,0,1,1,2,2,2,2,1,1,0,0],
-                    [0,0,1,1,2,2,2,2,1,1,0,0],
-                    [0,0,0,3,3,0,0,3,3,0,0,0],
-                    [0,0,0,3,3,0,0,3,3,0,0,0],
-                    [0,0,0,0,0,0,0,0,0,0,0,0],
-                    [0,0,0,0,0,0,0,0,0,0,0,0],
-                    [0,0,0,0,0,0,0,0,0,0,0,0],
+                    [0,0,1,1,1,1,1,1,1,1,0,0],
+                    [0,0,0,1,1,1,1,1,1,0,0,0],
+                    [0,0,0,0,0,2,2,0,0,0,0,0],
+                    [0,0,0,0,0,2,2,0,0,0,0,0],
+                    [0,0,0,0,0,2,2,0,0,0,0,0],
+                    [0,0,0,0,0,2,2,0,0,0,0,0],
                     [0,0,0,0,0,0,0,0,0,0,0,0]
                 ],
-                size: '2.6 KB',
-                colors: { 1: '#ff0000', 2: '#000000', 3: '#333333' },
+                size: '2.2 KB',
+                colors: { 1: '#00ff00', 2: '#8b5a2b' },
                 width: 12,
                 height: 12,
-                pixelSize: 12
+                pixelSize: 12,
+                modemIndex: 1
+            },
+            // 56 kbps: 16x16, 4 colors
+            {
+                name: 'earth_56k.gif',
+                pixels: [
+                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    [0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0],
+                    [0,0,0,1,1,2,2,2,2,2,2,1,1,0,0,0],
+                    [0,0,1,2,2,2,2,2,2,2,2,2,2,1,0,0],
+                    [0,1,2,2,2,2,3,3,3,3,2,2,2,2,1,0],
+                    [0,1,2,2,2,3,3,3,3,3,3,2,2,2,1,0],
+                    [0,1,2,2,3,3,4,4,4,4,3,3,2,2,1,0],
+                    [0,1,2,2,3,4,4,4,4,4,4,3,2,2,1,0],
+                    [0,1,2,2,3,4,4,4,4,4,4,3,2,2,1,0],
+                    [0,1,2,2,3,3,4,4,4,4,3,3,2,2,1,0],
+                    [0,1,2,2,2,3,3,3,3,3,3,2,2,2,1,0],
+                    [0,1,2,2,2,2,3,3,3,3,2,2,2,2,1,0],
+                    [0,0,1,2,2,2,2,2,2,2,2,2,2,1,0,0],
+                    [0,0,0,1,1,2,2,2,2,2,2,1,1,0,0,0],
+                    [0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0],
+                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                ],
+                size: '3.5 KB',
+                colors: { 1: '#0000ff', 2: '#00ff00', 3: '#ffffff', 4: '#808080' },
+                width: 16,
+                height: 16,
+                pixelSize: 10,
+                modemIndex: 2
+            },
+            {
+                name: 'ship_56k.gif',
+                pixels: [
+                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0],
+                    [0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0],
+                    [0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0],
+                    [0,0,0,1,1,1,2,2,2,2,1,1,1,0,0,0],
+                    [0,0,1,1,1,2,2,2,2,2,2,1,1,1,0,0],
+                    [0,0,1,1,2,2,3,3,3,3,2,2,1,1,0,0],
+                    [0,0,1,1,2,2,3,3,3,3,2,2,1,1,0,0],
+                    [0,0,1,1,1,2,2,2,2,2,2,1,1,1,0,0],
+                    [0,0,0,1,1,1,2,2,2,2,1,1,1,0,0,0],
+                    [0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0],
+                    [0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0],
+                    [0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                ],
+                size: '3.7 KB',
+                colors: { 1: '#c0c0c0', 2: '#ff0000', 3: '#404040' },
+                width: 16,
+                height: 16,
+                pixelSize: 10,
+                modemIndex: 2
+            },
+            // ISDN 128 kbps: 20x20, 5 colors
+            {
+                name: 'car_isdn.gif',
+                pixels: [
+                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    [0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0],
+                    [0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0],
+                    [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+                    [0,0,0,1,1,1,2,2,2,2,2,2,2,2,1,1,1,0,0,0],
+                    [0,0,0,1,1,1,2,2,2,2,2,2,2,2,1,1,1,0,0,0],
+                    [0,0,0,1,1,1,2,2,2,2,2,2,2,2,1,1,1,0,0,0],
+                    [0,0,0,1,1,1,1,1,3,3,3,3,1,1,1,1,1,0,0,0],
+                    [0,0,0,0,1,1,1,1,3,3,3,3,1,1,1,1,0,0,0,0],
+                    [0,0,0,0,0,0,4,4,4,0,0,4,4,4,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,4,4,4,0,0,4,4,4,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,4,4,4,0,0,4,4,4,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,4,4,4,0,0,4,4,4,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                ],
+                size: '5.0 KB',
+                colors: { 1: '#ff0000', 2: '#000000', 3: '#c0c0c0', 4: '#333333' },
+                width: 20,
+                height: 20,
+                pixelSize: 8,
+                modemIndex: 3
+            },
+            {
+                name: 'city_isdn.gif',
+                pixels: [
+                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    [0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0],
+                    [0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0],
+                    [0,0,0,1,1,2,2,1,1,2,2,1,1,2,2,1,1,0,0,0],
+                    [0,0,0,1,1,2,2,1,1,2,2,1,1,2,2,1,1,0,0,0],
+                    [0,0,0,1,1,2,2,1,1,2,2,1,1,2,2,1,1,0,0,0],
+                    [0,0,0,1,1,2,2,1,1,2,2,1,1,2,2,1,1,0,0,0],
+                    [0,0,0,1,1,2,2,1,1,2,2,1,1,2,2,1,1,0,0,0],
+                    [0,0,0,1,1,2,2,1,1,2,2,1,1,2,2,1,1,0,0,0],
+                    [0,0,0,1,1,3,3,1,1,3,3,1,1,3,3,1,1,0,0,0],
+                    [0,0,0,1,1,3,3,1,1,3,3,1,1,3,3,1,1,0,0,0],
+                    [0,0,0,1,1,3,3,1,1,3,3,1,1,3,3,1,1,0,0,0],
+                    [0,0,0,1,1,3,3,1,1,3,3,1,1,3,3,1,1,0,0,0],
+                    [0,0,0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0,0,0],
+                    [0,0,0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0,0,0],
+                    [0,0,0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0,0,0],
+                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                ],
+                size: '5.2 KB',
+                colors: { 1: '#808080', 2: '#000000', 3: '#ffff00', 4: '#333333' },
+                width: 20,
+                height: 20,
+                pixelSize: 8,
+                modemIndex: 3
             }
         ];
 
         function getRandomImage() {
-            const availableImages = imagePool.filter(img => !usedImages.includes(img.name));
+            const modemIndex = Math.min(connectionCount, modemTypes.length - 1);
+            const availableImages = imagePool.filter(img => 
+                img.modemIndex === modemIndex && !usedImages.includes(img.name)
+            );
             if (availableImages.length === 0) {
                 usedImages = [];
-                return imagePool[Math.floor(Math.random() * imagePool.length)];
+                const fallbackImages = imagePool.filter(img => img.modemIndex === modemIndex);
+                return fallbackImages[Math.floor(Math.random() * fallbackImages.length)];
             }
             const image = availableImages[Math.floor(Math.random() * availableImages.length)];
             usedImages.push(image.name);
@@ -412,26 +476,40 @@ document.body.addEventListener('click', () => {
         }
 
         function playAudio(audioElement) {
-            if (userInteracted) {
+            return new Promise((resolve) => {
+                if (!soundEnabled) {
+                    resolve();
+                    return;
+                }
                 audioElement.volume = 1.0;
-                audioElement.play().catch(e => {
-                    console.warn('Audio playback failed:', e.message);
-                });
-            }
+                const playPromise = audioElement.play();
+                if (playPromise !== undefined) {
+                    playPromise
+                        .then(() => {
+                            audioElement.onended = () => resolve();
+                        })
+                        .catch(e => {
+                            console.warn('Audio playback failed:', e.message);
+                            resolve();
+                        });
+                } else {
+                    resolve();
+                }
+            });
         }
 
-        function connectModem() {
+        async function connectModem() {
             if (state !== 'idle') return;
             state = 'connecting';
-            playAudio(modemDial);
             const modemIndex = Math.min(connectionCount, modemTypes.length - 1);
             const modemSpeed = modemTypes[modemIndex];
             modemTypeDisplay.textContent = `Modem: ${modemSpeed}`;
-            print('Initializing modem... BEEP BOOP', 50, () => {
-                print('Dialing 555-0134... SCREEEEE', 50, () => {
+            print('Initializing modem... BEEP BOOP', 50, async () => {
+                await playAudio(modemDial);
+                print('Dialing 555-0134... SCREEEEE', 50, async () => {
                     modemDial.pause();
                     modemDial.currentTime = 0;
-                    playAudio(modemConnect);
+                    await playAudio(modemConnect);
                     print(`Connecting at ${modemSpeed}... HISSSSS`, 50, () => {
                         modemConnect.pause();
                         modemConnect.currentTime = 0;
@@ -512,7 +590,9 @@ document.body.addEventListener('click', () => {
         function autoPlaySequence() {
             if (!autoplay || state !== 'connected') return;
             print('> dir', 50, () => {
-                print(imagePool.map(img => img.name).join('  '), 50, () => {
+                const modemIndex = Math.min(connectionCount - 1, modemTypes.length - 1);
+                const dirImages = imagePool.filter(img => img.modemIndex === modemIndex).map(img => img.name);
+                print(dirImages.join('  '), 50, () => {
                     let index = 0;
                     function downloadNext() {
                         if (index >= 4) {
@@ -548,16 +628,10 @@ document.body.addEventListener('click', () => {
             }, 'cmd-dir');
         }
 
-        // Simulate user interaction to enable audio
-        setTimeout(() => {
-            userInteracted = true;
-            print('Retro Modem Simulator v4.4\nType "connect" to begin.', 50, () => {
-                autoplayBtn.textContent = 'Autoplay: ON';
-                simulateTyping('connect', () => {
-                    print('> connect', 50, connectModem, colorMode ? 'cmd-connect' : '');
-                });
-            });
-        }, 1000);
+        soundBtn.addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            soundBtn.textContent = `Sound: ${soundEnabled ? 'ON' : 'OFF'}`;
+        });
 
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
@@ -578,10 +652,13 @@ document.body.addEventListener('click', () => {
                     }
                 } else if (state === 'connected') {
                     if (command === 'dir') {
-                        print('> dir', 50, () => print(imagePool.map(img => img.name).join('  ')), colorMode ? 'cmd-dir' : '');
+                        const modemIndex = Math.min(connectionCount - 1, modemTypes.length - 1);
+                        const dirImages = imagePool.filter(img => img.modemIndex === modemIndex).map(img => img.name);
+                        print('> dir', 50, () => print(dirImages.join('  ')), colorMode ? 'cmd-dir' : '');
                     } else if (command.startsWith('get ')) {
                         const imgName = command.slice(4);
-                        const image = imagePool.find(img => img.name === imgName);
+                        const modemIndex = Math.min(connectionCount - 1, modemTypes.length - 1);
+                        const image = imagePool.find(img => img.name === imgName && img.modemIndex === modemIndex);
                         if (image) {
                             print(`> get ${imgName}`, 50, () => downloadImage(image), colorMode ? 'cmd-get' : '');
                             if (!usedImages.includes(imgName)) usedImages.push(imgName);
@@ -595,7 +672,9 @@ document.body.addEventListener('click', () => {
                     } else if (command === 'games') {
                         print('> games', 50, () => print('Available games: Tetris, Snake, Pong'), colorMode ? 'cmd-games' : '');
                     } else if (command === 'files') {
-                        print('> files', 50, () => print('Files: ' + imagePool.map(img => img.name).join(', ')), colorMode ? 'cmd-files' : '');
+                        const modemIndex = Math.min(connectionCount - 1, modemTypes.length - 1);
+                        const dirImages = imagePool.filter(img => img.modemIndex === modemIndex).map(img => img.name);
+                        print('> files', 50, () => print('Files: ' + dirImages.join(', ')), colorMode ? 'cmd-files' : '');
                     } else if (command === 'news') {
                         print('> news', 50, () => print('News: RetroNet upgrades to 56 kbps soon!'), colorMode ? 'cmd-news' : '');
                     } else if (command === 'disconnect') {
@@ -633,7 +712,6 @@ document.body.addEventListener('click', () => {
         autoplayBtn.addEventListener('click', () => {
             autoplay = !autoplay;
             autoplayBtn.textContent = `Autoplay: ${autoplay ? 'ON' : 'OFF'}`;
-            userInteracted = true;
             if (autoplay && state === 'idle') {
                 simulateTyping('connect', () => {
                     print('> connect', 50, connectModem, colorMode ? 'cmd-connect' : '');
@@ -644,13 +722,18 @@ document.body.addEventListener('click', () => {
         clearBtn.addEventListener('click', () => {
             terminal.innerHTML = '';
             canvas.style.display = 'none';
-            userInteracted = true;
             print('Terminal cleared.', 50, () => {
                 if (state === 'connected') print('> ', 0);
             });
         });
 
         input.focus();
+        print('Retro Modem Simulator v4.7\nType "connect" to begin.', 50, () => {
+            autoplayBtn.textContent = 'Autoplay: ON';
+            simulateTyping('connect', () => {
+                print('> connect', 50, connectModem, colorMode ? 'cmd-connect' : '');
+            });
+        });
     </script>
 </body>
 </html>
