@@ -435,13 +435,12 @@
             const modemSpeed = modemTypes[modemIndex];
             modemTypeDisplay.textContent = `Modem: ${modemSpeed}`;
             print('Initializing modem... BEEP BOOP', 50, () => {
-           
-                modemDial.currentTime = 0;
-                print('Dialing 555-0134... SCREEEEE', 50, () => {
-                    playAudio(modemConnect, () => {
+                playAudio(modemDial, () => {
+                    modemDial.currentTime = 0;
+                    print('Dialing 555-0134... SCREEEEE', 50, () => {
+                        modemConnect.pause();
                         modemConnect.currentTime = 0;
                         print(`Connecting at ${modemSpeed}... HISSSSS`, 50, () => {
-                            modemConnect.pause();
                             setTimeout(() => {
                                 print('Connected to RetroNet! WHRRRR', 50, () => {
                                     state = 'connected';
@@ -454,7 +453,6 @@
                         });
                     });
                 });
-               
             });
         }
 
