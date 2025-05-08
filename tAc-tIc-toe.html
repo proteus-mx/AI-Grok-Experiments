@@ -283,7 +283,7 @@
         </div>
         <button id="start-button">Start Game</button>
         <p>
-            <small>Version 0.3</small>
+            <small>Version 0.4</small>
         </p>
     </div>
     <div id="stats-x">Red<br>Wins: 0<br>Score: 0<br>Game: 1<br>Last Move: None<br><span class="response-time">Response: 0.00s<br>Avg Response: 0.00s</span></div>
@@ -664,18 +664,7 @@
                 score: score,
                 leaderboardId: leaderboardId
             });
-        }  
-
-        document.getElementById("submitScoreButton").addEventListener("click", (e) => {
-          submitScoreToGameCenter(overallScore, "tActIctoeLeaderboard1");
-          e.target.disabled = true;
-          e.target.innerText = "Score Submitted!";
-          e.target.style.animation = "pop 0.5s ease";
-          setTimeout(() => {
-            e.target.style.backgroundColor = "#ccc";
-          }, 500);
-        });
-        
+        }          
         
         restartButton.addEventListener('click', resetToWelcome);
 
@@ -1291,6 +1280,18 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
+
+        document.getElementById("submitScoreButton").addEventListener("click", (e) => {
+          submitScoreToGameCenter(overallScore, "tActIctoeLeaderboard1");
+          e.target.disabled = true;
+          e.target.innerText = "Score Submitted!";
+          e.target.style.animation = "pop 0.5s ease";
+          setTimeout(() => {
+            e.target.style.backgroundColor = "#ccc";
+          }, 500);
+        });
+
+        
     </script>
 </body>
 </html>
