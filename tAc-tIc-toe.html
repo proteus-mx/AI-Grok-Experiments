@@ -7,6 +7,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden; }
+        canvas { }
         #welcome-screen {
             position: absolute;
             top: 0;
@@ -128,6 +129,28 @@
             background: linear-gradient(#ff6347, #ff4500);
             transform: scale(1.05);
         }
+        #restart-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(#ff4500, #ff6347);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: background 0.3s, transform 0.2s;
+            box-shadow: 0 0 10px #ff4500;
+            font-family: 'Orbitron', sans-serif;
+            z-index: 5;
+            display: none;
+            text-shadow: 0 0 5px #000;
+        }
+        #restart-button:hover {
+            background: linear-gradient(#ff6347, #ff4500);
+            transform: scale(1.05);
+        }
         #win-percentage-bar {
             position: absolute;
             bottom: 0;
@@ -140,7 +163,7 @@
         #x-bar {
             height: 100%;
             background: linear-gradient(#ff0000, #ff4500);
-            transition: width 0.5s;
+            transition: width: 0.5s;
             text-align: left;
             padding-left: 10px;
             line-height: 50px;
@@ -184,7 +207,18 @@
             text-shadow: 0 0 5px #00f;
             z-index: 5;
         }
-        #game-number-flash, #bonus-flash-x, #bonus-flash-o {
+        #game-mode {
+            position: absolute;
+            top: 85px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1em;
+            text-shadow: 0 0 5px #00f;
+            z-index: 5;
+        }
+        #game-number-flash, #bonus-flash-x, #bonus-flash-o, #tap-flash, #turn-flash {
             position: absolute;
             top: 50%;
             left: 50%;
@@ -195,11 +229,27 @@
             text-shadow: 0 0 20px #ff4500;
             z-index: 10;
             display: none;
-            animation: flash 2s ease-in-out;
+            animation: flash 1s ease-in-out;
         }
         #bonus-flash-x, #bonus-flash-o {
             font-size: 2.5em;
             top: 60%;
+        }
+        #tap-flash {
+            font-size: 2em;
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+        }
+        #turn-flash {
+            font-size: 2em;
+        }
+        #turn-flash.red {
+            color: #ff4500;
+            text-shadow: 0 0 10px #ff4500;
+        }
+        #turn-flash.blue {
+            color: #1e90ff;
+            text-shadow: 0 0 10px #1e90ff;
         }
         #bonus-flash-x { color: #ff4500; }
         #bonus-flash-o { color: #1e90ff; }
@@ -214,7 +264,7 @@
 <body>
     <div id="welcome-screen">
         <h1>tAc-tIc-toe</h1>
-        <p>Welcome to 3D Tic-Tac-Toe! Play on a 3x3x3 grid. Win by aligning three symbols in a row, column, or diagonal across any dimension. Tap and drag cubes to move them (they snap back). Tap and drag elsewhere to control the camera. Double-tap to restart the game.</p>
+        <p>Welcome to 3D tAc-tIc-toe! Play on a 3x3x3 grid. Win by aligning three symbols in a row, column, or diagonal across any dimension. Tap and drag elsewhere to control the camera. </p>
         <div>
             <button class="mode-button" id="one-player">1 Player</button>
             <button class="mode-button" id="two-players">2 Players</button>
@@ -222,11 +272,11 @@
         </div>
         <button id="start-button">Start Game</button>
         <p>
-            <small>Version 0.1.1</small>
+            <small>Version 0.2</small>
         </p>
     </div>
-    <div id="stats-x">Red<br>Wins: 0<br>Score: 0<br>Game: 1<br><span class="response-time">Response: 0.00s<br>Avg Response: 0.00s</span></div>
-    <div id="stats-o">Blue<br>Wins: 0<br>Score: 0<br>Game: 1<br><span class="response-time">Response: 0.00s<br>Avg Response: 0.00s</span></div>
+    <div id="stats-x">Red<br>Wins: 0<br>Score: 0<br>Game: 1<br>Last Move: None<br><span class="response-time">Response: 0.00s<br>Avg Response: 0.00s</span></div>
+    <div id="stats-o">Blue<br>Wins: 0<br>Score: 0<br>Game: 1<br>Last Move: None<br><span class="response-time">Response: 0.00s<br>Avg Response: 0.00s</span></div>
     <div id="game-summary">
         <h2 id="summary-text"></h2>
         <button id="play-again-button">Play Again</button>
@@ -237,9 +287,13 @@
     </div>
     <div id="game-title">tAc-tIc-toe</div>
     <div id="game-timer">Time: 00:00</div>
+    <div id="game-mode">Mode: AI Players</div>
     <div id="game-number-flash"></div>
     <div id="bonus-flash-x"></div>
     <div id="bonus-flash-o"></div>
+    <div id="tap-flash"></div>
+    <div id="turn-flash"></div>
+    <button id="restart-button">Restart</button>
     <script>
         // Scene setup
         const scene = new THREE.Scene();
@@ -339,6 +393,8 @@
         let xLastResponseTime = 0;
         let oLastResponseTime = 0;
         let moveTimeout = null;
+        let lastMoveX = 'None';
+        let lastMoveO = 'None';
 
         // Camera control state
         let isCameraDragging = false;
@@ -350,7 +406,6 @@
 
         // Double-tap detection
         let lastTapTime = 0;
-        let tapTimeout = null;
 
         // Materials for players
         const xMaterial = new THREE.MeshStandardMaterial({ 
@@ -372,13 +427,22 @@
             emissiveIntensity: 0.3
         });
         const selectedMaterial = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
+            color: 0xff0000,
             transparent: true,
             opacity: 0.8,
             metalness: 0.5,
             roughness: 0.3,
-            emissive: 0xaaaaaa,
+            emissive: 0xff3333,
             emissiveIntensity: 0.5
+        });
+        const defaultMaterial = new THREE.MeshStandardMaterial({
+            color: 0x888888,
+            transparent: true,
+            opacity: 0.4,
+            metalness: 0.5,
+            roughness: 0.3,
+            emissive: 0x222222,
+            emissiveIntensity: 0.2
         });
 
         // Winning line
@@ -398,9 +462,13 @@
         const xBar = document.getElementById('x-bar');
         const oBar = document.getElementById('o-bar');
         const gameTimer = document.getElementById('game-timer');
+        const gameModeDisplay = document.getElementById('game-mode');
         const gameNumberFlash = document.getElementById('game-number-flash');
         const bonusFlashX = document.getElementById('bonus-flash-x');
         const bonusFlashO = document.getElementById('bonus-flash-o');
+        const tapFlash = document.getElementById('tap-flash');
+        const turnFlash = document.getElementById('turn-flash');
+        const restartButton = document.getElementById('restart-button');
 
         // Flash game number
         function flashGameNumber() {
@@ -419,6 +487,25 @@
             setTimeout(() => {
                 flashElement.style.display = 'none';
             }, 2000);
+        }
+
+        // Flash tap message
+        function flashTapMessage() {
+            tapFlash.textContent = 'Tapped';
+            tapFlash.style.display = 'block';
+            setTimeout(() => {
+                tapFlash.style.display = 'none';
+            }, 1000);
+        }
+
+        // Flash turn message
+        function flashTurnMessage() {
+            turnFlash.textContent = currentPlayer === 'X' ? "Red's Turn" : "Blue's Turn";
+            turnFlash.className = currentPlayer === 'X' ? 'red' : 'blue';
+            turnFlash.style.display = 'block';
+            setTimeout(() => {
+                turnFlash.style.display = 'none';
+            }, 1000);
         }
 
         // Update game timer
@@ -440,8 +527,8 @@
         function updateStats() {
             const xScore = xWins * 100 + xBonusPoints;
             const oScore = oWins * 100 + oBonusPoints;
-            statsX.innerHTML = `Red<br>Wins: ${xWins}<br>Score: ${xScore}<br>Game: ${gameNumber}<br><span class="response-time">Response: ${xLastResponseTime.toFixed(2)}s<br>Avg Response: ${getAverageResponseTime(xResponseTimes)}s</span>`;
-            statsO.innerHTML = `Blue<br>Wins: ${oWins}<br>Score: ${oScore}<br>Game: ${gameNumber}<br><span class="response-time">Response: ${oLastResponseTime.toFixed(2)}s<br>Avg Response: ${getAverageResponseTime(oResponseTimes)}s</span>`;
+            statsX.innerHTML = `Red<br>Wins: ${xWins}<br>Score: ${xScore}<br>Game: ${gameNumber}<br>Last Move: ${lastMoveX}<br><span class="response-time">Response: ${xLastResponseTime.toFixed(2)}s<br>Avg Response: ${getAverageResponseTime(xResponseTimes)}s</span>`;
+            statsO.innerHTML = `Blue<br>Wins: ${oWins}<br>Score: ${oScore}<br>Game: ${gameNumber}<br>Last Move: ${lastMoveO}<br><span class="response-time">Response: ${oLastResponseTime.toFixed(2)}s<br>Avg Response: ${getAverageResponseTime(oResponseTimes)}s</span>`;
             const totalWins = xWins + oWins || 1;
             const xPercent = (xWins / totalWins) * 100;
             const oPercent = (oWins / totalWins) * 100;
@@ -455,6 +542,7 @@
         function showGameSummary() {
             summaryText.textContent = winner === 'Draw' ? 'Game is a Draw!' : winner === 'X' ? 'Red Wins!' : 'Blue Wins!';
             gameSummary.style.display = 'block';
+            restartButton.style.display = 'none';
             if (gameMode === 'ai') {
                 setTimeout(() => {
                     hideGameSummary();
@@ -462,9 +550,9 @@
                     resetGame();
                     flashGameNumber();
                     updateStats();
-                    if (gameMode === 'ai') {
-                        scheduleNextMove();
-                    }
+                    restartButton.style.display = 'block';
+                    flashTurnMessage();
+                    scheduleNextMove();
                 }, 2000);
             }
         }
@@ -474,15 +562,42 @@
             gameSummary.style.display = 'none';
         }
 
+        // Reset to welcome screen
+        function resetToWelcome() {
+            resetGame();
+            welcomeScreen.style.display = 'flex';
+            restartButton.style.display = 'none';
+            gameSummary.style.display = 'none';
+            gameNumber = 1;
+            xWins = 0;
+            oWins = 0;
+            xBonusPoints = 0;
+            oBonusPoints = 0;
+            xResponseTimes = [];
+            oResponseTimes = [];
+            xLastResponseTime = 0;
+            oLastResponseTime = 0;
+            updateStats();
+        }
+
         // Game mode handling
         function setGameMode(mode) {
             gameMode = mode;
             onePlayerButton.classList.remove('selected');
             twoPlayersButton.classList.remove('selected');
             aiPlayersButton.classList.remove('selected');
-            if (mode === 'one') onePlayerButton.classList.add('selected');
-            else if (mode === 'two') twoPlayersButton.classList.add('selected');
-            else aiPlayersButton.classList.add('selected');
+            let modeText = 'AI Players';
+            if (mode === 'one') {
+                onePlayerButton.classList.add('selected');
+                modeText = '1 Player';
+            } else if (mode === 'two') {
+                twoPlayersButton.classList.add('selected');
+                modeText = '2 Players';
+            } else {
+                aiPlayersButton.classList.add('selected');
+                modeText = 'AI Players';
+            }
+            gameModeDisplay.textContent = `Mode: ${modeText}`;
         }
 
         onePlayerButton.addEventListener('click', () => setGameMode('one'));
@@ -491,6 +606,7 @@
 
         startButton.addEventListener('click', () => {
             welcomeScreen.style.display = 'none';
+            restartButton.style.display = 'block';
             gameNumber = 1;
             xWins = 0;
             oWins = 0;
@@ -504,7 +620,8 @@
             updateStats();
             flashGameNumber();
             resetGame();
-            if (gameMode === 'ai') {
+            flashTurnMessage();
+            if (gameMode === 'one' && currentPlayer === 'O' || gameMode === 'ai') {
                 scheduleNextMove();
             }
         });
@@ -518,16 +635,20 @@
             resetGame();
             flashGameNumber();
             updateStats();
-            if (gameMode === 'ai') {
+            restartButton.style.display = 'block';
+            flashTurnMessage();
+            if (gameMode === 'one' && currentPlayer === 'O' || gameMode === 'ai') {
                 scheduleNextMove();
             }
         });
+
+        restartButton.addEventListener('click', resetToWelcome);
 
         // Schedule next AI move with random delay
         function scheduleNextMove() {
             if (gameOver) return;
             if (moveTimeout) clearTimeout(moveTimeout);
-            const delay = Math.random() * (1.25 - 0.2) + 0.2; // Random delay between 0.2s and 1.25s
+            const delay = Math.random() * (1.25 - 0.2) + 0.2;
             if (currentPlayer === 'X') {
                 xLastResponseTime = delay;
             } else {
@@ -535,20 +656,32 @@
             }
             moveTimeout = setTimeout(() => {
                 if (!gameOver) {
-                    makeMove();
-                    scheduleNextMove();
+                    makeAIMove();
+                    if ((gameMode === 'one' && currentPlayer === 'O') || gameMode === 'ai') {
+                        scheduleNextMove();
+                    }
                 }
             }, delay * 1000);
         }
 
         // Mouse interaction
         const raycaster = new THREE.Raycaster();
+        raycaster.params.Mesh.threshold = 0.2;
         const mouse = new THREE.Vector2();
         let dragOffset = new THREE.Vector3();
+
+        // Normalize touch coordinates
+        function normalizeTouchCoordinates(clientX, clientY) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            const x = ((clientX - rect.left) / rect.width) * 2 - 1;
+            const y = -((clientY - rect.top) / rect.height) * 2 + 1;
+            return { x, y };
+        }
 
         // Check for win and return winning line points and cubes
         function checkWin(player) {
             winningCubes = [];
+            // Check rows
             for (let i = 0; i < 3; i++) {
                 for (let j = 0; j < 3; j++) {
                     if (board[i][j][0] === player && board[i][j][1] === player && board[i][j][2] === player) {
@@ -589,6 +722,7 @@
                     }
                 }
             }
+            // Check 3D diagonals
             if (board[0][0][0] === player && board[1][1][1] === player && board[2][2][2] === player) {
                 winningCubes = [
                     cubes[0 * 9 + 0 * 3 + 0],
@@ -637,6 +771,84 @@
                     end: new THREE.Vector3(1 * spacing, 1 * spacing, -1 * spacing)
                 };
             }
+            // Check 2D diagonals in each plane
+            for (let i = 0; i < 3; i++) {
+                // XY plane (fixed z)
+                if (board[0][0][i] === player && board[1][1][i] === player && board[2][2][i] === player) {
+                    winningCubes = [
+                        cubes[0 * 9 + 0 * 3 + i],
+                        cubes[1 * 9 + 1 * 3 + i],
+                        cubes[2 * 9 + 2 * 3 + i]
+                    ];
+                    return {
+                        win: true,
+                        start: new THREE.Vector3(-1 * spacing, -1 * spacing, (i - 1) * spacing),
+                        end: new THREE.Vector3(1 * spacing, 1 * spacing, (i - 1) * spacing)
+                    };
+                }
+                if (board[2][0][i] === player && board[1][1][i] === player && board[0][2][i] === player) {
+                    winningCubes = [
+                        cubes[2 * 9 + 0 * 3 + i],
+                        cubes[1 * 9 + 1 * 3 + i],
+                        cubes[0 * 9 + 2 * 3 + i]
+                    ];
+                    return {
+                        win: true,
+                        start: new THREE.Vector3(1 * spacing, -1 * spacing, (i - 1) * spacing),
+                        end: new THREE.Vector3(-1 * spacing, 1 * spacing, (i - 1) * spacing)
+                    };
+                }
+                // XZ plane (fixed y)
+                if (board[0][i][0] === player && board[1][i][1] === player && board[2][i][2] === player) {
+                    winningCubes = [
+                        cubes[0 * 9 + i * 3 + 0],
+                        cubes[1 * 9 + i * 3 + 1],
+                        cubes[2 * 9 + i * 3 + 2]
+                    ];
+                    return {
+                        win: true,
+                        start: new THREE.Vector3(-1 * spacing, (i - 1) * spacing, -1 * spacing),
+                        end: new THREE.Vector3(1 * spacing, (i - 1) * spacing, 1 * spacing)
+                    };
+                }
+                if (board[2][i][0] === player && board[1][i][1] === player && board[0][i][2] === player) {
+                    winningCubes = [
+                        cubes[2 * 9 + i * 3 + 0],
+                        cubes[1 * 9 + i * 3 + 1],
+                        cubes[0 * 9 + i * 3 + 2]
+                    ];
+                    return {
+                        win: true,
+                        start: new THREE.Vector3(1 * spacing, (i - 1) * spacing, -1 * spacing),
+                        end: new THREE.Vector3(-1 * spacing, (i - 1) * spacing, 1 * spacing)
+                    };
+                }
+                // YZ plane (fixed x)
+                if (board[i][0][0] === player && board[i][1][1] === player && board[i][2][2] === player) {
+                    winningCubes = [
+                        cubes[i * 9 + 0 * 3 + 0],
+                        cubes[i * 9 + 1 * 3 + 1],
+                        cubes[i * 9 + 2 * 3 + 2]
+                    ];
+                    return {
+                        win: true,
+                        start: new THREE.Vector3((i - 1) * spacing, -1 * spacing, -1 * spacing),
+                        end: new THREE.Vector3((i - 1) * spacing, 1 * spacing, 1 * spacing)
+                    };
+                }
+                if (board[i][2][0] === player && board[i][1][1] === player && board[i][0][2] === player) {
+                    winningCubes = [
+                        cubes[i * 9 + 2 * 3 + 0],
+                        cubes[i * 9 + 1 * 3 + 1],
+                        cubes[i * 9 + 0 * 3 + 2]
+                    ];
+                    return {
+                        win: true,
+                        start: new THREE.Vector3((i - 1) * spacing, 1 * spacing, -1 * spacing),
+                        end: new THREE.Vector3((i - 1) * spacing, -1 * spacing, 1 * spacing)
+                    };
+                }
+            }
             return { win: false };
         }
 
@@ -675,22 +887,16 @@
             }
         }
 
-        // Flash and throb selected cube
-        function flashSelectedCube(time) {
-            if (selectedCube) {
-                const flashSpeed = 5;
-                const throbSpeed = 2;
-                const opacity = 0.8 + Math.sin(time * flashSpeed) * 0.2;
-                const scale = 1 + Math.sin(time * throbSpeed) * 0.1;
-                selectedMaterial.opacity = opacity;
-                selectedMaterial.emissiveIntensity = 0.5 + Math.sin(time * flashSpeed) * 0.3;
+        // Apply static red highlight to selected cube
+        function flashSelectedCube() {
+            if (selectedCube && gameMode === 'one' && currentPlayer === 'X' && !gameOver) {
                 selectedCube.material = selectedMaterial;
-                selectedCube.scale.set(scale, scale, scale);
+                selectedCube.scale.set(1, 1, 1); // Keep cube still
             }
         }
 
-        // Make a move
-        function makeMove() {
+        // Make AI move
+        function makeAIMove() {
             if (gameOver) return;
             const emptyCells = [];
             for (let x = 0; x < 3; x++) {
@@ -708,25 +914,73 @@
                 showGameSummary();
                 return;
             }
-            const move = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-            const responseTime = currentPlayer === 'X' ? xLastResponseTime : oLastResponseTime;
+
+            let move;
+            if (gameMode === 'one' && currentPlayer === 'O') {
+                // Check for winning move for Blue (O)
+                for (const cell of emptyCells) {
+                    board[cell.x][cell.y][cell.z] = 'O';
+                    if (checkWin('O').win) {
+                        board[cell.x][cell.y][cell.z] = null;
+                        move = cell;
+                        break;
+                    }
+                    board[cell.x][cell.y][cell.z] = null;
+                }
+
+                // Check for blocking move against Red (X)
+                if (!move) {
+                    for (const cell of emptyCells) {
+                        board[cell.x][cell.y][cell.z] = 'X';
+                        if (checkWin('X').win) {
+                            board[cell.x][cell.y][cell.z] = null;
+                            move = cell;
+                            break;
+                        }
+                        board[cell.x][cell.y][cell.z] = null;
+                    }
+                }
+            }
+
+            // If no winning or blocking move, choose random
+            if (!move) {
+                move = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+            }
+
+            lastMoveO = `(${move.x}, ${move.y}, ${move.z})`;
+            makeMove(move.x, move.y, move.z);
+        }
+
+        // Make a move
+        function makeMove(x, y, z) {
+            if (gameOver || board[x][y][z]) return;
+            const responseTime = (Date.now() - lastMoveTime) / 1000;
             if (currentPlayer === 'X') {
                 xResponseTimes.push(responseTime);
                 if (responseTime < 0.5) {
                     xBonusPoints += 10;
                     flashBonusPoints('X', 10, 'Quick Response');
                 }
+                xLastResponseTime = responseTime;
+                lastMoveX = `(${x}, ${y}, ${z})`;
             } else {
                 oResponseTimes.push(responseTime);
                 if (responseTime < 0.5) {
                     oBonusPoints += 10;
                     flashBonusPoints('O', 10, 'Quick Response');
                 }
+                oLastResponseTime = responseTime;
+                lastMoveO = `(${x}, ${y}, ${z})`;
             }
             lastMoveTime = Date.now();
-            board[move.x][move.y][move.z] = currentPlayer;
-            const index = move.x * 9 + move.y * 3 + move.z;
+            board[x][y][z] = currentPlayer;
+            const index = x * 9 + y * 3 + z;
             cubes[index].material = currentPlayer === 'X' ? xMaterial : oMaterial;
+            if (selectedCube) {
+                selectedCube.material = currentPlayer === 'X' ? xMaterial : oMaterial;
+                selectedCube.scale.set(1, 1, 1);
+                selectedCube = null;
+            }
 
             const winResult = checkWin(currentPlayer);
             if (winResult.win) {
@@ -736,7 +990,7 @@
                     xWins++;
                     xBonusPoints += 100;
                     flashBonusPoints('X', 100, 'Win');
-                } else if (winner === 'O') {
+                } else {
                     oWins++;
                     oBonusPoints += 100;
                     flashBonusPoints('O', 100, 'Win');
@@ -746,7 +1000,14 @@
                 updateStats();
                 return;
             }
+            if (!board.flat().flat().some(cell => !cell)) {
+                gameOver = true;
+                winner = 'Draw';
+                showGameSummary();
+                return;
+            }
             currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            flashTurnMessage();
             updateStats();
         }
 
@@ -762,21 +1023,15 @@
             lastMoveTime = Date.now();
             xLastResponseTime = 0;
             oLastResponseTime = 0;
+            lastMoveX = 'None';
+            lastMoveO = 'None';
             if (moveTimeout) clearTimeout(moveTimeout);
             moveTimeout = null;
 
             cubes.forEach((cube, index) => {
                 cube.position.copy(originalPositions[index]);
                 cube.scale.set(1, 1, 1);
-                cube.material = new THREE.MeshStandardMaterial({ 
-                    color: 0x888888, 
-                    transparent: true, 
-                    opacity: 0.4,
-                    metalness: 0.5,
-                    roughness: 0.3,
-                    emissive: 0x222222,
-                    emissiveIntensity: 0.2
-                });
+                cube.material = defaultMaterial;
             });
 
             if (winningLine) {
@@ -805,10 +1060,28 @@
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObjects(cubes);
             if (intersects.length > 0) {
-                selectedCube = intersects[0].object;
+                const newSelectedCube = intersects[0].object;
+                const index = cubes.indexOf(newSelectedCube);
+                const x = Math.floor(index / 9);
+                const y = Math.floor((index % 9) / 3);
+                const z = index % 3;
+                if (gameMode === 'one' && currentPlayer === 'X' && !board[x][y][z]) {
+                    if (selectedCube && selectedCube !== newSelectedCube) {
+                        selectedCube.material = defaultMaterial;
+                        selectedCube.scale.set(1, 1, 1);
+                    }
+                    selectedCube = newSelectedCube;
+                    selectedCube.material = selectedMaterial;
+                    makeMove(x, y, z);
+                    if (!gameOver && currentPlayer === 'O') {
+                        scheduleNextMove();
+                    }
+                } else if (gameMode === 'two' && !board[x][y][z]) {
+                    makeMove(x, y, z);
+                }
                 isCubeDragging = true;
                 const intersectPoint = intersects[0].point;
-                dragOffset.subVectors(selectedCube.position, intersectPoint);
+                dragOffset.subVectors(selectedCube ? selectedCube.position : newSelectedCube.position, intersectPoint);
             } else {
                 isCameraDragging = true;
             }
@@ -825,7 +1098,7 @@
                 const intersectPoint = new THREE.Vector3();
                 raycaster.ray.intersectPlane(plane, intersectPoint);
                 selectedCube.position.copy(intersectPoint).add(dragOffset);
-            } else if (isCameraDragging) {
+            } else if (isCameraDragging && (gameMode === 'one' || gameMode === 'two')) {
                 const deltaX = mouse.x - prevMouse.x;
                 const deltaY = mouse.y - prevMouse.y;
                 cameraTheta += deltaY * Math.PI;
@@ -844,16 +1117,7 @@
                 selectedCube.scale.set(1, 1, 1);
                 selectedCube.material = board[Math.floor(index / 9)][Math.floor((index % 9) / 3)][index % 3] === 'X' ? xMaterial : 
                                         board[Math.floor(index / 9)][Math.floor((index % 9) / 3)][index % 3] === 'O' ? oMaterial : 
-                                        new THREE.MeshStandardMaterial({ 
-                                            color: 0x888888, 
-                                            transparent: true, 
-                                            opacity: 0.4,
-                                            metalness: 0.5,
-                                            roughness: 0.3,
-                                            emissive: 0x222222,
-                                            emissiveIntensity: 0.2
-                                        });
-                selectedCube = null;
+                                        defaultMaterial;
                 isCubeDragging = false;
             }
             isCameraDragging = false;
@@ -864,30 +1128,61 @@
             event.preventDefault();
             const touch = event.touches[0];
             const currentTime = Date.now();
+
             if (currentTime - lastTapTime < 300) {
-                resetGame();
+                // Double tap: reset to welcome screen
+                resetToWelcome();
                 flashGameNumber();
-                if (tapTimeout) clearTimeout(tapTimeout);
-                if (gameMode === 'ai') {
+                if (gameMode === 'one' && currentPlayer === 'O' || gameMode === 'ai') {
                     scheduleNextMove();
                 }
-            } else {
-                tapTimeout = setTimeout(() => {
-                    mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
-                    mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
-                    prevMouse.copy(mouse);
-                    raycaster.setFromCamera(mouse, camera);
-                    const intersects = raycaster.intersectObjects(cubes);
-                    if (intersects.length > 0) {
-                        selectedCube = intersects[0].object;
-                        isCubeDragging = true;
-                        const intersectPoint = intersects[0].point;
-                        dragOffset.subVectors(selectedCube.position, intersectPoint);
-                    } else {
-                        isCameraDragging = true;
-                    }
-                }, 300);
+                lastTapTime = 0;
+                return;
             }
+
+            // Flash "Tapped" message in non-AI modes
+            if (gameMode === 'one' || gameMode === 'two') {
+                flashTapMessage();
+            }
+
+            const coords = normalizeTouchCoordinates(touch.clientX, touch.clientY);
+            mouse.x = coords.x;
+            mouse.y = coords.y;
+            prevMouse.copy(mouse);
+            renderer.render(scene, camera);
+            raycaster.setFromCamera(mouse, camera);
+            raycaster.near = 0.1;
+            raycaster.far = 50;
+            const intersects = raycaster.intersectObjects(cubes);
+
+            if (intersects.length > 0) {
+                const newSelectedCube = intersects[0].object;
+                const index = cubes.indexOf(newSelectedCube);
+                const x = Math.floor(index / 9);
+                const y = Math.floor((index % 9) / 3);
+                const z = index % 3;
+                if (gameMode === 'one' && currentPlayer === 'X' && !board[x][y][z]) {
+                    if (selectedCube && selectedCube !== newSelectedCube) {
+                        selectedCube.material = defaultMaterial;
+                        selectedCube.scale.set(1, 1, 1);
+                    }
+                    selectedCube = newSelectedCube;
+                    selectedCube.material = selectedMaterial;
+                    selectedCube.scale.set(1, 1, 1);
+                    makeMove(x, y, z);
+                    if (!gameOver && currentPlayer === 'O') {
+                        scheduleNextMove();
+                    }
+                } else if (gameMode === 'two' && !board[x][y][z]) {
+                    makeMove(x, y, z);
+                    isCubeDragging = true;
+                    const intersectPoint = intersects[0].point;
+                    dragOffset.subVectors(newSelectedCube.position, intersectPoint);
+                }
+            } else if (gameMode === 'one' || gameMode === 'two') {
+                isCameraDragging = true;
+            }
+
             lastTapTime = currentTime;
         }
 
@@ -895,15 +1190,16 @@
             if (welcomeScreen.style.display !== 'none' || gameSummary.style.display !== 'none') return;
             event.preventDefault();
             const touch = event.touches[0];
-            mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
-            if (isCubeDragging && selectedCube) {
+            const coords = normalizeTouchCoordinates(touch.clientX, touch.clientY);
+            mouse.x = coords.x;
+            mouse.y = coords.y;
+            if (isCubeDragging && selectedCube && gameMode === 'two') {
                 raycaster.setFromCamera(mouse, camera);
                 const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
                 const intersectPoint = new THREE.Vector3();
                 raycaster.ray.intersectPlane(plane, intersectPoint);
                 selectedCube.position.copy(intersectPoint).add(dragOffset);
-            } else if (isCameraDragging) {
+            } else if (isCameraDragging && (gameMode === 'one' || gameMode === 'two')) {
                 const deltaX = mouse.x - prevMouse.x;
                 const deltaY = mouse.y - prevMouse.y;
                 cameraTheta += deltaY * Math.PI;
@@ -916,13 +1212,22 @@
 
         function onTouchEnd() {
             if (welcomeScreen.style.display !== 'none' || gameSummary.style.display !== 'none') return;
-            onMouseUp();
+            if (selectedCube && gameMode === 'two') {
+                const index = cubes.indexOf(selectedCube);
+                selectedCube.position.copy(originalPositions[index]);
+                selectedCube.scale.set(1, 1, 1);
+                selectedCube.material = board[Math.floor(index / 9)][Math.floor((index % 9) / 3)][index % 3] === 'X' ? xMaterial : 
+                                        board[Math.floor(index / 9)][Math.floor((index % 9) / 3)][index % 3] === 'O' ? oMaterial : 
+                                        defaultMaterial;
+                isCubeDragging = false;
+            }
+            isCameraDragging = false;
         }
 
         // Event listeners
-        renderer.domElement.addEventListener('mousedown', onMouseDown);
-        renderer.domElement.addEventListener('mousemove', onMouseMove);
-        renderer.domElement.addEventListener('mouseup', onMouseUp);
+        renderer.domElement.addEventListener('mousedown', onMouseDown, { passive: false });
+        renderer.domElement.addEventListener('mousemove', onMouseMove, { passive: false });
+        renderer.domElement.addEventListener('mouseup', onMouseUp, { passive: false });
         renderer.domElement.addEventListener('touchstart', onTouchStart);
         renderer.domElement.addEventListener('touchmove', onTouchMove);
         renderer.domElement.addEventListener('touchend', onTouchEnd);
@@ -932,13 +1237,13 @@
         function animate() {
             requestAnimationFrame(animate);
             time += 0.01;
-            if (!isCameraDragging) {
+            if (!isCameraDragging && gameMode === 'ai') {
                 cameraTheta += 0.005;
                 cameraPhi += 0.005;
                 updateCameraPosition();
             }
             shakeWinningCubes(time);
-            flashSelectedCube(time);
+            flashSelectedCube();
             updateGameTimer();
             renderer.render(scene, camera);
         }
