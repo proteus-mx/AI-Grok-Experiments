@@ -283,7 +283,7 @@
         </div>
         <button id="start-button">Start Game</button>
         <p>
-            <small>Version 0.7</small>
+            <small>Version 0.8</small>
         </p>
     </div>
     <div id="stats-x">Red<br>Wins: 0<br>Score: 0<br>Game: 1<br>Last Move: None<br><span class="response-time">Response: 0.00s<br>Avg Response: 0.00s</span></div>
@@ -505,17 +505,6 @@
             }, 2000);
         }
 
-        // Flash tap message
-        /*
-        function flashTapMessage() {
-            tapFlash.textContent = 'Tapped';
-            tapFlash.style.display = 'block';
-            setTimeout(() => {
-                tapFlash.style.display = 'none';
-            }, 1000);
-        }
-        */
-
         // Flash turn message
         function flashTurnMessage() {
             turnFlash.textContent = currentPlayer === 'X' ? "Red's Turn" : "Blue's Turn";
@@ -573,18 +562,6 @@
                     scheduleNextMove();
                 }, 2000);
             }
-            
-            //document.getElementById("submitScoreButton").addEventListener("click", (e) => {
-            document.getElementById("submitScoreBtn").addEventListener("click", (e) => {
-              submitScoreToGameCenter(overallScore, "tActIctoeLeaderboard1");
-              e.target.disabled = true;
-              e.target.innerText = "Score Submitted!";
-              e.target.style.animation = "pop 0.5s ease";
-              setTimeout(() => {
-                e.target.style.backgroundColor = "#ccc";
-              }, 500);
-            });
-            
         }
 
         // Hide game summary
@@ -680,6 +657,17 @@
             });
         }          
         
+        submitScoreButton.addEventListener('click', (e) => {
+            const overallScore = xWins * 100 + xBonusPoints + oWins * 100 + oBonusPoints;
+            submitScoreToGameCenter(overallScore, "tActIctoeLeaderboard1");
+            e.target.disabled = true;
+            e.target.innerText = "Score Submitted!";
+            e.target.style.animation = "pop 0.5s ease";
+            setTimeout(() => {
+                e.target.style.backgroundColor = "#ccc";
+            }, 500);
+        });
+
         restartButton.addEventListener('click', resetToWelcome);
 
         // Schedule next AI move with random delay
@@ -1178,11 +1166,6 @@
                 return;
             }
 
-            // Flash "Tapped" message in non-AI modes
-            //if (gameMode === 'one' || gameMode === 'two') {
-            //    flashTapMessage();
-            //}
-
             const coords = normalizeTouchCoordinates(touch.clientX, touch.clientY);
             mouse.x = coords.x;
             mouse.y = coords.y;
@@ -1294,8 +1277,6 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
-
-        
     </script>
 </body>
 </html>
