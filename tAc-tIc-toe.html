@@ -283,7 +283,7 @@
         </div>
         <button id="start-button">Start Game</button>
         <p>
-            <small>Version 0.6</small>
+            <small>Version 0.7</small>
         </p>
     </div>
     <div id="stats-x">Red<br>Wins: 0<br>Score: 0<br>Game: 1<br>Last Move: None<br><span class="response-time">Response: 0.00s<br>Avg Response: 0.00s</span></div>
@@ -573,7 +573,9 @@
                     scheduleNextMove();
                 }, 2000);
             }
-            document.getElementById("submitScoreButton").addEventListener("click", (e) => {
+            
+            //document.getElementById("submitScoreButton").addEventListener("click", (e) => {
+            document.getElementById("submitScoreBtn").addEventListener("click", (e) => {
               submitScoreToGameCenter(overallScore, "tActIctoeLeaderboard1");
               e.target.disabled = true;
               e.target.innerText = "Score Submitted!";
