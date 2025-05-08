@@ -123,11 +123,22 @@
             cursor: pointer;
             border-radius: 10px;
             transition: background 0.3s, transform 0.2s;
-            box-shadow: 0 0 10px #ff4500;
+            box-shadow: 0 0 10px #ff;
         }
         #play-again-button:hover {
             background: linear-gradient(#ff6347, #ff4500);
             transform: scale(1.05);
+        }
+        #submit-score-button {
+            background: green;
+            border: none;
+            color: white;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: background 0.3s, transform 0.2s;
+            box-shadow: 0 0 10px #ffffff;
         }
         #restart-button {
             position: absolute;
@@ -272,7 +283,7 @@
         </div>
         <button id="start-button">Start Game</button>
         <p>
-            <small>Version 0.2</small>
+            <small>Version 0.3</small>
         </p>
     </div>
     <div id="stats-x">Red<br>Wins: 0<br>Score: 0<br>Game: 1<br>Last Move: None<br><span class="response-time">Response: 0.00s<br>Avg Response: 0.00s</span></div>
@@ -280,6 +291,7 @@
     <div id="game-summary">
         <h2 id="summary-text"></h2>
         <button id="play-again-button">Play Again</button>
+        <button id="submit-score-button">Submit Score</button>
     </div>
     <div id="win-percentage-bar">
         <div id="x-bar" style="width: 50%;">Red: 0%</div>
@@ -294,6 +306,7 @@
     <div id="tap-flash"></div>
     <div id="turn-flash"></div>
     <button id="restart-button">Restart</button>
+    
     <script>
         // Scene setup
         const scene = new THREE.Scene();
@@ -459,6 +472,7 @@
         const gameSummary = document.getElementById('game-summary');
         const summaryText = document.getElementById('summary-text');
         const playAgainButton = document.getElementById('play-again-button');
+        const submitScoreButton = document.getElementById('submit-score-button');
         const xBar = document.getElementById('x-bar');
         const oBar = document.getElementById('o-bar');
         const gameTimer = document.getElementById('game-timer');
@@ -490,6 +504,7 @@
         }
 
         // Flash tap message
+        /*
         function flashTapMessage() {
             tapFlash.textContent = 'Tapped';
             tapFlash.style.display = 'block';
@@ -497,6 +512,7 @@
                 tapFlash.style.display = 'none';
             }, 1000);
         }
+        */
 
         // Flash turn message
         function flashTurnMessage() {
@@ -642,6 +658,25 @@
             }
         });
 
+        function submitScoreToGameCenter(score, leaderboardId) {
+            window.webkit?.messageHandlers.wordAIlyHandler.postMessage({
+                action: "submitScore",
+                score: score,
+                leaderboardId: leaderboardId
+            });
+        }  
+
+        document.getElementById("submitScoreButton").addEventListener("click", (e) => {
+          submitScoreToGameCenter(overallScore, "tActIctoeLeaderboard1");
+          e.target.disabled = true;
+          e.target.innerText = "Score Submitted!";
+          e.target.style.animation = "pop 0.5s ease";
+          setTimeout(() => {
+            e.target.style.backgroundColor = "#ccc";
+          }, 500);
+        });
+        
+        
         restartButton.addEventListener('click', resetToWelcome);
 
         // Schedule next AI move with random delay
@@ -1141,9 +1176,9 @@
             }
 
             // Flash "Tapped" message in non-AI modes
-            if (gameMode === 'one' || gameMode === 'two') {
-                flashTapMessage();
-            }
+            //if (gameMode === 'one' || gameMode === 'two') {
+            //    flashTapMessage();
+            //}
 
             const coords = normalizeTouchCoordinates(touch.clientX, touch.clientY);
             mouse.x = coords.x;
