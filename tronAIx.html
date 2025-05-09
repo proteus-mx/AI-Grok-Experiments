@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>tronAIx Game - V0.4</title>
+    <title>tronAIx Game - V0.8</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
         canvas { display: block; }
@@ -43,13 +43,13 @@
         }
         #gameOver div { color: #ffffff; }
         #gameOverTitle {
-            font-size: 36px; /* Larger Game Over text */
+            font-size: 36px;
             color: #00ff00;
             text-shadow: 0 0 10px #00ff00;
         }
         #winner, #loser { color: #ffffff; }
         .scoreValue {
-            font-size: 14px; /* Smaller font for score numbers */
+            font-size: 14px;
         }
         #redScoreValue { color: #ff0000; }
         #blueScoreValue { color: #00b7eb; }
@@ -86,7 +86,7 @@
             left: 50%; 
             transform: translate(-50%, -50%); 
             font-family: 'Arial', sans-serif; 
-            font-size: 96px; 
+            font-size: 144px; /* Increased size */
             color: #00ff00; 
             text-align: center; 
             display: none; 
@@ -130,7 +130,7 @@
             animation: fadeIn 1s ease-in forwards;
         }
         #welcomeScreen p {
-            font-size: 24px;
+            font-size: 18px;
             max-width: 700px;
             margin: 20px 0;
             text-shadow: 0 0 10px #00ff00;
@@ -143,7 +143,7 @@
             padding: 12px 24px;
             margin: 10px;
             background: #00ff00;
-            color: #000;
+            color: #ffffff;
             border: none;
             border-radius: 8px;
             cursor: pointer;
@@ -154,10 +154,58 @@
             opacity: 0;
             animation: fadeIn 1s ease-in 0.6s forwards;
         }
+        #start1Player {
+            margin-top: 20px; /* Added space above Human button */
+            animation: throb 0.5s ease-in-out infinite; /* Throbbing effect */
+        }
         #welcomeScreen button:hover {
             background: #00b7eb;
             box-shadow: 0 0 15px #00b7eb;
             transform: scale(1.05);
+        }
+        #gameModeLabel, #gridSizeLabel {
+            font-size: 20px;
+            margin: 10px 0;
+            text-shadow: 0 0 10px #00ff00;
+            z-index: 17;
+            opacity: 0;
+            animation: fadeIn 1s ease-in 0.9s forwards;
+        }
+        #gameModeLabel {
+            margin-top: 20px; /* Added space above Game Mode */
+        }
+        #gameModeButtons {
+            display: flex;
+            gap: 10px;
+            z-index: 17;
+        }
+        #gridSizeButtons {
+            display: flex;
+            gap: 10px;
+            z-index: 17;
+        }
+        #gridSizeButtons button {
+            font-size: 16px;
+            padding: 8px 16px;
+            background: #00ff00;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 0 8px #00ff00;
+            text-shadow: 0 0 5px #000;
+            transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+            opacity: 0;
+            animation: fadeIn 1s ease-in 1.2s forwards;
+        }
+        #gridSizeButtons button:hover {
+            background: #00b7eb;
+            box-shadow: 0 0 12px #00b7eb;
+            transform: scale(1.05);
+        }
+        #gridSizeButtons button.selected {
+            background: #00b7eb;
+            box-shadow: 0 0 12px #00b7eb;
         }
         #starField {
             position: absolute;
@@ -255,6 +303,7 @@
             z-index: 17;
             border: 2px solid #ffffff;
             box-shadow: 0 0 10px #ffffff;
+            transition: left 0.1s linear;
         }
         #redPlayerBlock {
             top: 20px;
@@ -267,6 +316,19 @@
             right: 20px;
             background: #00b7eb;
             box-shadow: 0 0 15px #00b7eb;
+        }
+        #redPlayerBlock::after, #bluePlayerBlock::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: inherit;
+            opacity: 0.5;
+            z-index: -1;
+            transition: opacity 0.5s;
+        }
+        #redPlayerBlock.moving-right::after, #bluePlayerBlock.moving-left::after {
+            opacity: 0;
         }
         #miniGrid {
             position: relative;
@@ -320,7 +382,7 @@
                 font-size: 48px;
             }
             #welcomeScreen p {
-                font-size: 18px;
+                font-size: 16px;
                 max-width: 90%;
             }
             #welcomeScreen button {
@@ -338,6 +400,13 @@
             #gameOverTitle {
                 font-size: 24px;
             }
+            #gameModeLabel, #gridSizeLabel {
+                font-size: 16px;
+            }
+            #gameModeButtons button, #gridSizeButtons button {
+                font-size: 12px;
+                padding: 6px 12px;
+            }
         }
     </style>
 </head>
@@ -349,8 +418,18 @@
         <h1>tronAIx</h1>
         <p>Navigate the neon grid, outmaneuver your opponent, and claim territory by creating walls. Survive longer and cover more ground to win!</p>
         <div id="miniGrid"></div>
-        <button id="start1Player">Start 1 Player</button>
-        <button id="startAIMode">AI Mode</button>
+        <div id="gameModeLabel">Game Mode</div>
+        <div id="gameModeButtons">
+            <button id="start1Player">Human</button>
+            <button id="startAIMode">AI</button>
+        </div>
+        <div id="gridSizeLabel">Grid Size</div>
+        <div id="gridSizeButtons">
+            <button id="gridSmall">Small</button>
+            <button id="gridMedium" class="selected">Medium</button>
+            <button id="gridLarge">Large</button>
+            <button id="gridLudicrous">Ludicrous</button>
+        </div>
     </div>
     <div id="fadeOverlay"></div>
     <div id="titleBar">
@@ -433,6 +512,34 @@
         const miniPlayer1 = { x: 2, y: 2, color: '#ff0000', direction: 'right', element: miniRedPlayer };
         const miniPlayer2 = { x: 7, y: 7, color: '#00b7eb', direction: 'left', element: miniBluePlayer };
 
+        function resetMiniGrid() {
+            // Clear trails and walls
+            for (let x = 0; x < miniGridSize; x++) {
+                for (let y = 0; y < miniGridSize; y++) {
+                    const cell = miniGrid[x][y];
+                    cell.visits = 0;
+                    cell.owner = null;
+                    cell.isWall = false;
+                    const trail = cell.element.querySelector('.miniGridTrail');
+                    if (trail) trail.remove();
+                    const wall = cell.element.querySelector('.miniGridWall');
+                    if (wall) wall.remove();
+                }
+            }
+            // Reset player positions
+            miniPlayer1.x = 2;
+            miniPlayer1.y = 2;
+            miniPlayer1.direction = 'right';
+            miniPlayer1.element.remove();
+            miniGrid[2][2].element.appendChild(miniPlayer1.element);
+
+            miniPlayer2.x = 7;
+            miniPlayer2.y = 7;
+            miniPlayer2.direction = 'left';
+            miniPlayer2.element.remove();
+            miniGrid[7][7].element.appendChild(miniPlayer2.element);
+        }
+
         function getMiniRandomDirection(currentDirection) {
             const directions = ['up', 'down', 'left', 'right'];
             const opposites = { 'up': 'down', 'down': 'up', 'left': 'right', 'right': 'left' };
@@ -501,6 +608,68 @@
         }
         animateMiniGrid();
 
+        // Red and Blue block animation
+        const redBlock = document.getElementById('redPlayerBlock');
+        const blueBlock = document.getElementById('bluePlayerBlock');
+        let redPos = 20;
+        let bluePos = window.innerWidth - 70; // 20px from right edge (50px width + 20px margin)
+        let redSpeed = 2;
+        let blueSpeed = -2;
+
+        function animateBlocks() {
+            if (document.getElementById('welcomeScreen').style.display === 'none') return;
+
+            redPos += redSpeed;
+            bluePos += blueSpeed;
+
+            // Keep blocks within screen bounds
+            if (redPos < 20) {
+                redPos = 20;
+                redSpeed = -redSpeed;
+                redBlock.classList.remove('moving-right');
+                redBlock.classList.add('moving-left');
+            } else if (redPos > window.innerWidth - 70) {
+                redPos = window.innerWidth - 70;
+                redSpeed = -redSpeed;
+                redBlock.classList.remove('moving-left');
+                redBlock.classList.add('moving-right');
+            } else {
+                redBlock.classList.add(redSpeed > 0 ? 'moving-right' : 'moving-left');
+            }
+
+            if (bluePos < 20) {
+                bluePos = 20;
+                blueSpeed = -blueSpeed;
+                blueBlock.classList.remove('moving-left');
+                blueBlock.classList.add('moving-right');
+            } else if (bluePos > window.innerWidth - 70) {
+                bluePos = window.innerWidth - 70;
+                blueSpeed = -blueSpeed;
+                blueBlock.classList.remove('moving-right');
+                blueBlock.classList.add('moving-left');
+            } else {
+                blueBlock.classList.add(blueSpeed > 0 ? 'moving-right' : 'moving-left');
+            }
+
+            // Check for collision
+            const redRight = redPos + 50;
+            const blueLeft = bluePos;
+            if (redRight >= blueLeft && redPos <= bluePos + 50) {
+                redSpeed = -redSpeed;
+                blueSpeed = -blueSpeed;
+                redBlock.classList.toggle('moving-right', redSpeed > 0);
+                redBlock.classList.toggle('moving-left', redSpeed < 0);
+                blueBlock.classList.toggle('moving-right', blueSpeed > 0);
+                blueBlock.classList.toggle('moving-left', blueSpeed < 0);
+            }
+
+            redBlock.style.left = `${redPos}px`;
+            blueBlock.style.right = `${window.innerWidth - bluePos - 50}px`;
+
+            requestAnimationFrame(animateBlocks);
+        }
+        animateBlocks();
+
         // Scene setup
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -533,64 +702,87 @@
         directionalLight.position.set(0, 10, 10);
         scene.add(directionalLight);
 
-        // Grid setup (40x40)
-        const gridSize = 40;
-        const grid = [];
-        for (let x = 0; x < gridSize; x++) {
-            grid[x] = [];
-            for (let z = 0; z < gridSize; z++) {
-                const geometry = new THREE.PlaneGeometry(1, 1);
-                const material = new THREE.MeshStandardMaterial({ 
-                    color: 0x111111, 
-                    side: THREE.DoubleSide, 
-                    transparent: true, 
-                    opacity: 0, // Start invisible
-                    emissive: 0x111111,
-                    emissiveIntensity: 0.5
-                });
-                const plane = new THREE.Mesh(geometry, material);
-                plane.position.set(x - gridSize / 2, 0, z - gridSize / 2);
-                plane.rotation.x = Math.PI / 2;
-                scene.add(plane);
-                grid[x][z] = { mesh: plane, color: 0x111111, visits: 0, owner: null, isWall: false };
-            }
-        }
-
-        // Neon green grid lines with antialiasing
-        const gridLineMaterial = new THREE.LineBasicMaterial({ 
-            color: 0x00ff00, 
-            emissive: 0x00ff00, 
-            emissiveIntensity: 1, 
-            transparent: true, 
-            opacity: 0, // Start invisible
-            linewidth: 2
+        // Grid size selection
+        let gridSize = 30; // Default to Medium (30x30)
+        const gridSizeButtons = document.querySelectorAll('#gridSizeButtons button');
+        gridSizeButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                gridSizeButtons.forEach(btn => btn.classList.remove('selected'));
+                e.target.classList.add('selected');
+                if (e.target.id === 'gridSmall') gridSize = 20;
+                if (e.target.id === 'gridMedium') gridSize = 30;
+                if (e.target.id === 'gridLarge') gridSize = 40;
+                if (e.target.id === 'gridLudicrous') gridSize = 60;
+            });
         });
-        const gridLines = new THREE.Group();
-        for (let i = 0; i <= gridSize; i++) {
-            const pointsH = [
-                new THREE.Vector3(i - gridSize / 2, 0.01, -gridSize / 2),
-                new THREE.Vector3(i - gridSize / 2, 0.01, gridSize / 2)
-            ];
-            const pointsV = [
-                new THREE.Vector3(-gridSize / 2, 0.01, i - gridSize / 2),
-                new THREE.Vector3(gridSize / 2, 0.01, i - gridSize / 2)
-            ];
-            const geometryH = new THREE.BufferGeometry().setFromPoints(pointsH);
-            const geometryV = new THREE.BufferGeometry().setFromPoints(pointsV);
-            const lineH = new THREE.Line(geometryH, gridLineMaterial);
-            const lineV = new THREE.Line(geometryV, gridLineMaterial);
-            gridLines.add(lineH, lineV);
+
+        // Grid setup
+        let grid = [];
+        function setupGrid() {
+            // Clear existing grid
+            grid.forEach(row => row.forEach(cell => scene.remove(cell.mesh)));
+            grid = [];
+
+            // Create new grid
+            for (let x = 0; x < gridSize; x++) {
+                grid[x] = [];
+                for (let z = 0; z < gridSize; z++) {
+                    const geometry = new THREE.PlaneGeometry(1, 1);
+                    const material = new THREE.MeshStandardMaterial({ 
+                        color: 0x111111, 
+                        side: THREE.DoubleSide, 
+                        transparent: true, 
+                        opacity: 0, // Start invisible
+                        emissive: 0x111111,
+                        emissiveIntensity: 0.5
+                    });
+                    const plane = new THREE.Mesh(geometry, material);
+                    plane.position.set(x - gridSize / 2, 0, z - gridSize / 2);
+                    plane.rotation.x = Math.PI / 2;
+                    scene.add(plane);
+                    grid[x][z] = { mesh: plane, color: 0x111111, visits: 0, owner: null, isWall: false };
+                }
+            }
+
+            // Update grid lines
+            scene.remove(gridLines);
+            const gridLineMaterial = new THREE.LineBasicMaterial({ 
+                color: 0x00ff00, 
+                emissive: 0x00ff00, 
+                emissiveIntensity: 1, 
+                transparent: true, 
+                opacity: 0, // Start invisible
+                linewidth: 2
+            });
+            gridLines = new THREE.Group();
+            for (let i = 0; i <= gridSize; i++) {
+                const pointsH = [
+                    new THREE.Vector3(i - gridSize / 2, 0.01, -gridSize / 2),
+                    new THREE.Vector3(i - gridSize / 2, 0.01, gridSize / 2)
+                ];
+                const pointsV = [
+                    new THREE.Vector3(-gridSize / 2, 0.01, i - gridSize / 2),
+                    new THREE.Vector3(gridSize / 2, 0.01, i - gridSize / 2)
+                ];
+                const geometryH = new THREE.BufferGeometry().setFromPoints(pointsH);
+                const geometryV = new THREE.BufferGeometry().setFromPoints(pointsV);
+                const lineH = new THREE.Line(geometryH, gridLineMaterial);
+                const lineV = new THREE.Line(geometryV, gridLineMaterial);
+                gridLines.add(lineH, lineV);
+            }
+            scene.add(gridLines);
         }
-        scene.add(gridLines);
+        let gridLines = new THREE.Group();
+        setupGrid();
 
         // Players setup
         const player1 = { 
-            x: 10, 
-            z: 10, 
+            x: Math.floor(gridSize / 4), 
+            z: Math.floor(gridSize / 4), 
             color: 0xff0000, 
             direction: 'right', 
             distance: 0, 
-            lastPos: { x: 10, z: 10 }, 
+            lastPos: { x: Math.floor(gridSize / 4), z: Math.floor(gridSize / 4) }, 
             gridCovered: 0, 
             wallsMade: 0, 
             score: 0,
@@ -598,12 +790,12 @@
             isThrobbing: false
         };
         const player2 = { 
-            x: 30, 
-            z: 30, 
+            x: Math.floor(3 * gridSize / 4), 
+            z: Math.floor(3 * gridSize / 4), 
             color: 0x00b7eb, 
             direction: 'left', 
             distance: 0, 
-            lastPos: { x: 30, z: 30 }, 
+            lastPos: { x: Math.floor(3 * gridSize / 4), z: Math.floor(3 * gridSize / 4) }, 
             gridCovered: 0, 
             wallsMade: 0, 
             score: 0,
@@ -664,28 +856,29 @@
         // Camera position and modes
         let cameraMode = 'grid';
         const cameraModes = ['grid', 'followPlayer1', 'followPlayer2', 'birdsEye', 'flyAround'];
-        const gridViewPos = new THREE.Vector3(0, 30, 20);
-        const gridViewTarget = new THREE.Vector3(0, 0, 0);
-        const birdsEyePos = new THREE.Vector3(0, 50, 0);
-        const birdsEyeTarget = new THREE.Vector3(0, 0, 0);
         let flyAngle = 0;
 
         function updateCamera() {
+            const gridViewPos = new THREE.Vector3(0, gridSize * 0.75, gridSize * 0.5);
+            const gridViewTarget = new THREE.Vector3(0, 0, 0);
+            const birdsEyePos = new THREE.Vector3(0, gridSize * 1.25, 0);
+            const birdsEyeTarget = new THREE.Vector3(0, 0, 0);
+
             if (cameraMode === 'grid') {
                 camera.position.copy(gridViewPos);
                 camera.lookAt(gridViewTarget);
             } else if (cameraMode === 'followPlayer1') {
                 camera.position.set(
-                    player1Mesh.position.x - 5,
-                    player1Mesh.position.y + 3,
-                    player1Mesh.position.z + 5
+                    player1Mesh.position.x - gridSize * 0.1,
+                    player1Mesh.position.y + gridSize * 0.05,
+                    player1Mesh.position.z + gridSize * 0.1
                 );
                 camera.lookAt(player1Mesh.position);
             } else if (cameraMode === 'followPlayer2') {
                 camera.position.set(
-                    player2Mesh.position.x - 5,
-                    player1Mesh.position.y + 3,
-                    player2Mesh.position.z + 5
+                    player2Mesh.position.x - gridSize * 0.1,
+                    player2Mesh.position.y + gridSize * 0.05,
+                    player2Mesh.position.z + gridSize * 0.1
                 );
                 camera.lookAt(player2Mesh.position);
             } else if (cameraMode === 'birdsEye') {
@@ -693,8 +886,8 @@
                 camera.lookAt(birdsEyeTarget);
             } else if (cameraMode === 'flyAround') {
                 flyAngle += 0.01; // Adjust speed of rotation
-                const radius = 30;
-                const height = 20 + Math.sin(flyAngle * 0.5) * 5; // Slight vertical oscillation
+                const radius = gridSize * 0.75;
+                const height = gridSize * 0.5 + Math.sin(flyAngle * 0.5) * (gridSize * 0.125); // Scaled oscillation
                 camera.position.set(
                     Math.cos(flyAngle) * radius,
                     height,
@@ -808,11 +1001,11 @@
         // Reset game state
         function resetGame() {
             // Reset player positions and stats
-            player1.x = 10;
-            player1.z = 10;
+            player1.x = Math.floor(gridSize / 4);
+            player1.z = Math.floor(gridSize / 4);
             player1.direction = 'right';
             player1.distance = 0;
-            player1.lastPos = { x: 10, z: 10 };
+            player1.lastPos = { x: Math.floor(gridSize / 4), z: Math.floor(gridSize / 4) };
             player1.gridCovered = 0;
             player1.wallsMade = 0;
             player1.score = 0;
@@ -821,11 +1014,11 @@
             player1Mesh.position.set(player1.x - gridSize / 2, 0.1, player1.z - gridSize / 2);
             player1Mesh.className = '';
 
-            player2.x = 30;
-            player2.z = 30;
+            player2.x = Math.floor(3 * gridSize / 4);
+            player2.z = Math.floor(3 * gridSize / 4);
             player2.direction = 'left';
             player2.distance = 0;
-            player2.lastPos = { x: 30, z: 30 };
+            player2.lastPos = { x: Math.floor(3 * gridSize / 4), z: Math.floor(3 * gridSize / 4) };
             player2.gridCovered = 0;
             player2.wallsMade = 0;
             player2.score = 0;
@@ -835,18 +1028,17 @@
             player2Mesh.className = '';
 
             // Reset grid
-            for (let x = 0; x < gridSize; x++) {
-                for (let z = 0; z < gridSize; z++) {
-                    grid[x][z].mesh.material.color.setHex(0x111111);
-                    grid[x][z].mesh.material.opacity = 0;
-                    grid[x][z].mesh.material.emissive.setHex(0x111111);
-                    grid[x][z].mesh.position.y = 0;
-                    grid[x][z].color = 0x111111;
-                    grid[x][z].visits = 0;
-                    grid[x][z].owner = null;
-                    grid[x][z].isWall = false;
-                }
-            }
+            setupGrid();
+            grid.forEach(row => row.forEach(cell => {
+                cell.mesh.material.color.setHex(0x111111);
+                cell.mesh.material.opacity = 0;
+                cell.mesh.material.emissive.setHex(0x111111);
+                cell.mesh.position.y = 0;
+                cell.color = 0x111111;
+                cell.visits = 0;
+                cell.owner = null;
+                cell.isWall = false;
+            }));
 
             // Reset grid lines and players opacity
             gridLines.children.forEach(line => {
@@ -856,6 +1048,9 @@
             player1Border.material.opacity = 0;
             player2Mesh.material.opacity = 0;
             player2Border.material.opacity = 0;
+
+            // Reset mini grid
+            resetMiniGrid();
 
             // Reset game state
             gameOver = false;
@@ -1151,6 +1346,7 @@
             e.stopPropagation();
             document.getElementById('welcomeScreen').style.display = 'none';
             is1PlayerMode = true;
+            setupGrid(); // Ensure grid is set up with selected size
             startCountdown();
         });
 
@@ -1158,6 +1354,7 @@
             e.stopPropagation();
             document.getElementById('welcomeScreen').style.display = 'none';
             is1PlayerMode = false;
+            setupGrid(); // Ensure grid is set up with selected size
             startCountdown();
         });
 
@@ -1166,6 +1363,9 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            // Adjust blue block position on resize
+            bluePos = Math.min(bluePos, window.innerWidth - 70);
+            blueBlock.style.right = `${window.innerWidth - bluePos - 50}px`;
         });
     </script>
 </body>
