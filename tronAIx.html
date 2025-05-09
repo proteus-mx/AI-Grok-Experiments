@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>tronAIx Game - V0.2</title>
+    <title>tronAIx Game - V0.3</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
         canvas { display: block; }
@@ -13,7 +13,7 @@
             width: 100%; 
             display: flex; 
             justify-content: space-between; 
-            font-family: Arial; 
+            font-family: 'Arial', sans-serif; 
             padding: 0 10px; 
             box-sizing: border-box; 
         }
@@ -24,14 +24,16 @@
         }
         #redStats { color: #ff0000; }
         #blueStats { color: #00b7eb; }
+        #redStats div, #blueStats div { font-size: 12px; }
+        #redStats div:first-child, #blueStats div:first-child { font-size: 16px; }
         #speedStats { color: #00ff00; }
         #gameOver { 
             position: absolute; 
             top: 50%; 
             left: 50%; 
             transform: translate(-50%, -50%); 
-            font-family: Arial; 
-            font-size: 24px; 
+            font-family: 'Arial', sans-serif; 
+            font-size: 18px;
             text-align: center; 
             display: none; 
             background: rgba(0, 0, 0, 0.7); 
@@ -42,14 +44,16 @@
         #gameOver div { color: #ffffff; }
         #winner, #loser { color: #ffffff; }
         #restartButton {
-            font-size: 20px;
-            padding: 10px 20px;
-            margin-top: 20px;
+            font-size: 16px;
+            padding: 8px 16px;
+            margin-top: 15px;
             background: #00ff00;
             color: #000;
             border: none;
+            border-radius: 5px;
             cursor: pointer;
             text-shadow: 0 0 5px #000;
+            transition: background 0.3s;
         }
         #restartButton:hover {
             background: #00b7eb;
@@ -59,7 +63,7 @@
             top: 110px; 
             left: 50%; 
             transform: translate(-50%, 0); 
-            font-family: Arial; 
+            font-family: 'Arial', sans-serif; 
             font-size: 32px; 
             color: #ffffff; 
             text-align: center; 
@@ -71,7 +75,7 @@
             top: 50%; 
             left: 50%; 
             transform: translate(-50%, -50%); 
-            font-family: Arial; 
+            font-family: 'Arial', sans-serif; 
             font-size: 96px; 
             color: #00ff00; 
             text-align: center; 
@@ -98,44 +102,84 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.9);
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(0, 255, 0, 0.2));
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            font-family: Arial;
+            font-family: 'Arial', sans-serif;
             color: #00ff00;
             text-align: center;
             z-index: 10;
         }
         #welcomeScreen h1 {
-            font-size: 48px;
-            text-shadow: 0 0 10px #00ff00;
+            font-size: 64px;
+            text-shadow: 0 0 15px #00ff00, 0 0 30px #00b7eb;
+            z-index: 12;
+            opacity: 0;
+            animation: fadeIn 1s ease-in forwards;
         }
         #welcomeScreen p {
             font-size: 24px;
-            max-width: 600px;
+            max-width: 700px;
             margin: 20px 0;
+            text-shadow: 0 0 10px #00ff00;
+            z-index: 12;
+            opacity: 0;
+            animation: fadeIn 1s ease-in 0.3s forwards;
         }
         #welcomeScreen button {
             font-size: 20px;
-            padding: 10px 20px;
+            padding: 12px 24px;
             margin: 10px;
             background: #00ff00;
             color: #000;
             border: none;
+            border-radius: 8px;
             cursor: pointer;
+            box-shadow: 0 0 10px #00ff00;
             text-shadow: 0 0 5px #000;
+            transition: transform 0.2s, box-shadow 0.2s;
+            z-index: 12;
+            opacity: 0;
+            animation: fadeIn 1s ease-in 0.6s forwards;
         }
         #welcomeScreen button:hover {
             background: #00b7eb;
+            box-shadow: 0 0 15px #00b7eb;
+            transform: scale(1.05);
+        }
+        #starField {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            z-index: 11;
+            overflow: hidden;
+        }
+        .star {
+            position: absolute;
+            background: #fff;
+            border-radius: 50%;
+            opacity: 0;
+            animation: twinkle 3s infinite;
+        }
+        @keyframes twinkle {
+            0% { opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { opacity: 0; }
+        }
+        @keyframes fadeIn {
+            to { opacity: 1; }
         }
         #titleBar {
             position: absolute;
             top: 10px;
             left: 50%;
             transform: translateX(-50%);
-            font-family: Arial;
+            font-family: 'Arial', sans-serif;
             text-align: center;
             color: #00ff00;
         }
@@ -149,22 +193,57 @@
         }
         #cameraButton {
             position: absolute;
-            top: 10px;
-            right: 10px;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
             font-size: 16px;
             padding: 8px 16px;
             background: #00ff00;
             color: #000;
             border: none;
+            border-radius: 5px;
             cursor: pointer;
+            z-index: 6;
+            transition: background 0.3s;
         }
         #cameraButton:hover {
             background: #00b7eb;
+        }
+        #gameRestartButton {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 16px;
+            padding: 8px 16px;
+            background: #ff0000;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 6;
+            transition: background 0.3s;
+        }
+        #gameRestartButton:hover {
+            background: #cc0000;
+        }
+        @media (max-width: 600px) {
+            #welcomeScreen h1 {
+                font-size: 48px;
+            }
+            #welcomeScreen p {
+                font-size: 18px;
+                max-width: 90%;
+            }
+            #welcomeScreen button {
+                font-size: 16px;
+                padding: 10px 20px;
+            }
         }
     </style>
 </head>
 <body>
     <div id="welcomeScreen">
+        <div id="starField"></div>
         <h1>tronAIx</h1>
         <p>Navigate the neon grid, outmaneuver your opponent, and claim territory by creating walls. Survive longer and cover more ground to win!</p>
         <button id="start1Player">Start 1 Player</button>
@@ -179,6 +258,7 @@
         </div>
     </div>
     <button id="cameraButton">Cycle Camera</button>
+    <button id="gameRestartButton">Restart</button>
     <div id="ui">
         <div id="redStats">
             <div>Score: <span id="redScore">0</span></div>
@@ -206,6 +286,20 @@
     <div id="countdownDisplay"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
+        // Star field for welcome screen
+        const starField = document.getElementById('starField');
+        for (let i = 0; i < 200; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            const size = Math.random() * 3 + 1;
+            star.style.width = `${size}px`;
+            star.style.height = `${size}px`;
+            star.style.left = `${Math.random() * 100}%`;
+            star.style.top = `${Math.random() * 100}%`;
+            star.style.animationDelay = `${Math.random() * 3}s`;
+            starField.appendChild(star);
+        }
+
         // Scene setup
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -344,11 +438,12 @@
 
         // Camera position and modes
         let cameraMode = 'grid';
-        const cameraModes = ['grid', 'followPlayer1', 'followPlayer2', 'birdsEye'];
+        const cameraModes = ['grid', 'followPlayer1', 'followPlayer2', 'birdsEye', 'flyAround'];
         const gridViewPos = new THREE.Vector3(0, 30, 20);
         const gridViewTarget = new THREE.Vector3(0, 0, 0);
         const birdsEyePos = new THREE.Vector3(0, 50, 0);
         const birdsEyeTarget = new THREE.Vector3(0, 0, 0);
+        let flyAngle = 0;
 
         function updateCamera() {
             if (cameraMode === 'grid') {
@@ -364,13 +459,23 @@
             } else if (cameraMode === 'followPlayer2') {
                 camera.position.set(
                     player2Mesh.position.x - 5,
-                    player2Mesh.position.y + 3,
+                    player1Mesh.position.y + 3,
                     player2Mesh.position.z + 5
                 );
                 camera.lookAt(player2Mesh.position);
             } else if (cameraMode === 'birdsEye') {
                 camera.position.copy(birdsEyePos);
                 camera.lookAt(birdsEyeTarget);
+            } else if (cameraMode === 'flyAround') {
+                flyAngle += 0.01; // Adjust speed of rotation
+                const radius = 30;
+                const height = 20 + Math.sin(flyAngle * 0.5) * 5; // Slight vertical oscillation
+                camera.position.set(
+                    Math.cos(flyAngle) * radius,
+                    height,
+                    Math.sin(flyAngle) * radius
+                );
+                camera.lookAt(gridViewTarget);
             }
         }
 
@@ -422,10 +527,10 @@
         });
 
         // Camera cycle button
-        document.getElementById('cameraButton').addEventListener('click', (e) => {
-            e.stopPropagation();
+        document.getElementById('cameraButton').addEventListener('click', () => {
             const currentIndex = cameraModes.indexOf(cameraMode);
             cameraMode = cameraModes[(currentIndex + 1) % cameraModes.length];
+            console.log('Camera mode changed to:', cameraMode); // Debug log
             updateCamera();
         });
 
@@ -539,6 +644,7 @@
         let gameOver = false;
         function endGame(winner, loser) {
             gameOver = true;
+            cameraMode = 'flyAround'; // Switch to flyAround camera
             const gameOverDiv = document.getElementById('gameOver');
             gameOverDiv.style.display = 'block';
             document.getElementById('winner').textContent = winner === player1 ? 'Red' : 'Blue';
@@ -550,10 +656,27 @@
             document.getElementById('winnerWalls').textContent = winner.wallsMade;
         }
 
-        // Restart button handler
+        // Restart button handler for game over
         document.getElementById('restartButton').addEventListener('click', (e) => {
             e.stopPropagation();
             resetGame();
+        });
+
+        // In-game restart button handler
+        document.getElementById('gameRestartButton').addEventListener('click', (e) => {
+            e.stopPropagation();
+            // End game with no winner/loser (manual restart)
+            gameOver = true;
+            cameraMode = 'flyAround'; // Switch to flyAround camera
+            const gameOverDiv = document.getElementById('gameOver');
+            gameOverDiv.style.display = 'block';
+            document.getElementById('winner').textContent = 'None';
+            document.getElementById('winner').style.color = '#ffffff';
+            document.getElementById('loser').textContent = 'None';
+            document.getElementById('loser').style.color = '#ffffff';
+            document.getElementById('winnerDistance').textContent = 'N/A';
+            document.getElementById('winnerGrid').textContent = 'N/A';
+            document.getElementById('winnerWalls').textContent = 'N/A';
         });
 
         // Speed control
@@ -624,6 +747,15 @@
             }
         }
 
+        // Render loop for game over
+        function renderGameOver() {
+            if (document.getElementById('gameOver').style.display === 'block') {
+                updateCamera();
+                renderer.render(scene, camera);
+                requestAnimationFrame(renderGameOver);
+            }
+        }
+
         // Countdown setup
         let gameStarted = false;
         function startCountdown() {
@@ -664,7 +796,10 @@
         // Game loop
         let lastUpdate = performance.now();
         function animate() {
-            if (!gameStarted || gameOver) return;
+            if (!gameStarted || gameOver) {
+                if (gameOver) renderGameOver(); // Continue rendering for game over
+                return;
+            }
             requestAnimationFrame(animate);
             const now = performance.now();
 
@@ -675,7 +810,12 @@
             }
 
             if (now - lastUpdate >= updateInterval) {
-                // Update directions for blue player (random)
+                // Update directions for both players in AI Mode (random)
+                if (!is1PlayerMode) {
+                    if (Math.random() < 0.3) {
+                        player1.direction = getRandomDirection(player1.direction);
+                    }
+                }
                 if (Math.random() < 0.3) {
                     player2.direction = getRandomDirection(player2.direction);
                 }
