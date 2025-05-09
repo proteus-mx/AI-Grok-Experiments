@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>tronAIx Game - V0.3</title>
+    <title>tronAIx Game - V0.4</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
         canvas { display: block; }
@@ -42,7 +42,17 @@
             z-index: 5; 
         }
         #gameOver div { color: #ffffff; }
+        #gameOverTitle {
+            font-size: 36px; /* Larger Game Over text */
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+        }
         #winner, #loser { color: #ffffff; }
+        .scoreValue {
+            font-size: 14px; /* Smaller font for score numbers */
+        }
+        #redScoreValue { color: #ff0000; }
+        #blueScoreValue { color: #00b7eb; }
         #restartButton {
             font-size: 16px;
             padding: 8px 16px;
@@ -110,12 +120,12 @@
             font-family: 'Arial', sans-serif;
             color: #00ff00;
             text-align: center;
-            z-index: 10;
+            z-index: 15;
         }
         #welcomeScreen h1 {
             font-size: 64px;
             text-shadow: 0 0 15px #00ff00, 0 0 30px #00b7eb;
-            z-index: 12;
+            z-index: 17;
             opacity: 0;
             animation: fadeIn 1s ease-in forwards;
         }
@@ -124,7 +134,7 @@
             max-width: 700px;
             margin: 20px 0;
             text-shadow: 0 0 10px #00ff00;
-            z-index: 12;
+            z-index: 17;
             opacity: 0;
             animation: fadeIn 1s ease-in 0.3s forwards;
         }
@@ -140,7 +150,7 @@
             box-shadow: 0 0 10px #00ff00;
             text-shadow: 0 0 5px #000;
             transition: transform 0.2s, box-shadow 0.2s;
-            z-index: 12;
+            z-index: 17;
             opacity: 0;
             animation: fadeIn 1s ease-in 0.6s forwards;
         }
@@ -156,7 +166,7 @@
             width: 100%;
             height: 100%;
             background: transparent;
-            z-index: 11;
+            z-index: 16;
             overflow: hidden;
         }
         .star {
@@ -173,6 +183,14 @@
         }
         @keyframes fadeIn {
             to { opacity: 1; }
+        }
+        @keyframes throb {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        .throbbing {
+            animation: throb 0.5s ease-in-out infinite;
         }
         #titleBar {
             position: absolute;
@@ -226,6 +244,77 @@
         #gameRestartButton:hover {
             background: #cc0000;
         }
+        #welcomeScreen:not([style*="display: none"]) ~ #cameraButton,
+        #welcomeScreen:not([style*="display: none"]) ~ #gameRestartButton {
+            display: none;
+        }
+        #redPlayerBlock, #bluePlayerBlock {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            z-index: 17;
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 10px #ffffff;
+        }
+        #redPlayerBlock {
+            top: 20px;
+            left: 20px;
+            background: #ff0000;
+            box-shadow: 0 0 15px #ff0000;
+        }
+        #bluePlayerBlock {
+            top: 20px;
+            right: 20px;
+            background: #00b7eb;
+            box-shadow: 0 0 15px #00b7eb;
+        }
+        #miniGrid {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            background: #111111;
+            border: 2px solid #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+            z-index: 17;
+            margin-top: 20px;
+            display: grid;
+            grid-template: repeat(10, 1fr) / repeat(10, 1fr);
+        }
+        .miniGridCell {
+            position: relative;
+            border: 1px solid #00ff00;
+            box-sizing: border-box;
+        }
+        .miniGridPlayer {
+            position: absolute;
+            width: 80%;
+            height: 80%;
+            top: 10%;
+            left: 10%;
+            border: 1px solid #ffffff;
+            box-shadow: 0 0 5px #ffffff;
+            transition: all 0.2s;
+        }
+        #miniRedPlayer {
+            background: #ff0000;
+            box-shadow: 0 0 8px #ff0000;
+        }
+        #miniBluePlayer {
+            background: #00b7eb;
+            box-shadow: 0 0 8px #00b7eb;
+        }
+        .miniGridTrail {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0.5;
+        }
+        .miniGridWall {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0.9;
+        }
         @media (max-width: 600px) {
             #welcomeScreen h1 {
                 font-size: 48px;
@@ -238,14 +327,28 @@
                 font-size: 16px;
                 padding: 10px 20px;
             }
+            #redPlayerBlock, #bluePlayerBlock {
+                width: 30px;
+                height: 30px;
+            }
+            #miniGrid {
+                width: 150px;
+                height: 150px;
+            }
+            #gameOverTitle {
+                font-size: 24px;
+            }
         }
     </style>
 </head>
 <body>
     <div id="welcomeScreen">
         <div id="starField"></div>
+        <div id="redPlayerBlock"></div>
+        <div id="bluePlayerBlock"></div>
         <h1>tronAIx</h1>
         <p>Navigate the neon grid, outmaneuver your opponent, and claim territory by creating walls. Survive longer and cover more ground to win!</p>
+        <div id="miniGrid"></div>
         <button id="start1Player">Start 1 Player</button>
         <button id="startAIMode">AI Mode</button>
     </div>
@@ -274,12 +377,14 @@
         </div>
     </div>
     <div id="gameOver">
-        <div>Game Over!</div>
+        <div id="gameOverTitle">Game Over!</div>
         <div>Winner: <span id="winner"></span></div>
         <div>Loser: <span id="loser"></span> (Player Trapped)</div>
         <div>Distance Traveled: <span id="winnerDistance"></span></div>
         <div>Area Covered: <span id="winnerGrid"></span></div>
         <div>Walls Made: <span id="winnerWalls"></span></div>
+        <div>Red Score: <span id="redScoreValue" class="scoreValue"></span></div>
+        <div>Blue Score: <span id="blueScoreValue" class="scoreValue"></span></div>
         <button id="restartButton">Restart</button>
     </div>
     <div id="bonusMessage"></div>
@@ -299,6 +404,102 @@
             star.style.animationDelay = `${Math.random() * 3}s`;
             starField.appendChild(star);
         }
+
+        // Mini grid setup
+        const miniGridSize = 10;
+        const miniGrid = [];
+        const miniGridDiv = document.getElementById('miniGrid');
+        for (let x = 0; x < miniGridSize; x++) {
+            miniGrid[x] = [];
+            for (let y = 0; y < miniGridSize; y++) {
+                const cell = document.createElement('div');
+                cell.className = 'miniGridCell';
+                miniGridDiv.appendChild(cell);
+                miniGrid[x][y] = { element: cell, visits: 0, owner: null, isWall: false };
+            }
+        }
+
+        // Mini grid players
+        const miniRedPlayer = document.createElement('div');
+        miniRedPlayer.id = 'miniRedPlayer';
+        miniRedPlayer.className = 'miniGridPlayer';
+        miniGrid[2][2].element.appendChild(miniRedPlayer);
+
+        const miniBluePlayer = document.createElement('div');
+        miniBluePlayer.id = 'miniBluePlayer';
+        miniBluePlayer.className = 'miniGridPlayer';
+        miniGrid[7][7].element.appendChild(miniBluePlayer);
+
+        const miniPlayer1 = { x: 2, y: 2, color: '#ff0000', direction: 'right', element: miniRedPlayer };
+        const miniPlayer2 = { x: 7, y: 7, color: '#00b7eb', direction: 'left', element: miniBluePlayer };
+
+        function getMiniRandomDirection(currentDirection) {
+            const directions = ['up', 'down', 'left', 'right'];
+            const opposites = { 'up': 'down', 'down': 'up', 'left': 'right', 'right': 'left' };
+            const validDirections = directions.filter(dir => dir !== opposites[currentDirection]);
+            return validDirections[Math.floor(Math.random() * validDirections.length)];
+        }
+
+        function moveMiniPlayer(player, otherPlayer) {
+            let newX = player.x;
+            let newY = player.y;
+
+            if (player.direction === 'up') newY--;
+            if (player.direction === 'down') newY++;
+            if (player.direction === 'left') newX--;
+            if (player.direction === 'right') newX++;
+
+            if (newX === otherPlayer.x && newY === otherPlayer.y) {
+                player.direction = getMiniRandomDirection(player.direction);
+                return;
+            }
+
+            if (newX >= 0 && newX < miniGridSize && newY >= 0 && newY < miniGridSize && !miniGrid[newX][newY].isWall) {
+                player.element.remove();
+                player.x = newX;
+                player.y = newY;
+                miniGrid[player.x][player.y].element.appendChild(player.element);
+
+                const cell = miniGrid[player.x][player.y];
+                cell.visits++;
+                if (cell.owner !== player) {
+                    if (cell.owner && cell.element.querySelector('.miniGridTrail')) {
+                        cell.element.querySelector('.miniGridTrail').remove();
+                    }
+                    cell.owner = player;
+                    const trail = document.createElement('div');
+                    trail.className = 'miniGridTrail';
+                    trail.style.background = player.color;
+                    cell.element.appendChild(trail);
+                }
+                if (cell.visits >= 3) {
+                    cell.isWall = true;
+                    if (cell.element.querySelector('.miniGridTrail')) {
+                        cell.element.querySelector('.miniGridTrail').remove();
+                    }
+                    const wall = document.createElement('div');
+                    wall.className = 'miniGridWall';
+                    wall.style.background = player.color;
+                    cell.element.appendChild(wall);
+                }
+            } else {
+                player.direction = getMiniRandomDirection(player.direction);
+            }
+        }
+
+        function animateMiniGrid() {
+            if (document.getElementById('welcomeScreen').style.display === 'none') return;
+            if (Math.random() < 0.3) {
+                miniPlayer1.direction = getMiniRandomDirection(miniPlayer1.direction);
+            }
+            if (Math.random() < 0.3) {
+                miniPlayer2.direction = getMiniRandomDirection(miniPlayer2.direction);
+            }
+            moveMiniPlayer(miniPlayer1, miniPlayer2);
+            moveMiniPlayer(miniPlayer2, miniPlayer1);
+            setTimeout(animateMiniGrid, 200);
+        }
+        animateMiniGrid();
 
         // Scene setup
         const scene = new THREE.Scene();
@@ -383,8 +584,32 @@
         scene.add(gridLines);
 
         // Players setup
-        const player1 = { x: 10, z: 10, color: 0xff0000, direction: 'right', distance: 0, lastPos: { x: 10, z: 10 }, gridCovered: 0, wallsMade: 0, score: 0 };
-        const player2 = { x: 30, z: 30, color: 0x00b7eb, direction: 'left', distance: 0, lastPos: { x: 30, z: 30 }, gridCovered: 0, wallsMade: 0, score: 0 };
+        const player1 = { 
+            x: 10, 
+            z: 10, 
+            color: 0xff0000, 
+            direction: 'right', 
+            distance: 0, 
+            lastPos: { x: 10, z: 10 }, 
+            gridCovered: 0, 
+            wallsMade: 0, 
+            score: 0,
+            lastMoveTime: performance.now(),
+            isThrobbing: false
+        };
+        const player2 = { 
+            x: 30, 
+            z: 30, 
+            color: 0x00b7eb, 
+            direction: 'left', 
+            distance: 0, 
+            lastPos: { x: 30, z: 30 }, 
+            gridCovered: 0, 
+            wallsMade: 0, 
+            score: 0,
+            lastMoveTime: performance.now(),
+            isThrobbing: false
+        };
 
         const player1Geometry = new THREE.BoxGeometry(0.8, 0.2, 0.8);
         const player1Material = new THREE.MeshStandardMaterial({ 
@@ -591,7 +816,10 @@
             player1.gridCovered = 0;
             player1.wallsMade = 0;
             player1.score = 0;
+            player1.lastMoveTime = performance.now();
+            player1.isThrobbing = false;
             player1Mesh.position.set(player1.x - gridSize / 2, 0.1, player1.z - gridSize / 2);
+            player1Mesh.className = '';
 
             player2.x = 30;
             player2.z = 30;
@@ -601,7 +829,10 @@
             player2.gridCovered = 0;
             player2.wallsMade = 0;
             player2.score = 0;
+            player2.lastMoveTime = performance.now();
+            player2.isThrobbing = false;
             player2Mesh.position.set(player2.x - gridSize / 2, 0.1, player2.z - gridSize / 2);
+            player2Mesh.className = '';
 
             // Reset grid
             for (let x = 0; x < gridSize; x++) {
@@ -654,6 +885,8 @@
             document.getElementById('winnerDistance').textContent = winner.distance;
             document.getElementById('winnerGrid').textContent = winner.gridCovered;
             document.getElementById('winnerWalls').textContent = winner.wallsMade;
+            document.getElementById('redScoreValue').textContent = player1.score;
+            document.getElementById('blueScoreValue').textContent = player2.score;
         }
 
         // Restart button handler for game over
@@ -677,6 +910,8 @@
             document.getElementById('winnerDistance').textContent = 'N/A';
             document.getElementById('winnerGrid').textContent = 'N/A';
             document.getElementById('winnerWalls').textContent = 'N/A';
+            document.getElementById('redScoreValue').textContent = player1.score;
+            document.getElementById('blueScoreValue').textContent = player2.score;
         });
 
         // Speed control
@@ -844,6 +1079,9 @@
                             player.distance++;
                             player.score += 1;
                             player.lastPos = { x: player.x, z: player.z };
+                            player.lastMoveTime = now; // Update move time
+                            player.isThrobbing = false;
+                            mesh.className = ''; // Remove throbbing
                         }
 
                         const cell = grid[player.x][player.z];
@@ -884,6 +1122,12 @@
                         if (!is1PlayerMode || player !== player1) {
                             player.direction = getRandomDirection(player.direction);
                         }
+                    }
+
+                    // Check for throbbing
+                    if (now - player.lastMoveTime >= 2000 && !player.isThrobbing) {
+                        player.isThrobbing = true;
+                        mesh.className = 'throbbing';
                     }
 
                     if (isTrapped(player)) {
