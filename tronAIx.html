@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>tronAIx Game - V0.8</title>
+    <title>tronAIx Game - V0.9</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
         canvas { display: block; }
@@ -86,7 +86,7 @@
             left: 50%; 
             transform: translate(-50%, -50%); 
             font-family: 'Arial', sans-serif; 
-            font-size: 144px; /* Increased size */
+            font-size: 144px;
             color: #00ff00; 
             text-align: center; 
             display: none; 
@@ -124,10 +124,38 @@
         }
         #welcomeScreen h1 {
             font-size: 64px;
-            text-shadow: 0 0 15px #00ff00, 0 0 30px #00b7eb;
             z-index: 17;
             opacity: 0;
             animation: fadeIn 1s ease-in forwards;
+        }
+        #welcomeScreen h1 .letter {
+            display: inline-block;
+            animation: colorCycle 3s infinite;
+        }
+        #welcomeScreen h1 .letter:nth-child(1) { animation-delay: 0s; }
+        #welcomeScreen h1 .letter:nth-child(2) { animation-delay: 0.2s; }
+        #welcomeScreen h1 .letter:nth-child(3) { animation-delay: 0.4s; }
+        #welcomeScreen h1 .letter:nth-child(4) { animation-delay: 0.6s; }
+        #welcomeScreen h1 .letter:nth-child(5) { animation-delay: 0.8s; }
+        #welcomeScreen h1 .letter:nth-child(6) { animation-delay: 1.0s; }
+        #welcomeScreen h1 .letter:nth-child(7) { animation-delay: 1.2s; }
+        @keyframes colorCycle {
+            0% {
+                color: #00ff00;
+                text-shadow: 0 0 15px #00ff00, 0 0 30px #00b7eb;
+            }
+            33% {
+                color: #ff0000;
+                text-shadow: 0 0 15px #ff0000, 0 0 30px #00b7eb;
+            }
+            66% {
+                color: #00b7eb;
+                text-shadow: 0 0 15px #00b7eb, 0 0 30px #ff0000;
+            }
+            100% {
+                color: #00ff00;
+                text-shadow: 0 0 15px #00ff00, 0 0 30px #00b7eb;
+            }
         }
         #welcomeScreen p {
             font-size: 18px;
@@ -155,8 +183,8 @@
             animation: fadeIn 1s ease-in 0.6s forwards;
         }
         #start1Player {
-            margin-top: 20px; /* Added space above Human button */
-            animation: throb 0.5s ease-in-out infinite; /* Throbbing effect */
+            margin-top: 20px;
+            animation: throb 0.5s ease-in-out infinite;
         }
         #welcomeScreen button:hover {
             background: #00b7eb;
@@ -172,7 +200,7 @@
             animation: fadeIn 1s ease-in 0.9s forwards;
         }
         #gameModeLabel {
-            margin-top: 20px; /* Added space above Game Mode */
+            margin-top: 20px;
         }
         #gameModeButtons {
             display: flex;
@@ -296,40 +324,6 @@
         #welcomeScreen:not([style*="display: none"]) ~ #gameRestartButton {
             display: none;
         }
-        #redPlayerBlock, #bluePlayerBlock {
-            position: absolute;
-            width: 50px;
-            height: 50px;
-            z-index: 17;
-            border: 2px solid #ffffff;
-            box-shadow: 0 0 10px #ffffff;
-            transition: left 0.1s linear;
-        }
-        #redPlayerBlock {
-            top: 20px;
-            left: 20px;
-            background: #ff0000;
-            box-shadow: 0 0 15px #ff0000;
-        }
-        #bluePlayerBlock {
-            top: 20px;
-            right: 20px;
-            background: #00b7eb;
-            box-shadow: 0 0 15px #00b7eb;
-        }
-        #redPlayerBlock::after, #bluePlayerBlock::after {
-            content: '';
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background: inherit;
-            opacity: 0.5;
-            z-index: -1;
-            transition: opacity 0.5s;
-        }
-        #redPlayerBlock.moving-right::after, #bluePlayerBlock.moving-left::after {
-            opacity: 0;
-        }
         #miniGrid {
             position: relative;
             width: 200px;
@@ -389,10 +383,6 @@
                 font-size: 16px;
                 padding: 10px 20px;
             }
-            #redPlayerBlock, #bluePlayerBlock {
-                width: 30px;
-                height: 30px;
-            }
             #miniGrid {
                 width: 150px;
                 height: 150px;
@@ -413,9 +403,15 @@
 <body>
     <div id="welcomeScreen">
         <div id="starField"></div>
-        <div id="redPlayerBlock"></div>
-        <div id="bluePlayerBlock"></div>
-        <h1>tronAIx</h1>
+        <h1>
+            <span class="letter">t</span>
+            <span class="letter">r</span>
+            <span class="letter">o</span>
+            <span class="letter">n</span>
+            <span class="letter">A</span>
+            <span class="letter">I</span>
+            <span class="letter">x</span>
+        </h1>
         <p>Navigate the neon grid, outmaneuver your opponent, and claim territory by creating walls. Survive longer and cover more ground to win!</p>
         <div id="miniGrid"></div>
         <div id="gameModeLabel">Game Mode</div>
@@ -513,7 +509,6 @@
         const miniPlayer2 = { x: 7, y: 7, color: '#00b7eb', direction: 'left', element: miniBluePlayer };
 
         function resetMiniGrid() {
-            // Clear trails and walls
             for (let x = 0; x < miniGridSize; x++) {
                 for (let y = 0; y < miniGridSize; y++) {
                     const cell = miniGrid[x][y];
@@ -526,7 +521,6 @@
                     if (wall) wall.remove();
                 }
             }
-            // Reset player positions
             miniPlayer1.x = 2;
             miniPlayer1.y = 2;
             miniPlayer1.direction = 'right';
@@ -608,68 +602,6 @@
         }
         animateMiniGrid();
 
-        // Red and Blue block animation
-        const redBlock = document.getElementById('redPlayerBlock');
-        const blueBlock = document.getElementById('bluePlayerBlock');
-        let redPos = 20;
-        let bluePos = window.innerWidth - 70; // 20px from right edge (50px width + 20px margin)
-        let redSpeed = 2;
-        let blueSpeed = -2;
-
-        function animateBlocks() {
-            if (document.getElementById('welcomeScreen').style.display === 'none') return;
-
-            redPos += redSpeed;
-            bluePos += blueSpeed;
-
-            // Keep blocks within screen bounds
-            if (redPos < 20) {
-                redPos = 20;
-                redSpeed = -redSpeed;
-                redBlock.classList.remove('moving-right');
-                redBlock.classList.add('moving-left');
-            } else if (redPos > window.innerWidth - 70) {
-                redPos = window.innerWidth - 70;
-                redSpeed = -redSpeed;
-                redBlock.classList.remove('moving-left');
-                redBlock.classList.add('moving-right');
-            } else {
-                redBlock.classList.add(redSpeed > 0 ? 'moving-right' : 'moving-left');
-            }
-
-            if (bluePos < 20) {
-                bluePos = 20;
-                blueSpeed = -blueSpeed;
-                blueBlock.classList.remove('moving-left');
-                blueBlock.classList.add('moving-right');
-            } else if (bluePos > window.innerWidth - 70) {
-                bluePos = window.innerWidth - 70;
-                blueSpeed = -blueSpeed;
-                blueBlock.classList.remove('moving-right');
-                blueBlock.classList.add('moving-left');
-            } else {
-                blueBlock.classList.add(blueSpeed > 0 ? 'moving-right' : 'moving-left');
-            }
-
-            // Check for collision
-            const redRight = redPos + 50;
-            const blueLeft = bluePos;
-            if (redRight >= blueLeft && redPos <= bluePos + 50) {
-                redSpeed = -redSpeed;
-                blueSpeed = -blueSpeed;
-                redBlock.classList.toggle('moving-right', redSpeed > 0);
-                redBlock.classList.toggle('moving-left', redSpeed < 0);
-                blueBlock.classList.toggle('moving-right', blueSpeed > 0);
-                blueBlock.classList.toggle('moving-left', blueSpeed < 0);
-            }
-
-            redBlock.style.left = `${redPos}px`;
-            blueBlock.style.right = `${window.innerWidth - bluePos - 50}px`;
-
-            requestAnimationFrame(animateBlocks);
-        }
-        animateBlocks();
-
         // Scene setup
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -682,9 +614,9 @@
         const starCount = 1000;
         const starPositions = new Float32Array(starCount * 3);
         for (let i = 0; i < starCount * 3; i += 3) {
-            starPositions[i] = (Math.random() - 0.5) * 2000; // x
-            starPositions[i + 1] = (Math.random() - 0.5) * 2000; // y
-            starPositions[i + 2] = (Math.random() - 0.5) * 2000; // z
+            starPositions[i] = (Math.random() - 0.5) * 2000;
+            starPositions[i + 1] = (Math.random() - 0.5) * 2000;
+            starPositions[i + 2] = (Math.random() - 0.5) * 2000;
         }
         starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
         const starMaterial = new THREE.PointsMaterial({ 
@@ -703,7 +635,7 @@
         scene.add(directionalLight);
 
         // Grid size selection
-        let gridSize = 30; // Default to Medium (30x30)
+        let gridSize = 30;
         const gridSizeButtons = document.querySelectorAll('#gridSizeButtons button');
         gridSizeButtons.forEach(button => {
             button.addEventListener('click', (e) => {
@@ -719,11 +651,9 @@
         // Grid setup
         let grid = [];
         function setupGrid() {
-            // Clear existing grid
             grid.forEach(row => row.forEach(cell => scene.remove(cell.mesh)));
             grid = [];
 
-            // Create new grid
             for (let x = 0; x < gridSize; x++) {
                 grid[x] = [];
                 for (let z = 0; z < gridSize; z++) {
@@ -732,7 +662,7 @@
                         color: 0x111111, 
                         side: THREE.DoubleSide, 
                         transparent: true, 
-                        opacity: 0, // Start invisible
+                        opacity: 0,
                         emissive: 0x111111,
                         emissiveIntensity: 0.5
                     });
@@ -744,14 +674,13 @@
                 }
             }
 
-            // Update grid lines
             scene.remove(gridLines);
             const gridLineMaterial = new THREE.LineBasicMaterial({ 
                 color: 0x00ff00, 
                 emissive: 0x00ff00, 
                 emissiveIntensity: 1, 
                 transparent: true, 
-                opacity: 0, // Start invisible
+                opacity: 0,
                 linewidth: 2
             });
             gridLines = new THREE.Group();
@@ -811,7 +740,7 @@
             metalness: 0.2, 
             roughness: 0.8,
             transparent: true,
-            opacity: 0 // Start invisible
+            opacity: 0
         });
         const player1Mesh = new THREE.Mesh(player1Geometry, player1Material);
         player1Mesh.position.set(player1.x - gridSize / 2, 0.1, player1.z - gridSize / 2);
@@ -823,7 +752,7 @@
             emissive: 0xffffff, 
             emissiveIntensity: 1,
             transparent: true,
-            opacity: 0 // Start invisible
+            opacity: 0
         });
         const player1Border = new THREE.LineSegments(player1BorderGeometry, player1BorderMaterial);
         player1Mesh.add(player1Border);
@@ -836,7 +765,7 @@
             metalness: 0.2, 
             roughness: 0.8,
             transparent: true,
-            opacity: 0 // Start invisible
+            opacity: 0
         });
         const player2Mesh = new THREE.Mesh(player2Geometry, player2Material);
         player2Mesh.position.set(player2.x - gridSize / 2, 0.1, player2.z - gridSize / 2);
@@ -848,7 +777,7 @@
             emissive: 0xffffff, 
             emissiveIntensity: 1,
             transparent: true,
-            opacity: 0 // Start invisible
+            opacity: 0
         });
         const player2Border = new THREE.LineSegments(player2BorderGeometry, player2BorderMaterial);
         player2Mesh.add(player2Border);
@@ -885,9 +814,9 @@
                 camera.position.copy(birdsEyePos);
                 camera.lookAt(birdsEyeTarget);
             } else if (cameraMode === 'flyAround') {
-                flyAngle += 0.01; // Adjust speed of rotation
+                flyAngle += 0.01;
                 const radius = gridSize * 0.75;
-                const height = gridSize * 0.5 + Math.sin(flyAngle * 0.5) * (gridSize * 0.125); // Scaled oscillation
+                const height = gridSize * 0.5 + Math.sin(flyAngle * 0.5) * (gridSize * 0.125);
                 camera.position.set(
                     Math.cos(flyAngle) * radius,
                     height,
@@ -904,7 +833,6 @@
         function handleInput(event) {
             if (document.getElementById('welcomeScreen').style.display !== 'none' || !is1PlayerMode) return;
 
-            // Prevent interaction with UI elements
             if (event.target.tagName === 'BUTTON' || event.target.closest('#ui')) return;
 
             const clientX = event.type === 'click' ? event.clientX : event.touches[0].clientX;
@@ -914,7 +842,6 @@
             const deltaX = clientX - screenCenterX;
             const deltaY = clientY - screenCenterY;
 
-            // Determine direction based on input position
             if (Math.abs(deltaX) > Math.abs(deltaY)) {
                 player1.direction = deltaX > 0 ? 'right' : 'left';
             } else {
@@ -948,7 +875,6 @@
         document.getElementById('cameraButton').addEventListener('click', () => {
             const currentIndex = cameraModes.indexOf(cameraMode);
             cameraMode = cameraModes[(currentIndex + 1) % cameraModes.length];
-            console.log('Camera mode changed to:', cameraMode); // Debug log
             updateCamera();
         });
 
@@ -1000,7 +926,6 @@
 
         // Reset game state
         function resetGame() {
-            // Reset player positions and stats
             player1.x = Math.floor(gridSize / 4);
             player1.z = Math.floor(gridSize / 4);
             player1.direction = 'right';
@@ -1027,7 +952,6 @@
             player2Mesh.position.set(player2.x - gridSize / 2, 0.1, player2.z - gridSize / 2);
             player2Mesh.className = '';
 
-            // Reset grid
             setupGrid();
             grid.forEach(row => row.forEach(cell => {
                 cell.mesh.material.color.setHex(0x111111);
@@ -1040,7 +964,6 @@
                 cell.isWall = false;
             }));
 
-            // Reset grid lines and players opacity
             gridLines.children.forEach(line => {
                 line.material.opacity = 0;
             });
@@ -1049,17 +972,14 @@
             player2Mesh.material.opacity = 0;
             player2Border.material.opacity = 0;
 
-            // Reset mini grid
             resetMiniGrid();
 
-            // Reset game state
             gameOver = false;
             gameStarted = false;
             speedMultiplier = 1;
             updateInterval = baseUpdateInterval;
             lastSpeedIncrease = performance.now();
 
-            // Hide game over and show welcome screen
             document.getElementById('gameOver').style.display = 'none';
             document.getElementById('welcomeScreen').style.display = 'flex';
             document.getElementById('fadeOverlay').style.display = 'block';
@@ -1070,7 +990,7 @@
         let gameOver = false;
         function endGame(winner, loser) {
             gameOver = true;
-            cameraMode = 'flyAround'; // Switch to flyAround camera
+            cameraMode = 'flyAround';
             const gameOverDiv = document.getElementById('gameOver');
             gameOverDiv.style.display = 'block';
             document.getElementById('winner').textContent = winner === player1 ? 'Red' : 'Blue';
@@ -1093,9 +1013,8 @@
         // In-game restart button handler
         document.getElementById('gameRestartButton').addEventListener('click', (e) => {
             e.stopPropagation();
-            // End game with no winner/loser (manual restart)
             gameOver = true;
-            cameraMode = 'flyAround'; // Switch to flyAround camera
+            cameraMode = 'flyAround';
             const gameOverDiv = document.getElementById('gameOver');
             gameOverDiv.style.display = 'block';
             document.getElementById('winner').textContent = 'None';
@@ -1139,23 +1058,20 @@
             function animateFade() {
                 const elapsed = performance.now() - startTime;
                 const progress = Math.min(elapsed / duration, 1);
-                const gridOpacity = progress * 0.5; // Target opacity for grid
-                const lineOpacity = progress * 0.5; // Target opacity for lines
-                const playerOpacity = progress; // Target opacity for players
+                const gridOpacity = progress * 0.5;
+                const lineOpacity = progress * 0.5;
+                const playerOpacity = progress;
 
-                // Update grid opacity
                 for (let x = 0; x < gridSize; x++) {
                     for (let z = 0; z < gridSize; z++) {
                         grid[x][z].mesh.material.opacity = gridOpacity;
                     }
                 }
 
-                // Update grid lines opacity
                 gridLines.children.forEach(line => {
                     line.material.opacity = lineOpacity;
                 });
 
-                // Update player opacity
                 player1Mesh.material.opacity = playerOpacity;
                 player1Border.material.opacity = playerOpacity;
                 player2Mesh.material.opacity = playerOpacity;
@@ -1192,17 +1108,15 @@
             const countdownDiv = document.getElementById('countdownDisplay');
             const fadeOverlay = document.getElementById('fadeOverlay');
             countdownDiv.style.display = 'block';
-            fadeOverlay.style.opacity = '1'; // Ensure overlay is visible
+            fadeOverlay.style.opacity = '1';
             let countdown = 3;
             countdownDiv.textContent = countdown;
 
-            // Start fading in grid and fading out overlay
-            fadeInGrid(4000); // 4-second fade-in
+            fadeInGrid(4000);
             setTimeout(() => {
                 fadeOverlay.style.opacity = '0';
             }, 0);
 
-            // Start rendering the scene
             renderDuringCountdown();
 
             const countdownInterval = setInterval(() => {
@@ -1213,7 +1127,7 @@
                     countdownDiv.textContent = 'Go!';
                     setTimeout(() => {
                         countdownDiv.style.display = 'none';
-                        fadeOverlay.style.display = 'none'; // Remove overlay after countdown
+                        fadeOverlay.style.display = 'none';
                         gameStarted = true;
                         startTime = performance.now();
                         animate();
@@ -1227,7 +1141,7 @@
         let lastUpdate = performance.now();
         function animate() {
             if (!gameStarted || gameOver) {
-                if (gameOver) renderGameOver(); // Continue rendering for game over
+                if (gameOver) renderGameOver();
                 return;
             }
             requestAnimationFrame(animate);
@@ -1240,7 +1154,6 @@
             }
 
             if (now - lastUpdate >= updateInterval) {
-                // Update directions for both players in AI Mode (random)
                 if (!is1PlayerMode) {
                     if (Math.random() < 0.3) {
                         player1.direction = getRandomDirection(player1.direction);
@@ -1274,9 +1187,9 @@
                             player.distance++;
                             player.score += 1;
                             player.lastPos = { x: player.x, z: player.z };
-                            player.lastMoveTime = now; // Update move time
+                            player.lastMoveTime = now;
                             player.isThrobbing = false;
-                            mesh.className = ''; // Remove throbbing
+                            mesh.className = '';
                         }
 
                         const cell = grid[player.x][player.z];
@@ -1313,13 +1226,11 @@
                         const targetPos = new THREE.Vector3(player.x - gridSize / 2, 0.1, player.z - gridSize / 2);
                         mesh.position.lerp(targetPos, 0.9);
                     } else {
-                        // Only change direction on collision if not in 1 Player Mode for player1
                         if (!is1PlayerMode || player !== player1) {
                             player.direction = getRandomDirection(player.direction);
                         }
                     }
 
-                    // Check for throbbing
                     if (now - player.lastMoveTime >= 2000 && !player.isThrobbing) {
                         player.isThrobbing = true;
                         mesh.className = 'throbbing';
@@ -1346,7 +1257,7 @@
             e.stopPropagation();
             document.getElementById('welcomeScreen').style.display = 'none';
             is1PlayerMode = true;
-            setupGrid(); // Ensure grid is set up with selected size
+            setupGrid();
             startCountdown();
         });
 
@@ -1354,7 +1265,7 @@
             e.stopPropagation();
             document.getElementById('welcomeScreen').style.display = 'none';
             is1PlayerMode = false;
-            setupGrid(); // Ensure grid is set up with selected size
+            setupGrid();
             startCountdown();
         });
 
@@ -1363,9 +1274,6 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-            // Adjust blue block position on resize
-            bluePos = Math.min(bluePos, window.innerWidth - 70);
-            blueBlock.style.right = `${window.innerWidth - bluePos - 50}px`;
         });
     </script>
 </body>
