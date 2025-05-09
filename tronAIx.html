@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>tronAIx Game - V0.1</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        canvas { display: block; }
+        #ui { 
+            position: absolute; 
+            top: 10px; 
+            left: 10px; 
+            font-family: Arial; 
+        }
+        #redStats { color: #ff0000; }
+        #blueStats { color: #00b7eb; }
+        #speedStats { color: #00ff00; }
+        #gameOver { 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            font-family: Arial; 
+            font-size: 24px; 
+            text-align: center; 
+            display: none; 
+            background: rgba(0, 0, 0, 0.7); 
+            padding: 20px; 
+            border: 2px solid #00ff00; 
+        }
+        #gameOver div { color: #ffffff; }
+        #winner, #loser { color: #ffffff; }
+        #bonusMessage { 
+            position: absolute; 
+            top: 20%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            font-family: Arial; 
+            font-size: 32px; 
+            color: #ffffff; 
+            text-align: center; 
+            display: none; 
+            text-shadow: 0 0 10px #00ff00; 
+        }
+        #countdownDisplay { 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            font-family: Arial; 
+            font-size: 48px; 
+            color: #00ff00; 
+            text-align: center; 
+            display: none; 
+            text-shadow: 0 0 10px #00ff00; 
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div id="speedStats">Time: <span id="timer">0</span>s</div>
+        <div id="redStats">Red Score: <span id="redScore">0</span></div>
+        <div id="redStats">Red Distance: <span id="redDistance">0</span></div>
+        <div id="redStats">Red Grid Covered: <span id="redGrid">0</span></div>
+        <div id="redStats">Red Walls Made: <span id="redWalls">0</span></div>
+        <div id="blueStats">Blue Score: <span id="blueScore">0</span></div>
+        <div id="blueStats">Blue Distance: <span id="blueDistance">0</span></div>
+        <div id="blueStats">Blue Grid Covered: <span id="blueGrid">0</span></div>
+        <div id="blueStats">Blue Walls Made: <span id="blueWalls">0</span></div>
+        <div id="speedStats">Speed: <span id="speed">1</span> (Next in <span id="countdown">5</span>s)</div>
+    </div>
+    <div id="gameOver">
+        <div>Game Over!</div>
+        <div>Winner: <span id="winner"></span></div>
+        <div>Loser: <span id="loser"></span> (Player Trapped)</div>
+        <div>Distance Traveled: <span id="winnerDistance"></span></div>
+        <div>Area Covered: <span id="winnerGrid"></span></div>
+        <div>Walls Made: <span id="winnerWalls"></span></div>
+    </div>
+    <div id="bonusMessage"></div>
+    <div id="countdownDisplay"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Lighting for neon effect
+        const ambientLight = new THREE.AmbientLight(0x202020);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
+        directionalLight.position.set(0, 10, 10);
+        scene.add(directionalLight);
+
+        // Grid setup (40x40)
+        const gridSize = 40;
+        const grid = [];
+        for (let x = 0; x < gridSize; x++) {
+            grid[x] = [];
+            for (let z = 0; z < gridSize; z++) {
+                const geometry = new THREE.PlaneGeometry(1, 1);
+                const material = new THREE.MeshStandardMaterial({ 
+                    color: 0x111111, 
+                    side: THREE.DoubleSide, 
+                    transparent: true, 
+                    opacity: 0.5,
+                    emissive: 0x111111,
+                    emissiveIntensity: 0.5
+                });
+                const plane = new THREE.Mesh(geometry, material);
+                plane.position.set(x - gridSize / 2, 0, z - gridSize / 2);
+                plane.rotation.x = Math.PI / 2;
+                scene.add(plane);
+                grid[x][z] = { mesh: plane, color: 0x111111, visits: 0, owner: null, isWall: false };
+            }
+        }
+
+        // Neon green grid lines with antialiasing
+        const gridLineMaterial = new THREE.LineBasicMaterial({ 
+            color: 0x00ff00, 
+            emissive: 0x00ff00, 
+            emissiveIntensity: 1, 
+            transparent: true, 
+            opacity: 0.5,
+            linewidth: 2 // Increased for smoother appearance
+        });
+        const gridLines = new THREE.Group();
+        for (let i = 0; i <= gridSize; i++) {
+            const pointsH = [
+                new THREE.Vector3(i - gridSize / 2, 0.01, -gridSize / 2),
+                new THREE.Vector3(i - gridSize / 2, 0.01, gridSize / 2)
+            ];
+            const pointsV = [
+                new THREE.Vector3(-gridSize / 2, 0.01, i - gridSize / 2),
+                new THREE.Vector3(gridSize / 2, 0.01, i - gridSize / 2)
+            ];
+            const geometryH = new THREE.BufferGeometry().setFromPoints(pointsH);
+            const geometryV = new THREE.BufferGeometry().setFromPoints(pointsV);
+            const lineH = new THREE.Line(geometryH, gridLineMaterial);
+            const lineV = new THREE.Line(geometryV, gridLineMaterial);
+            gridLines.add(lineH, lineV);
+        }
+        scene.add(gridLines);
+
+        // Players setup
+        const player1 = { x: 10, z: 10, color: 0xff0000, direction: 'right', distance: 0, lastPos: { x: 10, z: 10 }, gridCovered: 0, wallsMade: 0, score: 0 }; // Neon Red
+        const player2 = { x: 30, z: 30, color: 0x00b7eb, direction: 'left', distance: 0, lastPos: { x: 30, z: 30 }, gridCovered: 0, wallsMade: 0, score: 0 }; // Neon Blue
+
+        const player1Geometry = new THREE.BoxGeometry(0.8, 0.2, 0.8);
+        const player1Material = new THREE.MeshStandardMaterial({ 
+            color: player1.color, 
+            emissive: player1.color, 
+            emissiveIntensity: 0.8, 
+            metalness: 0.2, 
+            roughness: 0.8 
+        });
+        const player1Mesh = new THREE.Mesh(player1Geometry, player1Material);
+        player1Mesh.position.set(player1.x - gridSize / 2, 0.1, player1.z - gridSize / 2);
+        scene.add(player1Mesh);
+
+        // Add border for player1
+        const player1BorderGeometry = new THREE.EdgesGeometry(player1Geometry);
+        const player1BorderMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1 });
+        const player1Border = new THREE.LineSegments(player1BorderGeometry, player1BorderMaterial);
+        player1Mesh.add(player1Border);
+
+        const player2Geometry = new THREE.BoxGeometry(0.8, 0.2, 0.8);
+        const player2Material = new THREE.MeshStandardMaterial({ 
+            color: player2.color, 
+            emissive: player2.color, 
+            emissiveIntensity: 0.8, 
+            metalness: 0.2, 
+            roughness: 0.8 
+        });
+        const player2Mesh = new THREE.Mesh(player2Geometry, player2Material);
+        player2Mesh.position.set(player2.x - gridSize / 2, 0.1, player2.z - gridSize / 2);
+        scene.add(player2Mesh);
+
+        // Add border for player2
+        const player2BorderGeometry = new THREE.EdgesGeometry(player2Geometry);
+        const player2BorderMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1 });
+        const player2Border = new THREE.LineSegments(player2BorderGeometry, player2BorderMaterial);
+        player2Mesh.add(player2Border);
+
+        // Camera position and modes
+        let cameraMode = 'grid'; // Possible modes: 'grid', 'followPlayer1', 'followPlayer2'
+        const gridViewPos = new THREE.Vector3(0, 30, 20);
+        const gridViewTarget = new THREE.Vector3(0, 0, 0);
+
+        function updateCamera() {
+            if (cameraMode === 'grid') {
+                camera.position.copy(gridViewPos);
+                camera.lookAt(gridViewTarget);
+            } else if (cameraMode === 'followPlayer1') {
+                camera.position.set(
+                    player1Mesh.position.x - 5,
+                    player1Mesh.position.y + 3,
+                    player1Mesh.position.z + 5
+                );
+                camera.lookAt(player1Mesh.position);
+            } else if (cameraMode === 'followPlayer2') {
+                camera.position.set(
+                    player2Mesh.position.x - 5,
+                    player2Mesh.position.y + 3,
+                    player2Mesh.position.z + 5
+                );
+                camera.lookAt(player2Mesh.position);
+            }
+        }
+
+        // Camera toggle on tap
+        let lastTap = 0;
+        document.addEventListener('touchstart', () => {
+            const now = performance.now();
+            if (now - lastTap < 300) {
+                updateInterval = baseUpdateInterval / (speedMultiplier * 2); // Double current speed
+                setTimeout(() => { updateInterval = baseUpdateInterval / speedMultiplier; }, 5000); // Reset after 5s
+            } else {
+                // Toggle camera mode
+                if (cameraMode === 'grid') {
+                    cameraMode = 'followPlayer1';
+                } else if (cameraMode === 'followPlayer1') {
+                    cameraMode = 'followPlayer2';
+                } else {
+                    cameraMode = 'grid';
+                }
+                updateCamera();
+            }
+            lastTap = now;
+        });
+
+        // Initial camera position
+        updateCamera();
+
+        // Random direction change
+        function getRandomDirection(currentDirection) {
+            const directions = ['up', 'down', 'left', 'right'];
+            const opposites = { 'up': 'down', 'down': 'up', 'left': 'right', 'right': 'left' };
+            const validDirections = directions.filter(dir => dir !== opposites[currentDirection]);
+            return validDirections[Math.floor(Math.random() * validDirections.length)];
+        }
+
+        // Check if player is trapped
+        function isTrapped(player) {
+            const directions = [
+                { dir: 'up', x: player.x, z: player.z - 1 },
+                { dir: 'down', x: player.x, z: player.z + 1 },
+                { dir: 'left', x: player.x - 1, z: player.z },
+                { dir: 'right', x: player.x + 1, z: player.z }
+            ];
+            return directions.every(({ x, z }) => 
+                x < 0 || x >= gridSize || z < 0 || z >= gridSize || grid[x][z].isWall
+            );
+        }
+
+        // Check for adjacent walls
+        function hasAdjacentWall(x, z) {
+            const neighbors = [
+                { x: x, z: z - 1 },
+                { x: x, z: z + 1 },
+                { x: x - 1, z: z },
+                { x: x + 1, z: z }
+            ];
+            return neighbors.some(({ x, z }) => 
+                x >= 0 && x < gridSize && z >= 0 && z < gridSize && grid[x][z].isWall
+            );
+        }
+
+        // Display bonus message
+        function showBonusMessage(message, color) {
+            const bonusDiv = document.getElementById('bonusMessage');
+            bonusDiv.textContent = message;
+            bonusDiv.style.color = color;
+            bonusDiv.style.display = 'block';
+            setTimeout(() => { bonusDiv.style.display = 'none'; }, 1000);
+        }
+
+        // End game
+        let gameOver = false;
+        function endGame(winner, loser) {
+            gameOver = true;
+            const gameOverDiv = document.getElementById('gameOver');
+            gameOverDiv.style.display = 'block';
+            document.getElementById('winner').textContent = winner === player1 ? 'Red' : 'Blue';
+            document.getElementById('winner').style.color = winner === player1 ? '#ff0000' : '#00b7eb';
+            document.getElementById('loser').textContent = loser === player1 ? 'Red' : 'Blue';
+            document.getElementById('loser').style.color = loser === player1 ? '#ff0000' : '#00b7eb';
+            document.getElementById('winnerDistance').textContent = winner.distance;
+            document.getElementById('winnerGrid').textContent = winner.gridCovered;
+            document.getElementById('winnerWalls').textContent = winner.wallsMade;
+        }
+
+        // Speed control
+        let baseUpdateInterval = 100;
+        let updateInterval = baseUpdateInterval;
+        let speedMultiplier = 1;
+        let lastSpeedIncrease = performance.now();
+
+        // Timer and UI
+        let startTime = performance.now();
+        function updateUI() {
+            const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+            const timeToNextIncrease = (5 - ((performance.now() - lastSpeedIncrease) / 1000)).toFixed(1);
+            document.getElementById('timer').textContent = elapsed;
+            document.getElementById('redScore').textContent = player1.score;
+            document.getElementById('redDistance').textContent = player1.distance;
+            document.getElementById('redGrid').textContent = player1.gridCovered;
+            document.getElementById('redWalls').textContent = player1.wallsMade;
+            document.getElementById('blueScore').textContent = player2.score;
+            document.getElementById('blueDistance').textContent = player2.distance;
+            document.getElementById('blueGrid').textContent = player2.gridCovered;
+            document.getElementById('blueWalls').textContent = player2.wallsMade;
+            document.getElementById('speed').textContent = speedMultiplier.toFixed(1);
+            document.getElementById('countdown').textContent = timeToNextIncrease > 0 ? timeToNextIncrease : 0;
+        }
+
+        // Countdown setup
+        let gameStarted = false;
+        function startCountdown() {
+            const countdownDiv = document.getElementById('countdownDisplay');
+            countdownDiv.style.display = 'block';
+            let countdown = 3;
+            countdownDiv.textContent = countdown;
+
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    countdownDiv.textContent = countdown;
+                } else {
+                    countdownDiv.textContent = 'Go!';
+                    setTimeout(() => {
+                        countdownDiv.style.display = 'none';
+                        gameStarted = true;
+                        startTime = performance.now();
+                        animate();
+                    }, 1000);
+                    clearInterval(countdownInterval);
+                }
+            }, 1000);
+        }
+
+        // Game loop
+        let lastUpdate = performance.now();
+        function animate() {
+            if (!gameStarted || gameOver) return;
+            requestAnimationFrame(animate);
+            const now = performance.now();
+
+            // Increase speed every 5 seconds
+            if (now - lastSpeedIncrease >= 5000) {
+                speedMultiplier += 0.5;
+                updateInterval = baseUpdateInterval / speedMultiplier;
+                lastSpeedIncrease = now;
+            }
+
+            if (now - lastUpdate >= updateInterval) {
+                // Randomly change directions
+                if (Math.random() < 0.3) player1.direction = getRandomDirection(player1.direction);
+                if (Math.random() < 0.3) player2.direction = getRandomDirection(player2.direction);
+
+                // Move players
+                function movePlayer(player, mesh, otherPlayer) {
+                    let newX = player.x;
+                    let newZ = player.z;
+
+                    if (player.direction === 'up') newZ--;
+                    if (player.direction === 'down') newZ++;
+                    if (player.direction === 'left') newX--;
+                    if (player.direction === 'right') newX++;
+
+                    // Check for collision with other player
+                    if (newX === otherPlayer.x && newZ === otherPlayer.z) {
+                        player.direction = getRandomDirection(player.direction);
+                        return;
+                    }
+
+                    // Check boundaries and walls
+                    if (newX >= 0 && newX < gridSize && newZ >= 0 && newZ < gridSize && !grid[newX][newZ].isWall) {
+                        player.x = newX;
+                        player.z = newZ;
+
+                        // Update distance and score
+                        if (player.x !== player.lastPos.x || player.z !== player.lastPos.z) {
+                            player.distance++;
+                            player.score += 1; // 1 point per move
+                            player.lastPos = { x: player.x, z: player.z };
+                        }
+
+                        // Update grid color and coverage
+                        const cell = grid[player.x][player.z];
+                        cell.visits++;
+                        if (cell.owner !== player) {
+                            if (cell.owner === player1) player1.gridCovered--;
+                            if (cell.owner === player2) player2.gridCovered--;
+                            cell.owner = player;
+                            player.gridCovered++;
+                        }
+                        if (cell.visits >= 5) {
+                            cell.isWall = true;
+                            cell.mesh.position.y = 0.02; // Slightly above grid lines
+                            cell.mesh.material.opacity = 0.9; // Slightly transparent wall
+                            cell.mesh.material.emissive.setHex(player.color);
+                            cell.mesh.material.emissiveIntensity = 0.8;
+                            player.wallsMade++;
+                            player.score += 10; // 10 points for wall
+                            showBonusMessage('+10 Wall Bonus!', player === player1 ? '#ff0000' : '#00b7eb');
+                            if (hasAdjacentWall(player.x, player.z)) {
+                                player.score += 50; // 50 points for adjacent wall
+                                showBonusMessage('+50 Adjacent Wall Bonus!', player === player1 ? '#ff0000' : '#00b7eb');
+                            }
+                        }
+                        const intensity = Math.min(cell.visits * 0.4, 1); // Increased intensity for stronger shading
+                        const r = Math.floor((player.color >> 16) * intensity);
+                        const g = Math.floor(((player.color >> 8) & 0xff) * intensity);
+                        const b = Math.floor((player.color & 0xff) * intensity);
+                        const newColor = (r << 16) | (g << 8) | b;
+                        cell.mesh.material.color.setHex(newColor);
+                        cell.mesh.material.opacity = cell.isWall ? 0.9 : 0.5 + intensity * 0.4; // Increased opacity for stronger effect
+                        cell.color = newColor;
+
+                        // Smoother movement
+                        const targetPos = new THREE.Vector3(player.x - gridSize / 2, 0.1, player.z - gridSize / 2);
+                        mesh.position.lerp(targetPos, 0.9); // Increased lerp factor for smoother transition
+                    } else {
+                        // Choose a new valid direction (wall or boundary hit)
+                        player.direction = getRandomDirection(player.direction);
+                    }
+
+                    // Check if player is trapped
+                    if (isTrapped(player)) {
+                        endGame(otherPlayer, player);
+                    }
+                }
+
+                // Move both players, checking for collisions
+                movePlayer(player1, player1Mesh, player2);
+                movePlayer(player2, player2Mesh, player1);
+
+                lastUpdate = now;
+            }
+
+            updateCamera();
+            updateUI();
+            renderer.render(scene, camera);
+        }
+
+        // Start the countdown
+        startCountdown();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
