@@ -1,0 +1,1551 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Optical Illusion Rooms</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #cameraButton {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 10px;
+            background: #333;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-family: Arial, sans-serif;
+            display: none;
+        }
+        #speedButton {
+            position: absolute;
+            top: 10px;
+            left: 120px;
+            padding: 10px;
+            background: #333;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-family: Arial, sans-serif;
+            display: none;
+        }
+        #lowerButton {
+            position: absolute;
+            top: 10px;
+            left: 230px;
+            padding: 10px;
+            background: #333;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-family: Arial, sans-serif;
+            display: none;
+        }
+        #timer {
+            position: absolute;
+            top: 50px;
+            left: 10px;
+            padding: 10px;
+            background: #333;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            display: none;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px;
+            background: #333;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            display: none;
+        }
+        #roomName {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            border-radius: 10px;
+            display: none;
+            animation: fadeInOut 4s ease-in-out;
+        }
+        #roomName span:first-child {
+            font-size: 48px;
+            display: block;
+        }
+        #roomName span:not(:first-child) {
+            font-size: 24px;
+            display: block;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        #welcomeScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            z-index: 10;
+        }
+        #welcomeScreen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        #startButton {
+            padding: 15px 30px;
+            font-size: 24px;
+            background: #ffaa00;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        #leaderboard {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            border-radius: 5px;
+            max-width: 300px;
+            display: none;
+            cursor: pointer;
+        }
+        #leaderboard h2 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        #leaderboard table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #leaderboard th, #leaderboard td {
+            padding: 5px;
+            text-align: left;
+            border-bottom: 1px solid #555;
+        }
+        #leaderboard th {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="welcomeScreen">
+        <h1>Welcome to Optical Illusion Rooms</h1>
+        <button id="startButton">Start</button>
+    </div>
+    <button id="cameraButton">Cycle Camera</button>
+    <button id="speedButton">Toggle Speed: Slow</button>
+    <button id="lowerButton">Lower People</button>
+    <div id="timer">Time in room: 0.0s</div>
+    <div id="info">Room: None<br>Camera: Fly</div>
+    <div id="roomName"></div>
+    <div id="leaderboard">
+        <h2 id="leaderboardTitle">Top 3 Optical Illusions</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Rating</th>
+                    <th>Viewers</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboardBody"></tbody>
+        </table>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        try {
+            // Scene setup
+            const scene = new THREE.Scene();
+            const renderer = new THREE.WebGLRenderer({ antialias: true, physicallyCorrectLights: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            // Procedural skybox with evening sunset
+            const createSkyTexture = (face) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 1024;
+                canvas.height = 1024;
+                const ctx = canvas.getContext('2d');
+                const gradient = ctx.createLinearGradient(0, 0, 0, 1024);
+                gradient.addColorStop(0, '#4b0082');
+                gradient.addColorStop(0.3, '#ff4500');
+                gradient.addColorStop(0.7, '#ff8c00');
+                gradient.addColorStop(1, '#ffe4b5');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 1024, 1024);
+                for (let i = 0; i < 100; i++) {
+                    ctx.fillStyle = `rgba(255, 255, 255, ${0.05 + Math.random() * 0.1})`;
+                    ctx.beginPath();
+                    ctx.arc(
+                        Math.random() * 1024,
+                        Math.random() * 1024,
+                        50 + Math.random() * 100,
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                }
+                return new THREE.CanvasTexture(canvas);
+            };
+            const skyboxGeometry = new THREE.BoxGeometry(1000, 1000, 1000);
+            const skyboxMaterials = Array(6).fill().map((_, i) => 
+                new THREE.MeshBasicMaterial({ map: createSkyTexture(i), side: THREE.BackSide })
+            );
+            const skybox = new THREE.Mesh(skyboxGeometry, skyboxMaterials);
+            scene.add(skybox);
+
+            // Ground
+            const groundTexture = new THREE.CanvasTexture((function() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 512;
+                canvas.height = 512;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#555';
+                ctx.fillRect(0, 0, 512, 512);
+                for (let x = 0; x < 512; x += 32) {
+                    for (let y = 0; y < 512; y += 32) {
+                        ctx.fillStyle = `hsl(0, 0%, ${40 + Math.random() * 20}%)`;
+                        ctx.fillRect(x, y, 30, 30);
+                        ctx.strokeStyle = '#333';
+                        ctx.strokeRect(x, y, 30, 30);
+                    }
+                }
+                return canvas;
+            })());
+            groundTexture.wrapS = groundTexture.wrapT = THREE.RepeatWrapping;
+            groundTexture.repeat.set(50, 50);
+            const groundGeometry = new THREE.PlaneGeometry(1000, 1000);
+            const groundMaterial = new THREE.MeshStandardMaterial({ map: groundTexture, roughness: 0.8, metalness: 0.2 });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -10;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Cameras
+            const flyCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.5, 1000);
+            flyCamera.up.set(0, 1, 0);
+            const birdCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.5, 1000);
+            const roomViewCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.5, 1000);
+            const sceneFlyCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.5, 1000);
+            birdCamera.position.set(0, 80, 0);
+            birdCamera.lookAt(0, 0, 0);
+            roomViewCamera.position.set(-80, 40, 80);
+            roomViewCamera.lookAt(0, 0, 0);
+            sceneFlyCamera.position.set(0, 100, 200);
+            sceneFlyCamera.lookAt(0, 0, 0);
+            let activeCamera = flyCamera;
+            let cameraIndex = 0;
+
+            // Spotlight for fly camera
+            const spotlight = new THREE.SpotLight(0xffffff, 1, 100, Math.PI / 6, 0.5, 2);
+            spotlight.castShadow = true;
+            spotlight.position.copy(flyCamera.position);
+            spotlight.target = new THREE.Object3D();
+            scene.add(spotlight);
+            scene.add(spotlight.target);
+
+            // Camera trail
+            const trailPoints = [];
+            const maxTrailPoints = 100;
+            const trailGeometry = new THREE.BufferGeometry();
+            const trailMaterial = new THREE.LineBasicMaterial({ color: 0xffaa00, linewidth: 2 });
+            const trail = new THREE.Line(trailGeometry, trailMaterial);
+            scene.add(trail);
+
+            // Speed toggle
+            let isFastSpeed = false;
+            const slowSpeed = 0.002;
+            const fastSpeed = 0.004;
+            let currentSpeed = slowSpeed;
+
+            // Y-position offset
+            let yOffset = -10;
+
+            // Camera cycle button
+            const cameraButton = document.getElementById('cameraButton');
+            if (cameraButton) {
+                cameraButton.addEventListener('click', () => {
+                    cameraIndex = (cameraIndex + 1) % 4;
+                    activeCamera = cameraIndex === 0 ? flyCamera : 
+                                  cameraIndex === 1 ? birdCamera : 
+                                  cameraIndex === 2 ? roomViewCamera : sceneFlyCamera;
+                    updateInfoDisplay();
+                });
+            }
+
+            // Speed toggle button
+            const speedButton = document.getElementById('speedButton');
+            if (speedButton) {
+                speedButton.addEventListener('click', () => {
+                    isFastSpeed = !isFastSpeed;
+                    currentSpeed = isFastSpeed ? fastSpeed : slowSpeed;
+                    speedButton.textContent = `Toggle Speed: ${isFastSpeed ? 'Fast' : 'Slow'}`;
+                });
+            }
+
+            // Lower people button
+            const lowerButton = document.getElementById('lowerButton');
+            if (lowerButton) {
+                lowerButton.addEventListener('click', () => {
+                    try {
+                        yOffset -= 10;
+                        if (people && people.length > 0) {
+                            people.forEach(person => {
+                                if (person.mesh && person.startPosition) {
+                                    person.mesh.position.y = yOffset;
+                                    person.startPosition.y = yOffset;
+                                    if (person.targetPosition) {
+                                        person.targetPosition.y = yOffset;
+                                    }
+                                }
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Error in lowerButton handler:', error);
+                    }
+                });
+            }
+
+            // Touch-based camera control and leaderboard toggle
+            let isDragging = false;
+            let previousTouchX = 0;
+            let previousTouchY = 0;
+            let yaw = 0;
+            let pitch = 0;
+            const sensitivity = 0.005;
+
+            document.addEventListener('touchstart', (event) => {
+                if (event.touches.length === 1 && activeCamera === flyCamera) {
+                    const touchX = event.touches[0].clientX;
+                    const touchY = event.touches[0].clientY;
+                    const leaderboard = document.getElementById('leaderboard');
+                    if (leaderboard && gameStarted) {
+                        const rect = leaderboard.getBoundingClientRect();
+                        if (touchX >= rect.left && touchX <= rect.right && touchY >= rect.top && touchY <= rect.bottom) {
+                            toggleLeaderboardDisplay();
+                            return;
+                        }
+                    }
+                    isDragging = true;
+                    previousTouchX = touchX;
+                    previousTouchY = touchY;
+                }
+            });
+
+            document.addEventListener('touchmove', (event) => {
+                if (isDragging && event.touches.length === 1) {
+                    const touchX = event.touches[0].clientX;
+                    const touchY = event.touches[0].clientY;
+                    const deltaX = touchX - previousTouchX;
+                    const deltaY = touchY - previousTouchY;
+
+                    yaw -= deltaX * sensitivity;
+                    pitch -= deltaY * sensitivity;
+                    pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+
+                    previousTouchX = touchX;
+                    previousTouchY = touchY;
+                }
+            });
+
+            document.addEventListener('touchend', () => {
+                isDragging = false;
+            });
+
+            // Leaderboard toggle
+            let showTop3 = true;
+            const toggleLeaderboardDisplay = () => {
+                showTop3 = !showTop3;
+                const leaderboardTitle = document.getElementById('leaderboardTitle');
+                if (leaderboardTitle) {
+                    leaderboardTitle.textContent = showTop3 ? 'Top 3 Optical Illusions' : 'Top 10 Optical Illusions';
+                }
+                updateLeaderboard();
+            };
+
+            // Timer and info display
+            const timerDisplay = document.getElementById('timer');
+            const infoDisplay = document.getElementById('info');
+            const roomNameDisplay = document.getElementById('roomName');
+            const leaderboardDisplay = document.getElementById('leaderboard');
+            const leaderboardBody = document.getElementById('leaderboardBody');
+            let roomStartTime = performance.now();
+            let lastFlashedRoom = -1;
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 10);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            const pointLight = new THREE.PointLight(0xffaa00, 0.5, 50);
+            pointLight.position.set(0, 5, 0);
+            scene.add(pointLight);
+
+            // Room dimensions
+            const roomSize = 20;
+            const rooms = [];
+
+            // Unique optical illusion textures
+            const createIllusionTexture = (type) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 1024;
+                canvas.height = 1024;
+                const ctx = canvas.getContext('2d');
+
+                switch (type) {
+                    case 'checkerboard':
+                        ctx.fillStyle = '#222';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let x = 0; x < 1024; x += 64) {
+                            for (let y = 0; y < 1024; y += 64) {
+                                ctx.fillStyle = (x + y) % 128 === 0 ? '#ffdd00' : '#00aaff';
+                                ctx.fillRect(x, y, 64, 64);
+                                ctx.strokeStyle = '#111';
+                                ctx.strokeRect(x, y, 64, 64);
+                            }
+                        }
+                        break;
+                    case 'spiral':
+                        const gradient1 = ctx.createRadialGradient(512, 512, 0, 512, 512, 512);
+                        gradient1.addColorStop(0, '#ff5555');
+                        gradient1.addColorStop(1, '#5555ff');
+                        ctx.fillStyle = gradient1;
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        ctx.fillStyle = '#000';
+                        for (let i = 0; i < 720; i += 5) {
+                            ctx.beginPath();
+                            ctx.arc(512, 512, 200 + i / 5, (i * Math.PI) / 180, ((i + 2) * Math.PI) / 180);
+                            ctx.lineWidth = 8;
+                            ctx.stroke();
+                        }
+                        break;
+                    case 'waves':
+                        ctx.fillStyle = '#111';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let y = 0; y < 1024; y += 8) {
+                            ctx.beginPath();
+                            ctx.moveTo(0, y);
+                            for (let x = 0; x < 1024; x += 8) {
+                                ctx.lineTo(x, y + Math.sin(x / 30 + y / 50) * 15);
+                            }
+                            ctx.strokeStyle = `hsl(${y % 360}, 70%, 50%)`;
+                            ctx.lineWidth = 4;
+                            ctx.stroke();
+                        }
+                        break;
+                    case 'concentric':
+                        ctx.fillStyle = '#fff';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let r = 50; r < 512; r += 20) {
+                            ctx.beginPath();
+                            ctx.arc(512, 512, r, 0, Math.PI * 2);
+                            ctx.strokeStyle = r % 40 === 0 ? '#000' : '#666';
+                            ctx.lineWidth = 10;
+                            ctx.stroke();
+                        }
+                        break;
+                    case 'radial':
+                        const gradient2 = ctx.createRadialGradient(512, 512, 0, 512, 512, 512);
+                        gradient2.addColorStop(0, '#00ff00');
+                        gradient2.addColorStop(1, '#000');
+                        ctx.fillStyle = gradient2;
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let i = 0; i < 360; i += 10) {
+                            ctx.beginPath();
+                            ctx.moveTo(512, 512);
+                            ctx.lineTo(512 + Math.cos(i * Math.PI / 180) * 512, 512 + Math.sin(i * Math.PI / 180) * 512);
+                            ctx.strokeStyle = '#fff';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                        }
+                        break;
+                    case 'grid':
+                        ctx.fillStyle = '#333';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let x = 0; x < 1024; x += 32) {
+                            for (let y = 0; y < 1024; y += 32) {
+                                ctx.fillStyle = (x + y) % 64 === 0 ? '#ff4500' : '#4682b4';
+                                ctx.fillRect(x, y, 30, 30);
+                            }
+                        }
+                        break;
+                    case 'dots':
+                        ctx.fillStyle = '#000';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let x = 0; x < 1024; x += 40) {
+                            for (let y = 0; y < 1024; y += 40) {
+                                ctx.beginPath();
+                                ctx.arc(x, y, 10 + Math.sin(x / 50 + y / 50) * 5, 0, Math.PI * 2);
+                                ctx.fillStyle = `hsl(${x % 360}, 70%, 50%)`;
+                                ctx.fill();
+                            }
+                        }
+                        break;
+                    case 'chevrons':
+                        ctx.fillStyle = '#222';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let y = 0; y < 1024; y += 40) {
+                            for (let x = 0; x < 1024; x += 80) {
+                                ctx.beginPath();
+                                ctx.moveTo(x, y);
+                                ctx.lineTo(x + 20, y + 20);
+                                ctx.lineTo(x + 40, y);
+                                ctx.strokeStyle = '#ffd700';
+                                ctx.lineWidth = 5;
+                                ctx.stroke();
+                            }
+                        }
+                        break;
+                    case 'mosaic':
+                        ctx.fillStyle = '#111';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let x = 0; x < 1024; x += 32) {
+                            for (let y = 0; y < 1024; y += 32) {
+                                ctx.fillStyle = `hsl(${Math.random() * 360}, 50%, 50%)`;
+                                ctx.fillRect(x, y, 30, 30);
+                            }
+                        }
+                        break;
+                    case 'stripes':
+                        ctx.fillStyle = '#fff';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let x = 0; x < 1024; x += 20) {
+                            ctx.fillStyle = x % 40 === 0 ? '#ff0000' : '#0000ff';
+                            ctx.fillRect(x, 0, 10, 1024);
+                        }
+                        break;
+                    case 'hexagons':
+                        ctx.fillStyle = '#333';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        const size = 30;
+                        for (let x = 0; x < 1024; x += size * 1.5) {
+                            for (let y = 0; y < 1024; y += size * Math.sqrt(3)) {
+                                ctx.beginPath();
+                                for (let i = 0; i < 6; i++) {
+                                    ctx.lineTo(
+                                        x + size * Math.cos(i * Math.PI / 3),
+                                        y + size * Math.sin(i * Math.PI / 3)
+                                    );
+                                }
+                                ctx.closePath();
+                                ctx.fillStyle = `hsl(${x % 360}, 60%, 50%)`;
+                                ctx.fill();
+                            }
+                        }
+                        break;
+                    case 'swirls':
+                        ctx.fillStyle = '#000';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let i = 0; i < 360; i += 15) {
+                            ctx.beginPath();
+                            ctx.arc(512, 512, 100 + i / 10, (i * Math.PI) / 180, ((i + 10) * Math.PI) / 180);
+                            ctx.strokeStyle = `hsl(${i}, 70%, 50%)`;
+                            ctx.lineWidth = 12;
+                            ctx.stroke();
+                        }
+                        break;
+                    case 'triangles':
+                        ctx.fillStyle = '#222';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let x = 0; x < 1024; x += 50) {
+                            for (let y = 0; y < 1024; y += 50) {
+                                ctx.beginPath();
+                                ctx.moveTo(x, y);
+                                ctx.lineTo(x + 25, y + 50);
+                                ctx.lineTo(x + 50, y);
+                                ctx.closePath();
+                                ctx.fillStyle = `hsl(${y % 360}, 50%, 50%)`;
+                                ctx.fill();
+                            }
+                        }
+                        break;
+                    case 'vortex':
+                        const gradient3 = ctx.createRadialGradient(512, 512, 0, 512, 512, 512);
+                        gradient3.addColorStop(0, '#9400d3');
+                        gradient3.addColorStop(1, '#000');
+                        ctx.fillStyle = gradient3;
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let i = 0; i < 720; i += 10) {
+                            ctx.beginPath();
+                            ctx.arc(512, 512, 100 + i / 5, (i * Math.PI) / 180, ((i + 5) * Math.PI) / 180);
+                            ctx.strokeStyle = '#fff';
+                            ctx.lineWidth = 6;
+                            ctx.stroke();
+                        }
+                        break;
+                    case 'zigzag':
+                        ctx.fillStyle = '#fff';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let y = 0; y < 1024; y += 40) {
+                            ctx.beginPath();
+                            ctx.moveTo(0, y);
+                            for (let x = 0; x < 1024; x += 40) {
+                                ctx.lineTo(x, y + (x % 80 === 0 ? 20 : -20));
+                            }
+                            ctx.strokeStyle = '#ff4500';
+                            ctx.lineWidth = 5;
+                            ctx.stroke();
+                        }
+                        break;
+                    case 'bubbles':
+                        ctx.fillStyle = '#000';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let i = 0; i < 200; i++) {
+                            ctx.beginPath();
+                            ctx.arc(
+                                Math.random() * 1024,
+                                Math.random() * 1024,
+                                10 + Math.random() * 20,
+                                0,
+                                Math.PI * 2
+                            );
+                            ctx.fillStyle = `hsl(${Math.random() * 360}, 70%, 50%)`;
+                            ctx.fill();
+                        }
+                        break;
+                    case 'diagonals':
+                        ctx.fillStyle = '#333';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let i = -1024; i < 1024; i += 40) {
+                            ctx.beginPath();
+                            ctx.moveTo(i, 0);
+                            ctx.lineTo(i + 1024, 1024);
+                            ctx.strokeStyle = `hsl(${i % 360}, 50%, 50%)`;
+                            ctx.lineWidth = 5;
+                            ctx.stroke();
+                        }
+                        break;
+                    case 'rings':
+                        ctx.fillStyle = '#111';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let r = 50; r < 512; r += 30) {
+                            ctx.beginPath();
+                            ctx.arc(512, 512, r, 0, Math.PI * 2);
+                            ctx.strokeStyle = `hsl(${r % 360}, 70%, 50%)`;
+                            ctx.lineWidth = 15;
+                            ctx.stroke();
+                        }
+                        break;
+                    case 'squares':
+                        ctx.fillStyle = '#fff';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let x = 0; x < 1024; x += 50) {
+                            for (let y = 0; y < 1024; y += 50) {
+                                ctx.strokeStyle = `hsl(${x % 360}, 50%, 50%)`;
+                                ctx.lineWidth = 5;
+                                ctx.strokeRect(x, y, 40, 40);
+                            }
+                        }
+                        break;
+                    case 'curves':
+                        ctx.fillStyle = '#000';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let y = 0; y < 1024; y += 20) {
+                            ctx.beginPath();
+                            ctx.moveTo(0, y);
+                            for (let x = 0; x < 1024; x += 20) {
+                                ctx.quadraticCurveTo(x, y + Math.sin(x / 50) * 20, x + 20, y);
+                            }
+                            ctx.strokeStyle = `hsl(${y % 360}, 70%, 50%)`;
+                            ctx.lineWidth = 3;
+                            ctx.stroke();
+                        }
+                        break;
+                    case 'stars':
+                        ctx.fillStyle = '#000';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let i = 0; i < 100; i++) {
+                            ctx.beginPath();
+                            const x = Math.random() * 1024;
+                            const y = Math.random() * 1024;
+                            for (let j = 0; j < 5; j++) {
+                                ctx.lineTo(
+                                    x + 20 * Math.cos(j * 2 * Math.PI / 5),
+                                    y + 20 * Math.sin(j * 2 * Math.PI / 5)
+                                );
+                                ctx.lineTo(
+                                    x + 10 * Math.cos((j + 0.5) * 2 * Math.PI / 5),
+                                    y + 10 * Math.sin((j + 0.5) * 2 * Math.PI / 5)
+                                );
+                            }
+                            ctx.closePath();
+                            ctx.fillStyle = `hsl(${Math.random() * 360}, 70%, 50%)`;
+                            ctx.fill();
+                        }
+                        break;
+                    case 'weave':
+                        ctx.fillStyle = '#222';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let x = 0; x < 1024; x += 40) {
+                            for (let y = 0; y < 1024; y += 40) {
+                                ctx.beginPath();
+                                ctx.moveTo(x, y);
+                                ctx.lineTo(x + 20, y + 20);
+                                ctx.moveTo(x + 20, y);
+                                ctx.lineTo(x, y + 20);
+                                ctx.strokeStyle = `hsl(${x % 360}, 50%, 50%)`;
+                                ctx.lineWidth = 5;
+                                ctx.stroke();
+                            }
+                        }
+                        break;
+                    case 'petals':
+                        ctx.fillStyle = '#111';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let i = 0; i < 360; i += 20) {
+                            ctx.beginPath();
+                            ctx.ellipse(512, 512, 100, 50, i * Math.PI / 180, 0, Math.PI * 2);
+                            ctx.fillStyle = `hsl(${i}, 70%, 50%)`;
+                            ctx.fill();
+                        }
+                        break;
+                    case 'kaleidoscope':
+                        ctx.fillStyle = '#000';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let i = 0; i < 8; i++) {
+                            ctx.save();
+                            ctx.translate(512, 512);
+                            ctx.rotate(i * Math.PI / 4);
+                            ctx.beginPath();
+                            ctx.moveTo(0, 0);
+                            ctx.lineTo(200, 100);
+                            ctx.lineTo(100, 200);
+                            ctx.closePath();
+                            ctx.fillStyle = `hsl(${i * 45}, 70%, 50%)`;
+                            ctx.fill();
+                            ctx.restore();
+                        }
+                        break;
+                    case 'ripples':
+                        ctx.fillStyle = '#111';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let r = 50; r < 512; r += 25) {
+                            ctx.beginPath();
+                            ctx.arc(512, 512, r, 0, Math.PI * 2);
+                            ctx.strokeStyle = `hsl(${r % 360}, 70%, 50%)`;
+                            ctx.lineWidth = 10 * Math.sin(r / 50);
+                            ctx.stroke();
+                        }
+                        break;
+                    case 'lattice':
+                        ctx.fillStyle = '#fff';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let x = 0; x < 1024; x += 40) {
+                            for (let y = 0; y < 1024; y += 40) {
+                                ctx.beginPath();
+                                ctx.arc(x, y, 10, 0, Math.PI * 2);
+                                ctx.fillStyle = `hsl(${x % 360}, 50%, 50%)`;
+                                ctx.fill();
+                                ctx.beginPath();
+                                ctx.moveTo(x, y);
+                                ctx.lineTo(x + 40, y);
+                                ctx.lineTo(x, y + 40);
+                                ctx.strokeStyle = '#333';
+                                ctx.lineWidth = 2;
+                                ctx.stroke();
+                            }
+                        }
+                        break;
+                    case 'fractal':
+                        ctx.fillStyle = '#000';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        function drawTriangle(x, y, size, depth) {
+                            if (depth === 0) return;
+                            ctx.beginPath();
+                            ctx.moveTo(x, y);
+                            ctx.lineTo(x + size, y);
+                            ctx.lineTo(x + size / 2, y - size * Math.sqrt(3) / 2);
+                            ctx.closePath();
+                            ctx.strokeStyle = `hsl(${depth * 60}, 70%, 50%)`;
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                            drawTriangle(x + size / 4, y - size * Math.sqrt(3) / 4, size / 2, depth - 1);
+                            drawTriangle(x, y, size / 2, depth - 1);
+                            drawTriangle(x + size / 2, y, size / 2, depth - 1);
+                        }
+                        drawTriangle(256, 768, 512, 4);
+                        break;
+                    case 'maze':
+                        ctx.fillStyle = '#fff';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let x = 0; x < 1024; x += 32) {
+                            for (let y = 0; y < 1024; y += 32) {
+                                if (Math.random() > 0.3) {
+                                    ctx.fillStyle = '#000';
+                                    ctx.fillRect(x, y, 32, 32);
+                                }
+                            }
+                        }
+                        break;
+                    case 'pinwheel':
+                        ctx.fillStyle = '#222';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let i = 0; i < 12; i++) {
+                            ctx.save();
+                            ctx.translate(512, 512);
+                            ctx.rotate(i * Math.PI / 6);
+                            ctx.beginPath();
+                            ctx.moveTo(0, 0);
+                            ctx.lineTo(150, 50);
+                            ctx.lineTo(50, 150);
+                            ctx.closePath();
+                            ctx.fillStyle = `hsl(${i * 30}, 70%, 50%)`;
+                            ctx.fill();
+                            ctx.restore();
+                        }
+                        break;
+                    case 'checker':
+                        ctx.fillStyle = '#000';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let x = 0; x < 1024; x += 64) {
+                            for (let y = 0; y < 1024; y += 64) {
+                                ctx.fillStyle = (x / 64 + y / 64) % 2 === 0 ? '#fff' : '#ff4500';
+                                ctx.fillRect(x, y, 64, 64);
+                            }
+                        }
+                        break;
+                    case 'spokes':
+                        ctx.fillStyle = '#111';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let i = 0; i < 16; i++) {
+                            ctx.beginPath();
+                            ctx.moveTo(512, 512);
+                            ctx.lineTo(
+                                512 + 512 * Math.cos(i * Math.PI / 8),
+                                512 + 512 * Math.sin(i * Math.PI / 8)
+                            );
+                            ctx.strokeStyle = `hsl(${i * 22.5}, 70%, 50%)`;
+                            ctx.lineWidth = 10;
+                            ctx.stroke();
+                        }
+                        break;
+                    case 'tiles':
+                        ctx.fillStyle = '#333';
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        for (let x = 0; x < 1024; x += 64) {
+                            for (let y = 0; y < 1024; y += 64) {
+                                ctx.fillStyle = `hsl(${Math.random() * 360}, 50%, 50%)`;
+                                ctx.fillRect(x + 4, y + 4, 56, 56);
+                            }
+                        }
+                        break;
+                    case 'gradient':
+                        const gradient4 = ctx.createLinearGradient(0, 0, 1024, 1024);
+                        gradient4.addColorStop(0, '#ff0000');
+                        gradient4.addColorStop(0.5, '#00ff00');
+                        gradient4.addColorStop(1, '#0000ff');
+                        ctx.fillStyle = gradient4;
+                        ctx.fillRect(0, 0, 1024, 1024);
+                        break;
+                }
+
+                return new THREE.CanvasTexture(canvas);
+            };
+
+            // Create room with only back wall visible
+            const createRoom = (x, z, illusionType) => {
+                const geometry = new THREE.BoxGeometry(roomSize, roomSize, roomSize, 32, 32, 32);
+                const materials = [
+                    new THREE.MeshStandardMaterial({ transparent: true, opacity: 0, side: THREE.BackSide }),
+                    new THREE.MeshStandardMaterial({ transparent: true, opacity: 0, side: THREE.BackSide }),
+                    new THREE.MeshStandardMaterial({ transparent: true, opacity: 0, side: THREE.BackSide }),
+                    new THREE.MeshStandardMaterial({ transparent: true, opacity: 0, side: THREE.BackSide }),
+                    new THREE.MeshStandardMaterial({ transparent: true, opacity: 0, side: THREE.BackSide }),
+                    new THREE.MeshStandardMaterial({ map: createIllusionTexture(illusionType), side: THREE.BackSide, roughness: 0.4, metalness: 0.2 })
+                ];
+                const room = new THREE.Mesh(geometry, materials);
+                room.position.set(x, 0, z);
+                room.receiveShadow = true;
+                room.ratings = [];
+                room.viewers = 0;
+                scene.add(room);
+                return room;
+            };
+
+            // Create 33 rooms with unique illusions and imaginative names
+            const illusionTypes = [
+                'checkerboard', 'spiral', 'waves', 'concentric', 'radial',
+                'grid', 'dots', 'chevrons', 'mosaic', 'stripes',
+                'hexagons', 'swirls', 'triangles', 'vortex', 'zigzag',
+                'bubbles', 'diagonals', 'rings', 'squares', 'curves',
+                'stars', 'weave', 'petals', 'kaleidoscope', 'ripples',
+                'lattice', 'fractal', 'maze', 'pinwheel', 'checker',
+                'spokes', 'tiles', 'gradient'
+            ];
+            const illusionNames = [
+                'Chroma Chessboard', 'Cosmic Spiral', 'Ethereal Waves', 'Orbiting Rings', 'Starburst Radiance',
+                'Quantum Grid', 'Pulsing Dots', 'Arrowed Mirage', 'Prismatic Mosaic', 'Vibrant Stripes',
+                'Honeycomb Haze', 'Twirling Vortex', 'Fractured Triads', 'Abyssal Whirl', 'Serpentine Dance',
+                'Celestial Bubbles', 'Skewed Pathways', 'Echoing Circles', 'Angular Enigma', 'Sinuous Flow',
+                'Stellar Burst', 'Woven Illusion', 'Floral Mirage', 'Kaleidoscopic Dream', 'Rippling Void',
+                'Crystal Lattice', 'Sierpinski Abyss', 'Labyrinthine Veil', 'Whirling Blades', 'Monochrome Clash',
+                'Radiant Spokes', 'Tesselated Glow', 'Chameleon Gradient'
+            ];
+            rooms.push(createRoom(-150, 0, illusionTypes[0]));
+            rooms.push(createRoom(-100, 0, illusionTypes[1]));
+            rooms.push(createRoom(-50, 0, illusionTypes[2]));
+            rooms.push(createRoom(0, 0, illusionTypes[3]));
+            rooms.push(createRoom(50, 0, illusionTypes[4]));
+            rooms.push(createRoom(100, 0, illusionTypes[5]));
+            rooms.push(createRoom(150, 0, illusionTypes[6]));
+            rooms.push(createRoom(-125, 50, illusionTypes[7]));
+            rooms.push(createRoom(-75, 50, illusionTypes[8]));
+            rooms.push(createRoom(-25, 50, illusionTypes[9]));
+            rooms.push(createRoom(25, 50, illusionTypes[10]));
+            rooms.push(createRoom(75, 50, illusionTypes[11]));
+            rooms.push(createRoom(125, 50, illusionTypes[12]));
+            rooms.push(createRoom(-125, -50, illusionTypes[13]));
+            rooms.push(createRoom(-75, -50, illusionTypes[14]));
+            rooms.push(createRoom(-25, -50, illusionTypes[15]));
+            rooms.push(createRoom(25, -50, illusionTypes[16]));
+            rooms.push(createRoom(75, -50, illusionTypes[17]));
+            rooms.push(createRoom(125, -50, illusionTypes[18]));
+            rooms.push(createRoom(-100, 100, illusionTypes[19]));
+            rooms.push(createRoom(0, 100, illusionTypes[20]));
+            rooms.push(createRoom(100, 100, illusionTypes[21]));
+            rooms.push(createRoom(-100, -100, illusionTypes[22]));
+            rooms.push(createRoom(100, -100, illusionTypes[23]));
+            rooms.push(createRoom(-150, 100, illusionTypes[24]));
+            rooms.push(createRoom(150, 100, illusionTypes[25]));
+            rooms.push(createRoom(-150, -100, illusionTypes[26]));
+            rooms.push(createRoom(150, -100, illusionTypes[27]));
+            rooms.push(createRoom(0, 150, illusionTypes[28]));
+            rooms.push(createRoom(0, -150, illusionTypes[29]));
+            rooms.push(createRoom(-50, 150, illusionTypes[30]));
+            rooms.push(createRoom(50, 150, illusionTypes[31]));
+            rooms.push(createRoom(-50, -150, illusionTypes[32]));
+
+            // Create clothing texture
+            const createClothingTexture = (shirtColor, pantsColor) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 384;
+                canvas.height = 768;
+                const ctx = canvas.getContext('2d');
+
+                ctx.fillStyle = shirtColor;
+                ctx.fillRect(0, 0, 384, 384);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                for (let x = 0; x < 384; x += 15) {
+                    ctx.fillRect(x, 0, 7, 384);
+                }
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(15, 15, 354, 354);
+
+                ctx.fillStyle = pantsColor;
+                ctx.fillRect(0, 384, 384, 384);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                for (let y = 384; y < 768; y += 15) {
+                    ctx.fillRect(0, y, 384, 7);
+                }
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.strokeRect(15, 399, 354, 354);
+
+                return new THREE.CanvasTexture(canvas);
+            };
+
+            // Create 100 people with varied humanoid models
+            const people = [];
+            const clothingColors = Array(100).fill().map(() => ({
+                shirt: `hsl(${Math.random() * 360}, 70%, 50%)`,
+                pants: `hsl(${Math.random() * 360}, 50%, 30%)`
+            }));
+            for (let i = 0; i < 100; i++) {
+                const personGroup = new THREE.Group();
+                const heightScale = 0.8 + Math.random() * 0.4;
+                const torsoHeight = 1.2 + Math.random() * 0.3;
+                const legWidth = 0.25 + Math.random() * 0.1;
+                const skinHue = 20 + Math.random() * 20;
+                const skinSaturation = 50 + Math.random() * 30;
+                const skinLightness = 60 + Math.random() * 30;
+                const material = new THREE.MeshStandardMaterial({
+                    map: createClothingTexture(clothingColors[i].shirt, clothingColors[i].pants),
+                    roughness: 0.7,
+                    metalness: 0.1
+                });
+                const skinMaterial = new THREE.MeshStandardMaterial({
+                    color: new THREE.Color(`hsl(${skinHue}, ${skinSaturation}%, ${skinLightness}%)`),
+                    roughness: 0.8,
+                    metalness: 0.1
+                });
+
+                const headGeometry = new THREE.SphereGeometry(0.45, 32, 32);
+                const head = new THREE.Mesh(headGeometry, skinMaterial);
+                head.position.set(0, 3.0 * heightScale, 0);
+                personGroup.add(head);
+
+                const neckGeometry = new THREE.CylinderGeometry(0.225, 0.225, 0.3 * heightScale, 24);
+                const neck = new THREE.Mesh(neckGeometry, skinMaterial);
+                neck.position.set(0, 2.7 * heightScale, 0);
+                personGroup.add(neck);
+
+                const torsoGeometry = new THREE.CylinderGeometry(0.525, 0.675, torsoHeight * heightScale, 24);
+                const torso = new THREE.Mesh(torsoGeometry, material);
+                torso.position.set(0, (torsoHeight / 2 + 1.35) * heightScale, 0);
+                personGroup.add(torso);
+
+                const leftArmGeometry = new THREE.CylinderGeometry(0.18, 0.225, 1.05 * heightScale, 24);
+                const leftArm = new THREE.Mesh(leftArmGeometry, material);
+                leftArm.position.set(-0.75, 2.175 * heightScale, 0);
+                personGroup.add(leftArm);
+
+                const rightArmGeometry = new THREE.CylinderGeometry(0.18, 0.225, 1.05 * heightScale, 24);
+                const rightArm = new THREE.Mesh(rightArmGeometry, material);
+                rightArm.position.set(0.75, 2.175 * heightScale, 0);
+                personGroup.add(rightArm);
+
+                const leftLegGeometry = new THREE.CylinderGeometry(legWidth, legWidth + 0.06, 1.35 * heightScale, 24);
+                const leftLeg = new THREE.Mesh(leftLegGeometry, material);
+                leftLeg.position.set(-0.3, 0.675 * heightScale, 0);
+                personGroup.add(leftLeg);
+
+                const rightLegGeometry = new THREE.CylinderGeometry(legWidth, legWidth + 0.06, 1.35 * heightScale, 24);
+                const rightLeg = new THREE.Mesh(rightLegGeometry, material);
+                rightLeg.position.set(0.3, 0.675 * heightScale, 0);
+                personGroup.add(rightLeg);
+
+                personGroup.castShadow = true;
+                personGroup.receiveShadow = true;
+                scene.add(personGroup);
+
+                const initialRoom = rooms[Math.floor(Math.random() * rooms.length)];
+                const offsetX = (Math.random() - 0.5) * (roomSize - 2);
+                const offsetZ = (Math.random() - 0.5) * (roomSize - 2);
+                personGroup.position.set(
+                    Math.max(initialRoom.position.x - roomSize / 2 + 1, Math.min(initialRoom.position.x + roomSize / 2 - 1, initialRoom.position.x + offsetX)),
+                    yOffset,
+                    Math.max(initialRoom.position.z - roomSize / 2 + 1, Math.min(initialRoom.position.z + roomSize / 2 - 2, initialRoom.position.z + offsetZ))
+                );
+
+                people.push({
+                    mesh: personGroup,
+                    head: head,
+                    torso: torso,
+                    leftArm: leftArm,
+                    rightArm: rightArm,
+                    leftLeg: leftLeg,
+                    rightLeg: rightLeg,
+                    state: 'moving',
+                    startTime: performance.now(),
+                    startPosition: personGroup.position.clone(),
+                    targetRoom: null,
+                    targetPosition: null,
+                    moveDuration: 8000 + Math.random() * 4000,
+                    pauseDuration: 3000 + Math.random() * 2000,
+                    velocity: new THREE.Vector3(0, 0, 0),
+                    lastUpdateTime: performance.now(),
+                    heightScale: heightScale
+                });
+            }
+
+            // Gravity constant
+            const gravity = -9.81;
+
+            // Update people animation with gravity, collision detection, and ratings
+            const updatePeople = () => {
+                try {
+                    if (!people || people.length === 0) return;
+                    const t = performance.now();
+                    const deltaTime = (t - (people[0]?.lastUpdateTime || t)) / 1000;
+                    people.forEach(person => {
+                        if (!person.mesh || !person.startPosition) return;
+                        person.lastUpdateTime = t;
+
+                        if (person.state === 'moving') {
+                            if (!person.targetRoom || !person.targetPosition) {
+                                const roomIndex = Math.floor(Math.random() * rooms.length);
+                                if (!rooms[roomIndex]) return;
+                                person.targetRoom = rooms[roomIndex];
+                                const offsetX = (Math.random() - 0.5) * (roomSize - 2);
+                                const offsetZ = (Math.random() - 0.5) * (roomSize - 2);
+                                person.targetPosition = new THREE.Vector3(
+                                    Math.max(person.targetRoom.position.x - roomSize / 2 + 1, Math.min(person.targetRoom.position.x + roomSize / 2 - 1, person.targetRoom.position.x + offsetX)),
+                                    yOffset,
+                                    Math.max(person.targetRoom.position.z - roomSize / 2 + 1, Math.min(person.targetRoom.position.z + roomSize / 2 - 2, person.targetRoom.position.z + offsetZ))
+                                );
+                                person.startPosition.copy(person.mesh.position);
+                                person.startPosition.y = yOffset;
+                                person.startTime = t;
+                            }
+
+                            const elapsed = t - person.startTime;
+                            let progress = Math.min(elapsed / person.moveDuration, 1);
+                            progress = 1 - Math.pow(1 - progress, 2);
+
+                            let newPosition = new THREE.Vector3(
+                                lerp(person.startPosition.x, person.targetPosition.x, progress),
+                                yOffset,
+                                lerp(person.startPosition.z, person.targetPosition.z, progress)
+                            );
+
+                            if (person.mesh.position.y > yOffset) {
+                                person.velocity.y += gravity * deltaTime;
+                                newPosition.y = Math.max(yOffset, person.mesh.position.y + person.velocity.y * deltaTime);
+                            } else {
+                                newPosition.y = yOffset;
+                                person.velocity.y = 0;
+                            }
+
+                            let currentRoom = null;
+                            for (const room of rooms) {
+                                const minX = room.position.x - roomSize / 2;
+                                const maxX = room.position.x + roomSize / 2;
+                                const minZ = room.position.z - roomSize / 2;
+                                const maxZ = room.position.z + roomSize / 2;
+                                if (
+                                    newPosition.x >= minX && newPosition.x <= maxX &&
+                                    newPosition.z >= minZ && newPosition.z <= maxZ
+                                ) {
+                                    currentRoom = room;
+                                    break;
+                                }
+                            }
+
+                            if (currentRoom) {
+                                newPosition.x = Math.max(currentRoom.position.x - roomSize / 2 + 1, Math.min(currentRoom.position.x + roomSize / 2 - 1, newPosition.x));
+                                newPosition.z = Math.max(currentRoom.position.z - roomSize / 2 + 1, Math.min(currentRoom.position.z + roomSize / 2 - 2, newPosition.z));
+                            }
+
+                            person.mesh.position.copy(newPosition);
+
+                            const direction = person.targetPosition.clone().sub(person.startPosition).normalize();
+                            if (direction.length() > 0) {
+                                person.mesh.lookAt(person.mesh.position.clone().add(direction));
+                                person.mesh.rotateY(Math.PI);
+                            }
+
+                            const swing = Math.sin(t * 0.004 * (person.moveDuration / 8000)) * Math.PI / 3;
+                            person.leftArm.rotation.x = swing;
+                            person.rightArm.rotation.x = -swing;
+                            person.leftLeg.rotation.x = -swing;
+                            person.rightLeg.rotation.x = swing;
+                            person.torso.rotation.z = Math.sin(t * 0.002) * 0.05;
+
+                            if (progress >= 1) {
+                                person.state = 'paused';
+                                person.startTime = t;
+                                person.mesh.lookAt(new THREE.Vector3(person.targetRoom.position.x, 1 * person.heightScale, person.targetRoom.position.z - roomSize / 2));
+                                person.mesh.rotateY(Math.PI);
+                                person.leftArm.rotation.x = 0;
+                                person.rightArm.rotation.x = 0;
+                                person.leftLeg.rotation.x = 0;
+                                person.rightLeg.rotation.x = 0;
+                                person.torso.rotation.z = 0;
+                                const rating = Math.floor(Math.random() * 5) + 1;
+                                person.targetRoom.ratings.push(rating);
+                                person.targetRoom.viewers += 1;
+                            }
+                        } else if (person.state === 'paused') {
+                            person.mesh.position.y = yOffset;
+                            person.velocity.y = 0;
+
+                            const elapsed = t - person.startTime;
+                            const tilt = Math.sin(elapsed * 0.001) * Math.PI / 16;
+                            person.head.rotation.x = tilt * 0.5;
+                            person.head.rotation.y = tilt;
+                            if (elapsed >= person.pauseDuration) {
+                                person.state = 'moving';
+                                person.targetRoom = null;
+                                person.targetPosition = null;
+                                person.startTime = t;
+                                person.head.rotation.x = 0;
+                                person.head.rotation.y = 0;
+                                person.moveDuration = 8000 + Math.random() * 4000;
+                            }
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error in updatePeople:', error);
+                }
+            };
+
+            // Game state
+            let gameStarted = false;
+            let currentRoom = 0;
+            let phase = 'enter';
+            let lastRoomChange = performance.now();
+            const roomDuration = 10000;
+            let transitionProgress = 0;
+            let enterStartTime = 0;
+            let enterStartPosition = new THREE.Vector3();
+
+            // Welcome screen and start button
+            const welcomeScreen = document.getElementById('welcomeScreen');
+            const startButton = document.getElementById('startButton');
+            if (startButton) {
+                startButton.addEventListener('click', () => {
+                    try {
+                        gameStarted = true;
+                        if (welcomeScreen) welcomeScreen.style.display = 'none';
+                        if (cameraButton) cameraButton.style.display = 'block';
+                        if (speedButton) speedButton.style.display = 'block';
+                        if (lowerButton) lowerButton.style.display = 'block';
+                        if (timerDisplay) timerDisplay.style.display = 'block';
+                        if (infoDisplay) infoDisplay.style.display = 'block';
+                        if (leaderboardDisplay) leaderboardDisplay.style.display = 'block';
+                        roomStartTime = performance.now();
+                    } catch (error) {
+                        console.error('Error in startButton handler:', error);
+                    }
+                });
+            }
+
+            // Update spotlight position and direction
+            const updateSpotlight = () => {
+                try {
+                    spotlight.position.copy(flyCamera.position);
+                    const direction = new THREE.Vector3();
+                    flyCamera.getWorldDirection(direction);
+                    spotlight.target.position.copy(flyCamera.position).add(direction.multiplyScalar(10));
+                } catch (error) {
+                    console.error('Error in updateSpotlight:', error);
+                }
+            };
+
+            // Update camera trail
+            const updateTrail = () => {
+                try {
+                    trailPoints.push(flyCamera.position.clone());
+                    if (trailPoints.length > maxTrailPoints) {
+                        trailPoints.shift();
+                    }
+                    const positions = trailPoints.flatMap(p => [p.x, p.y, p.z]);
+                    trailGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                    trailGeometry.attributes.position.needsUpdate = true;
+                } catch (error) {
+                    console.error('Error in updateTrail:', error);
+                }
+            };
+
+            // Welcome screen camera animation
+            const animateWelcomeCamera = () => {
+                try {
+                    const t = performance.now() * 0.0005;
+                    flyCamera.position.set(
+                        Math.sin(t) * 180,
+                        40,
+                        Math.cos(t) * 180
+                    );
+                    flyCamera.lookAt(0, 0, 0);
+                    updateSpotlight();
+                } catch (error) {
+                    console.error('Error in animateWelcomeCamera:', error);
+                }
+            };
+
+            // Scene fly camera animation
+            const animateSceneFlyCamera = () => {
+                try {
+                    const t = performance.now() * 0.0003;
+                    sceneFlyCamera.position.set(
+                        Math.sin(t) * 300,
+                        100 + Math.sin(t * 0.5) * 20,
+                        Math.cos(t) * 300
+                    );
+                    sceneFlyCamera.lookAt(0, 0, 0);
+                } catch (error) {
+                    console.error('Error in animateSceneFlyCamera:', error);
+                }
+            };
+
+            // Update info display
+            const updateInfoDisplay = () => {
+                try {
+                    if (!infoDisplay) return;
+                    const roomName = gameStarted && rooms[currentRoom] ? illusionNames[currentRoom] : 'None';
+                    const cameraName = cameraIndex === 0 ? 'Fly' : 
+                                      cameraIndex === 1 ? 'Bird' : 
+                                      cameraIndex === 2 ? 'Room View' : 'Scene Fly';
+                    infoDisplay.innerHTML = `Room: ${roomName}<br>Camera: ${cameraName}`;
+                } catch (error) {
+                    console.error('Error in updateInfoDisplay:', error);
+                }
+            };
+
+            // Flash room name with rating stats
+            const flashRoomName = (roomName, roomIndex) => {
+                try {
+                    if (!roomNameDisplay || !rooms[roomIndex]) return;
+                    const room = rooms[roomIndex];
+                    const numRatings = room.ratings.length;
+                    const avgRating = numRatings > 0 
+                        ? (room.ratings.reduce((sum, rating) => sum + rating, 0) / numRatings).toFixed(1) 
+                        : 'N/A';
+                    const numViewers = room.viewers;
+                    roomNameDisplay.innerHTML = `<span>${roomName}</span><span>Ratings: ${numRatings}</span><span>Avg Rating: ${avgRating}/5</span><span>Viewers: ${numViewers}</span>`;
+                    roomNameDisplay.style.display = 'block';
+                    setTimeout(() => {
+                        if (roomNameDisplay) roomNameDisplay.style.display = 'none';
+                    }, 4000);
+                } catch (error) {
+                    console.error('Error in flashRoomName:', error);
+                }
+            };
+
+            // Update leaderboard
+            const updateLeaderboard = () => {
+                try {
+                    if (!leaderboardBody) return;
+                    const roomStats = rooms.map((room, index) => ({
+                        name: illusionNames[index],
+                        avgRating: room.ratings.length > 0 
+                            ? room.ratings.reduce((sum, rating) => sum + rating, 0) / room.ratings.length 
+                            : 0,
+                        viewers: room.viewers
+                    }));
+                    roomStats.sort((a, b) => {
+                        if (b.avgRating !== a.avgRating) return b.avgRating - a.avgRating;
+                        return b.viewers - a.viewers;
+                    });
+                    const limit = showTop3 ? 3 : 10;
+                    const topN = roomStats.slice(0, limit);
+                    leaderboardBody.innerHTML = topN.map((stat, index) => {
+                        let emoji = '';
+                        if (index === 0 && limit >= 1) emoji = '🥇 ';
+                        else if (index === 1 && limit >= 2) emoji = '🥈 ';
+                        else if (index === 2 && limit >= 3) emoji = '🥉 ';
+                        return `
+                            <tr>
+                                <td>${emoji}${stat.name}</td>
+                                <td>${stat.avgRating > 0 ? stat.avgRating.toFixed(1) : 'N/A'}</td>
+                                <td>${stat.viewers}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                } catch (error) {
+                    console.error('Error in updateLeaderboard:', error);
+                }
+            };
+
+            // Bezier curve for smooth arc path
+            const getBezierPoint = (t, p0, p1, p2, p3) => {
+                const u = 1 - t;
+                return new THREE.Vector3(
+                    u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x,
+                    u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y,
+                    u * u * u * p0.z + 3 * u * u * t * p1.z + 3 * u * t * t * p2.z + t * t * t * p3.z
+                );
+            };
+
+            // Manual lerp function
+            const lerp = (start, end, t) => {
+                return start + (end - start) * t;
+            };
+
+            // Game camera animation
+            const animateFlyCamera = () => {
+                try {
+                    if (currentRoom < 0 || currentRoom >= rooms.length || !rooms[currentRoom]) {
+                        console.warn('Invalid current room index:', currentRoom);
+                        return;
+                    }
+                    const room = rooms[currentRoom];
+                    const nextRoomIndex = (currentRoom + 1) % rooms.length;
+                    if (!rooms[nextRoomIndex]) {
+                        console.warn('Invalid next room index:', nextRoomIndex);
+                        return;
+                    }
+                    const nextRoom = rooms[nextRoomIndex];
+                    const t = performance.now();
+                    const progress = (t - lastRoomChange) / roomDuration;
+
+                    if (timerDisplay) {
+                        const timeInRoom = (t - roomStartTime) / 1000;
+                        timerDisplay.textContent = `Time in room: ${timeInRoom.toFixed(1)}s`;
+                    }
+                    updateInfoDisplay();
+
+                    if (progress > 1) {
+                        currentRoom = nextRoomIndex;
+                        lastRoomChange = t;
+                        roomStartTime = t;
+                        phase = 'enter';
+                        transitionProgress = 0;
+                        enterStartTime = t;
+                        enterStartPosition.copy(flyCamera.position);
+                        lastFlashedRoom = currentRoom - 1;
+                        yaw = 0;
+                        pitch = 0;
+                    }
+
+                    flyCamera.rotation.order = 'YXZ';
+                    flyCamera.rotation.set(pitch, yaw, 0);
+
+                    if (phase === 'enter') {
+                        const target = new THREE.Vector3(room.position.x, 4, room.position.z + roomSize / 2);
+                        const enterDuration = 2000;
+                        const elapsed = t - enterStartTime;
+                        let enterProgress = Math.min(elapsed / enterDuration, 1);
+                        enterProgress = 1 - Math.pow(1 - enterProgress, 3);
+
+                        if (enterProgress >= 0 && lastFlashedRoom !== currentRoom) {
+                            flashRoomName(illusionNames[currentRoom], currentRoom);
+                            lastFlashedRoom = currentRoom;
+                        }
+
+                        flyCamera.position.set(
+                            lerp(enterStartPosition.x, target.x, enterProgress),
+                            lerp(enterStartPosition.y, target.y, enterProgress),
+                            lerp(enterStartPosition.z, target.z, enterProgress)
+                        );
+
+                        updateSpotlight();
+                        updateTrail();
+                        if (enterProgress >= 1) {
+                            phase = 'exit';
+                            transitionProgress = 0;
+                            yaw = 0;
+                            pitch = 0;
+                        }
+                    } else if (phase === 'exit') {
+                        transitionProgress += currentSpeed;
+                        const easedProgress = 1 - Math.pow(1 - Math.min(transitionProgress, 1), 3);
+
+                        const p0 = new THREE.Vector3(room.position.x, 4, room.position.z);
+                        const p1 = new THREE.Vector3(room.position.x, 4, room.position.z + roomSize * 1.5);
+                        const p2 = new THREE.Vector3(
+                            (room.position.x + nextRoom.position.x) / 2,
+                            4,
+                            (room.position.z + nextRoom.position.z) / 2 + roomSize
+                        );
+                        const p3 = new THREE.Vector3(nextRoom.position.x, 4, nextRoom.position.z + roomSize / 2);
+
+                        const position = getBezierPoint(easedProgress, p0, p1, p2, p3);
+                        flyCamera.position.copy(position);
+
+                        updateSpotlight();
+                        updateTrail();
+
+                        if (transitionProgress >= 1) {
+                            phase = 'enter';
+                            currentRoom = nextRoomIndex;
+                            lastRoomChange = t;
+                            roomStartTime = t;
+                            transitionProgress = 0;
+                            enterStartTime = t;
+                            enterStartPosition.copy(flyCamera.position);
+                            lastFlashedRoom = currentRoom;
+                            yaw = 0;
+                            pitch = 0;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error in animateFlyCamera:', error);
+                }
+            };
+
+            // Animation loop
+            const animate = () => {
+                try {
+                    requestAnimationFrame(animate);
+                    if (!gameStarted) {
+                        animateWelcomeCamera();
+                    } else {
+                        if (activeCamera === flyCamera) {
+                            animateFlyCamera();
+                        } else if (activeCamera === sceneFlyCamera) {
+                            animateSceneFlyCamera();
+                        }
+                        updatePeople();
+                        updateLeaderboard();
+                    }
+                    renderer.render(scene, activeCamera);
+                } catch (error) {
+                    console.error('Error in animate:', error);
+                }
+            };
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                try {
+                    flyCamera.aspect = window.innerWidth / window.innerHeight;
+                    birdCamera.aspect = window.innerWidth / window.innerHeight;
+                    roomViewCamera.aspect = window.innerWidth / window.innerHeight;
+                    sceneFlyCamera.aspect = window.innerWidth / window.innerHeight;
+                    flyCamera.updateProjectionMatrix();
+                    birdCamera.updateProjectionMatrix();
+                    roomViewCamera.updateProjectionMatrix();
+                    sceneFlyCamera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                } catch (error) {
+                    console.error('Error in resize handler:', error);
+                }
+            });
+
+            // Start animation
+            flyCamera.position.set(0, 40, 180);
+            animate();
+        } catch (error) {
+            console.error('Script error:', error);
+        }
+    </script>
+</body>
+</html>
