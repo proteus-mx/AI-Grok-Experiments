@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Double Slit Experiment 3D</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #111; color: white; font-family: sans-serif; }
+    #ui {
+      position: absolute; top: 10px; left: 10px; z-index: 10;
+      background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px;
+    }
+    label { display: block; margin-top: 10px; }
+  </style>
+</head>
+<body>
+<div id="ui">
+  <label>
+    Mode:
+    <select id="mode">
+      <option value="particle">Particle</option>
+      <option value="wave">Wave</option>
+    </select>
+  </label>
+  <label>
+    Slit Distance:
+    <input type="range" id="slitDistance" min="1" max="10" step="0.1" value="4">
+    <span id="slitValue">4</span>
+  </label>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
+<script>
+  let scene = new THREE.Scene();
+  let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+  let renderer = new THREE.WebGLRenderer({antialias: true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  let modeSelector = document.getElementById('mode');
+  let slitSlider = document.getElementById('slitDistance');
+  let slitValueDisplay = document.getElementById('slitValue');
+
+  // Light
+  const light = new THREE.PointLight(0xffffff, 1);
+  light.position.set(0, 0, 50);
+  scene.add(light);
+
+  // Slit wall and back wall
+  let slitWall = new THREE.Mesh(new THREE.BoxGeometry(20, 20, 1), new THREE.MeshStandardMaterial({color: 0x222222}));
+  slitWall.position.z = -10;
+  scene.add(slitWall);
+
+  let backWall = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshBasicMaterial({color: 0x000000}));
+  backWall.position.z = -30;
+  scene.add(backWall);
+
+  // Dynamic slits
+  let slits = [];
+
+  function updateSlits(distance) {
+    slits.length = 0;
+    let half = distance / 2;
+    slits.push(new THREE.Box3(new THREE.Vector3(-1, -half, -10.5), new THREE.Vector3(1, -half + 2, -9.5)));
+    slits.push(new THREE.Box3(new THREE.Vector3(-1, half - 2, -10.5), new THREE.Vector3(1, half, -9.5)));
+  }
+
+  updateSlits(parseFloat(slitSlider.value));
+
+  slitSlider.addEventListener('input', () => {
+    let val = parseFloat(slitSlider.value);
+    slitValueDisplay.textContent = val.toFixed(1);
+    updateSlits(val);
+  });
+
+  // Particle system
+  let particles = [];
+  let dots = [];
+
+  function shootParticle() {
+    let particle = {
+      position: new THREE.Vector3(0, 0, 0),
+      velocity: new THREE.Vector3((Math.random() - 0.5) * 0.05, (Math.random() - 0.5) * 0.05, -0.5),
+      mode: modeSelector.value
+    };
+    particles.push(particle);
+  }
+
+  function waveIntensity(x, y, slitDist) {
+    // Simulate interference pattern intensity
+    let lambda = 1;  // wavelength
+    let d = slitDist;
+    let L = 20;      // distance to screen
+    let theta = Math.atan2(y, L);
+    let pathDiff = d * Math.sin(theta);
+    let intensity = Math.cos((Math.PI * pathDiff) / lambda);
+    return intensity * intensity;
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+
+    if (Math.random() < 0.5) shootParticle();
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+      let p = particles[i];
+      p.position.add(p.velocity);
+
+      if (p.position.z < -9.5 && p.position.z > -10.5) {
+        let passed = slits.some(slit => slit.containsPoint(p.position));
+        if (!passed) {
+          particles.splice(i, 1);
+          continue;
+        }
+      }
+
+      if (p.position.z < -29.5) {
+        let hitX = p.position.x;
+        let hitY = p.position.y;
+
+        if (p.mode === "wave") {
+          let intensity = waveIntensity(hitX, hitY, parseFloat(slitSlider.value));
+          if (Math.random() > intensity) {
+            particles.splice(i, 1);
+            continue;
+          }
+        }
+
+        let dot = new THREE.Mesh(
+          new THREE.SphereGeometry(0.05),
+          new THREE.MeshBasicMaterial({color: 0xffffff})
+        );
+        dot.position.set(hitX, hitY, -29.5);
+        scene.add(dot);
+        dots.push(dot);
+        particles.splice(i, 1);
+      }
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  camera.position.z = 20;
+  animate();
+</script>
+</body>
+</html>
