@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Double-Slit Experiment Simulation</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; color: white; font-family: Arial, sans-serif; }
+        canvas { display: block; }
+        #welcome-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+        #welcome-screen h1 {
+            font-size: 48px;
+            margin: 20px 0;
+        }
+        #welcome-screen p {
+            font-size: 18px;
+            max-width: 800px;
+            margin: 10px 0;
+        }
+        #start-button {
+            margin-top: 30px;
+            padding: 15px 30px;
+            font-size: 24px;
+            background: #00ff00;
+            color: black;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #start-button:hover {
+            background: #00cc00;
+        }
+        #diagram {
+            width: 80%;
+            max-width: 600px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+        #controls label { margin-right: 10px; }
+        #controls input, #controls select { margin-bottom: 10px; }
+        #info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 5px;
+            max-width: 500px;
+            font-size: 18px;
+            display: none;
+        }
+        #notification {
+            position: absolute;
+            bottom: 70px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 18px;
+            text-align: left;
+            display: none;
+            max-width: 500px;
+        }
+    </style>
+</head>
+<body>
+    <div id="welcome-screen">
+        <svg id="diagram" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid meet">
+            <!-- Light Source -->
+            <circle cx="50" cy="150" r="15" fill="yellow" stroke="white" stroke-width="2"/>
+            <text x="50" y="180" fill="white" font-size="16" text-anchor="middle">Light Source</text>
+            
+            <!-- Waves from Light Source -->
+            <path d="M65 150 A15 15 0 0 1 80 150 A30 30 0 0 1 95 150 A45 45 0 0 1 110 150" fill="none" stroke="cyan" stroke-width="2" opacity="0.5"/>
+            
+            <!-- Slit Wall -->
+            <rect x="150" y="50" width="10" height="200" fill="gray"/>
+            <!-- Slit 1 -->
+            <rect x="150" y="110" width="10" height="20" fill="black"/>
+            <text x="155" y="100" fill="white" font-size="14" text-anchor="middle">Slit 1</text>
+            <!-- Slit 2 -->
+            <rect x="150" y="170" width="10" height="20" fill="black"/>
+            <text x="155" y="160" fill="white" font-size="14" text-anchor="middle">Slit 2</text>
+            
+            <!-- Waves after Slits -->
+            <path d="M160 120 A20 20 0 0 1 180 120 A40 40 0 0 1 200 120" fill="none" stroke="cyan" stroke-width="2" opacity="0.5"/>
+            <path d="M160 180 A20 20 0 0 1 180 180 A40 40 0 0 1 200 180" fill="none" stroke="cyan" stroke-width="2" opacity="0.5"/>
+            
+            <!-- Screen -->
+            <rect x="500" y="50" width="10" height="200" fill="white"/>
+            <text x="505" y="40" fill="white" font-size="16" text-anchor="middle">Screen</text>
+            
+            <!-- Interference Pattern -->
+            <rect x="500" y="100" width="10" height="10" fill="blue" opacity="0.8"/>
+            <rect x="500" y="120" width="10" height="20" fill="blue" opacity="0.6"/>
+            <rect x="500" y="150" width="10" height="30" fill="blue" opacity="0.8"/>
+            <rect x="500" y="190" width="10" height="20" fill="blue" opacity="0.6"/>
+            <rect x="500" y="220" width="10" height="10" fill="blue" opacity="0.8"/>
+            <text x="550" y="150" fill="white" font-size="16" text-anchor="middle">Interference Pattern</text>
+        </svg>
+        <h1>Double-Slit Experiment Simulation</h1>
+        <p><strong>What is it?</strong> The double-slit experiment is a fundamental demonstration in quantum mechanics, showing that particles like electrons or photons exhibit both particle-like and wave-like behavior depending on observation.</p>
+        <p><strong>How it works:</strong> A light source emits particles or waves toward a barrier with two slits. When both slits are open, an interference pattern appears on a screen, indicating wave behavior. With one slit open, a single band appears, indicating particle behavior. Toggling particle mode simulates observation, collapsing the wave to particle paths.</p>
+        <p><strong>What it means:</strong> This experiment reveals the dual nature of quantum entities and the role of measurement in determining their behavior, challenging classical notions of reality and introducing the concept of wave-particle duality.</p>
+        <p><strong>Conclusions:</strong> The double-slit experiment underpins quantum theory, suggesting that reality at the quantum level is probabilistic and observer-dependent, with profound implications for physics and philosophy.</p>
+        <button id="start-button">Start Simulation</button>
+    </div>
+    <div id="controls">
+        <label>Slit Configuration: 
+            <select id="slitConfig">
+                <option value="both">Both Slits Open</option>
+                <option value="left">Left Slit Open</option>
+                <option value="right">Right Slit Open</option>
+            </select>
+        </label><br>
+        <label>Slit Separation: <input type="range" id="slitSeparation" min="0.1" max="2.0" step="0.1" value="1.0"></label><br>
+        <label>Slit Width: <input type="range" id="slitWidth" min="0.05" max="0.5" step="0.05" value="0.2"></label><br>
+        <label>Wave Frequency: <input type="range" id="waveFrequency" min="1" max="10" step="1" value="5"></label><br>
+        <label>Particle Mode: <input type="checkbox" id="particleMode"></label>
+    </div>
+    <div id="info">
+        This simulation demonstrates the double-slit experiment, a cornerstone of quantum mechanics. Adjust slit configuration, separation, width, and wave frequency to observe dynamic interference patterns or toggle particle mode to see distinct particle behavior. In wave mode, animated wave planes visualize interference. Use mouse to orbit, zoom, and pan the camera; view rotates automatically when idle.
+    </div>
+    <div id="notification"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Orbit Controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 0, 7.5);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 5;
+        controls.maxDistance = 30;
+        controls.autoRotate = true; // Enable auto-rotation
+        controls.autoRotateSpeed = 2.0; // Speed of rotation (degrees per second)
+        camera.position.set(0, 5, 15);
+        controls.update();
+
+        // Handle user interaction to pause/resume auto-rotation
+        let interactionTimeout;
+        function stopAutoRotate() {
+            controls.autoRotate = false;
+            clearTimeout(interactionTimeout);
+            interactionTimeout = setTimeout(() => {
+                controls.autoRotate = true;
+            }, 2000); // Resume after 2 seconds of inactivity
+        }
+
+        // Event listeners for user interaction
+        renderer.domElement.addEventListener('mousedown', stopAutoRotate);
+        renderer.domElement.addEventListener('mousemove', stopAutoRotate);
+        renderer.domElement.addEventListener('wheel', stopAutoRotate);
+        renderer.domElement.addEventListener('touchstart', stopAutoRotate);
+        renderer.domElement.addEventListener('touchmove', stopAutoRotate);
+
+        // Welcome Screen
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const startButton = document.getElementById('start-button');
+        const controlsDiv = document.getElementById('controls');
+        const infoDiv = document.getElementById('info');
+
+        startButton.addEventListener('click', () => {
+            welcomeScreen.style.display = 'none';
+            controlsDiv.style.display = 'block';
+            infoDiv.style.display = 'block';
+            animate();
+        });
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+        pointLight.position.set(10, 10, 10);
+        scene.add(pointLight);
+
+        // Light Source
+        const lightSourceGeometry = new THREE.SphereGeometry(0.3, 32, 32);
+        const lightSourceMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xffff00, 
+            emissive: 0xffff00, 
+            emissiveIntensity: 1 
+        });
+        const lightSource = new THREE.Mesh(lightSourceGeometry, lightSourceMaterial);
+        lightSource.position.set(0, 0, -2);
+        scene.add(lightSource);
+
+        // Double Slit Wall (double-sided with holes, grey color)
+        let slitSeparation = 1.0;
+        let slitWidth = 0.2;
+        let slitConfig = 0; // 0 = both, 1 = left, 2 = right
+        const slitMaterial = new THREE.MeshPhongMaterial({ color: 0x808080, side: THREE.DoubleSide });
+
+        function createSlitWallGeometry(separation, width, config) {
+            const shape = new THREE.Shape();
+            shape.moveTo(-6, -3);
+            shape.lineTo(-6, 3);
+            shape.lineTo(6, 3);
+            shape.lineTo(6, -3);
+            shape.lineTo(-6, -3);
+
+            if (config === 0 || config === 1) {
+                const slit1Hole = new THREE.Path();
+                slit1Hole.moveTo(separation - width, -0.15);
+                slit1Hole.lineTo(separation - width, 0.15);
+                slit1Hole.lineTo(separation + width, 0.15);
+                slit1Hole.lineTo(separation + width, -0.15);
+                slit1Hole.lineTo(separation - width, -0.15);
+                shape.holes.push(slit1Hole);
+            }
+            if (config === 0 || config === 2) {
+                const slit2Hole = new THREE.Path();
+                slit2Hole.moveTo(-separation - width, -0.15);
+                slit2Hole.lineTo(-separation - width, 0.15);
+                slit2Hole.lineTo(-separation + width, 0.15);
+                slit2Hole.lineTo(-separation + width, -0.15);
+                slit2Hole.lineTo(-separation - width, -0.15);
+                shape.holes.push(slit2Hole);
+            }
+            return new THREE.ShapeGeometry(shape);
+        }
+
+        let slitWall = new THREE.Mesh(createSlitWallGeometry(slitSeparation, slitWidth, slitConfig), slitMaterial);
+        slitWall.position.set(0, 0, 5);
+        scene.add(slitWall);
+
+        // Slit Highlight Edges
+        function createSlitHighlight(separation, width, isActive) {
+            const points = [
+                new THREE.Vector3(separation - width, -0.15, 5.01),
+                new THREE.Vector3(separation - width, 0.15, 5.01),
+                new THREE.Vector3(separation + width, 0.15, 5.01),
+                new THREE.Vector3(separation + width, -0.15, 5.01),
+                new THREE.Vector3(separation - width, -0.15, 5.01)
+            ];
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({ color: isActive ? 0x00ff00 : 0x333333 });
+            return new THREE.LineSegments(geometry, material);
+        }
+
+        let slit1Highlight = createSlitHighlight(slitSeparation, slitWidth, true);
+        let slit2Highlight = createSlitHighlight(-slitSeparation, slitWidth, true);
+        scene.add(slit1Highlight, slit2Highlight);
+
+        // Wave Visualization Planes
+        const waveGeometry = new THREE.PlaneGeometry(12, 6);
+        const waveMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                time: { value: 0 },
+                slitSeparation: { value: slitSeparation },
+                slitWidth: { value: slitWidth },
+                waveFrequency: { value: 5.0 },
+                zPosition: { value: 0 },
+                particleMode: { value: false },
+                slitConfig: { value: 0 }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform float time;
+                uniform float slitSeparation;
+                uniform float slitWidth;
+                uniform float waveFrequency;
+                uniform float zPosition;
+                uniform bool particleMode;
+                uniform int slitConfig;
+                varying vec2 vUv;
+
+                float waveFunction(float x, float y, float slitPos, float z) {
+                    float r = sqrt(pow(x - slitPos, 2.0) + pow(z, 2.0) + 0.1);
+                    return sin(waveFrequency * r - time * 5.0) / (r + 0.01);
+                }
+
+                void main() {
+                    if (particleMode) {
+                        gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
+                        return;
+                    }
+                    float x = (vUv.x - 0.5) * 12.0;
+                    float y = (vUv.y - 0.5) * 6.0;
+                    float z = zPosition;
+
+                    float intensity = 0.0;
+                    if (z < 5.0) {
+                        float r = sqrt(pow(x, 2.0) + pow(y, 2.0) + pow(z + 2.0, 2.0) + 0.1);
+                        intensity = pow(sin(waveFrequency * r - time * 5.0) / (r + 0.01), 2.0);
+                    } else {
+                        float psi1 = (slitConfig == 0 || slitConfig == 1) ? waveFunction(x, y, slitSeparation, z - 5.0) : 0.0;
+                        float psi2 = (slitConfig == 0 || slitConfig == 2) ? waveFunction(x, y, -slitSeparation, z - 5.0) : 0.0;
+                        intensity = pow(psi1 + psi2, 2.0);
+                    }
+
+                    intensity = clamp(intensity * 0.5, 0.0, 1.0);
+                    vec3 color = mix(vec3(0.2, 0.4, 1.0), vec3(1.0, 0.8, 0.2), intensity);
+                    gl_FragColor = vec4(color, 0.3 * intensity);
+                }
+            `,
+            side: THREE.DoubleSide,
+            transparent: true
+        });
+
+        const wavePlane1 = new THREE.Mesh(waveGeometry, waveMaterial.clone());
+        wavePlane1.position.set(0, 0, 2);
+        wavePlane1.material.uniforms.zPosition.value = 2;
+        scene.add(wavePlane1);
+
+        const wavePlane2 = new THREE.Mesh(waveGeometry, waveMaterial.clone());
+        wavePlane2.position.set(0, 0, 7.5);
+        wavePlane2.material.uniforms.zPosition.value = 7.5;
+        scene.add(wavePlane2);
+
+        // Screen (Double-sided)
+        const screenGeometry = new THREE.PlaneGeometry(12, 6);
+        const screenMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                time: { value: 0 },
+                slitSeparation: { value: slitSeparation },
+                slitWidth: { value: slitWidth },
+                waveFrequency: { value: 5.0 },
+                particleMode: { value: false },
+                slitConfig: { value: 0 }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform float time;
+                uniform float slitSeparation;
+                uniform float slitWidth;
+                uniform float waveFrequency;
+                uniform bool particleMode;
+                uniform int slitConfig;
+                varying vec2 vUv;
+
+                float waveFunction(float x, float y, float slitPos) {
+                    float r = sqrt(pow(x - slitPos, 2.0) + 0.1);
+                    return sin(waveFrequency * r) / (r + 0.01);
+                }
+
+                void main() {
+                    float x = (vUv.x - 0.5) * 12.0;
+                    float y = (vUv.y - 0.5) * 6.0;
+                    float intensity = 0.0;
+
+                    if (particleMode) {
+                        float slit1Hit = (slitConfig == 0 || slitConfig == 1) ? step(abs(x - slitSeparation), slitWidth) : 0.0;
+                        float slit2Hit = (slitConfig == 0 || slitConfig == 2) ? step(abs(x + slitSeparation), slitWidth) : 0.0;
+                        intensity = slit1Hit + slit2Hit;
+                    } else {
+                        float psi1 = (slitConfig == 0 || slitConfig == 1) ? waveFunction(x, y, slitSeparation) : 0.0;
+                        float psi2 = (slitConfig == 0 || slitConfig == 2) ? waveFunction(x, y, -slitSeparation) : 0.0;
+                        intensity = pow(psi1 + psi2, 2.0);
+                    }
+
+                    intensity = clamp(intensity * 0.7, 0.0, 1.0);
+                    vec3 color = mix(vec3(0.1, 0.3, 1.0), vec3(1.0, 0.9, 0.3), intensity);
+                    gl_FragColor = vec4(color, 1.0);
+                }
+            `,
+            side: THREE.DoubleSide
+        });
+        const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+        screen.position.set(0, 0, 10);
+        scene.add(screen);
+
+        // Particles for steady flow
+        const particleCount = 100;
+        const particles = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const velocities = new Float32Array(particleCount * 3);
+        const spawnTimes = new Float32Array(particleCount);
+        const spawnInterval = 0.1;
+        for (let i = 0; i < particleCount; i++) {
+            positions[i * 3] = 0;
+            positions[i * 3 + 1] = 0;
+            positions[i * 3 + 2] = -2;
+            const slitChoice = Math.random() < 0.5 ? slitSeparation : -slitSeparation;
+            velocities[i * 3] = (slitChoice + (Math.random() - 0.5) * slitWidth - positions[i * 3]) / 140;
+            velocities[i * 3 + 1] = ((Math.random() - 0.5) * 0.3 - positions[i * 3 + 1]) / 140;
+            velocities[i * 3 + 2] = 0.05;
+            spawnTimes[i] = i * spawnInterval;
+        }
+        particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const particleMaterial = new THREE.PointsMaterial({ color: 0x00ff00, size: 0.05 });
+        const particleSystem = new THREE.Points(particles, particleMaterial);
+        scene.add(particleSystem);
+
+        // Input Controls
+        const inputControls = {
+            slitConfig: document.getElementById('slitConfig'),
+            slitSeparation: document.getElementById('slitSeparation'),
+            slitWidth: document.getElementById('slitWidth'),
+            waveFrequency: document.getElementById('waveFrequency'),
+            particleMode: document.getElementById('particleMode')
+        };
+
+        function updateSlits() {
+            slitSeparation = parseFloat(inputControls.slitSeparation.value);
+            slitWidth = parseFloat(inputControls.slitWidth.value);
+            slitConfig = inputControls.slitConfig.value === 'both' ? 0 : inputControls.slitConfig.value === 'left' ? 1 : 2;
+
+            // Update slit wall geometry
+            scene.remove(slitWall);
+            slitWall = new THREE.Mesh(createSlitWallGeometry(slitSeparation, slitWidth, slitConfig), slitMaterial);
+            slitWall.position.set(0, 0, 5);
+            scene.add(slitWall);
+
+            // Update slit highlights
+            scene.remove(slit1Highlight, slit2Highlight);
+            slit1Highlight = createSlitHighlight(slitSeparation, slitWidth, slitConfig === 0 || slitConfig === 1);
+            slit2Highlight = createSlitHighlight(-slitSeparation, slitWidth, slitConfig === 0 || slitConfig === 2);
+            scene.add(slit1Highlight, slit2Highlight);
+
+            // Update shader uniforms
+            screenMaterial.uniforms.slitSeparation.value = slitSeparation;
+            screenMaterial.uniforms.slitWidth.value = slitWidth;
+            screenMaterial.uniforms.waveFrequency.value = parseFloat(inputControls.waveFrequency.value);
+            screenMaterial.uniforms.particleMode.value = inputControls.particleMode.checked;
+            screenMaterial.uniforms.slitConfig.value = slitConfig;
+            wavePlane1.material.uniforms.slitSeparation.value = slitSeparation;
+            wavePlane1.material.uniforms.slitWidth.value = slitWidth;
+            wavePlane1.material.uniforms.waveFrequency.value = parseFloat(inputControls.waveFrequency.value);
+            wavePlane1.material.uniforms.particleMode.value = inputControls.particleMode.checked;
+            wavePlane1.material.uniforms.slitConfig.value = slitConfig;
+            wavePlane2.material.uniforms.slitSeparation.value = slitSeparation;
+            wavePlane2.material.uniforms.slitWidth.value = slitWidth;
+            wavePlane2.material.uniforms.waveFrequency.value = parseFloat(inputControls.waveFrequency.value);
+            wavePlane2.material.uniforms.particleMode.value = inputControls.particleMode.checked;
+            wavePlane2.material.uniforms.slitConfig.value = slitConfig;
+
+            // Update particle velocities
+            const positions = particleSystem.geometry.attributes.position.array;
+            for (let i = 0; i < particleCount; i++) {
+                let slitChoice;
+                if (slitConfig === 1) {
+                    slitChoice = slitSeparation;
+                } else if (slitConfig === 2) {
+                    slitChoice = -slitSeparation;
+                } else {
+                    slitChoice = Math.random() < 0.5 ? slitSeparation : -slitSeparation;
+                }
+                velocities[i * 3] = (slitChoice + (Math.random() - 0.5) * slitWidth - positions[i * 3]) / 140;
+                velocities[i * 3 + 1] = ((Math.random() - 0.5) * 0.3 - positions[i * 3 + 1]) / 140;
+            }
+        }
+
+        // Event listeners for controls
+        inputControls.slitConfig.addEventListener('change', updateSlits);
+        inputControls.slitSeparation.addEventListener('input', updateSlits);
+        inputControls.slitWidth.addEventListener('input', updateSlits);
+        inputControls.waveFrequency.addEventListener('input', updateSlits);
+        inputControls.particleMode.addEventListener('change', updateSlits);
+
+        // Notification system
+        const notification = document.getElementById('notification');
+        function showNotification(message) {
+            notification.textContent = message;
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 2000);
+        }
+
+        // Automatic settings change
+        let time = 0;
+        function autoChangeSettings() {
+            time += 0.016;
+            if (time > 5) {
+                time = 0;
+                const action = Math.floor(Math.random() * 5);
+                switch (action) {
+                    case 0:
+                        inputControls.slitConfig.value = ['both', 'left', 'right'][Math.floor(Math.random() * 3)];
+                        showNotification(`Slit Config changed to ${inputControls.slitConfig.value}`);
+                        break;
+                    case 1:
+                        inputControls.slitSeparation.value = (Math.random() * 1.9 + 0.1).toFixed(1);
+                        showNotification(`Slit Separation changed to ${inputControls.slitSeparation.value}`);
+                        break;
+                    case 2:
+                        inputControls.slitWidth.value = (Math.random() * 0.45 + 0.05).toFixed(2);
+                        showNotification(`Slit Width changed to ${inputControls.slitWidth.value}`);
+                        break;
+                    case 3:
+                        inputControls.waveFrequency.value = Math.floor(Math.random() * 10) + 1;
+                        showNotification(`Wave Frequency changed to ${inputControls.waveFrequency.value}`);
+                        break;
+                    case 4:
+                        inputControls.particleMode.checked = !inputControls.particleMode.checked;
+                        showNotification(`Particle Mode: ${inputControls.particleMode.checked ? 'ON' : 'OFF'}`);
+                        break;
+                }
+                updateSlits();
+            }
+        }
+
+        // Animation loop
+        let elapsedTime = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            elapsedTime += 0.016;
+
+            // Update particles
+            const positions = particleSystem.geometry.attributes.position.array;
+            for (let i = 0; i < particleCount; i++) {
+                if (elapsedTime >= spawnTimes[i]) {
+                    positions[i * 3] += velocities[i * 3];
+                    positions[i * 3 + 1] += velocities[i * 3 + 1];
+                    positions[i * 3 + 2] += velocities[i * 3 + 2];
+
+                    // Check if particle passes through slits at z = 5
+                    if (positions[i * 3 + 2] >= 5 && positions[i * 3 + 2] < 5.1) {
+                        const x = positions[i * 3];
+                        const y = positions[i * 3 + 1];
+                        const inSlit1 = (slitConfig === 0 || slitConfig === 1) && Math.abs(x - slitSeparation) <= slitWidth && Math.abs(y) <= 0.15;
+                        const inSlit2 = (slitConfig === 0 || slitConfig == 2) && Math.abs(x + slitSeparation) <= slitWidth && Math.abs(y) <= 0.15;
+                        if (!inSlit1 && !inSlit2) {
+                            positions[i * 3] = 0;
+                            positions[i * 3 + 1] = 0;
+                            positions[i * 3 + 2] = -2;
+                            let slitChoice;
+                            if (slitConfig === 1) {
+                                slitChoice = slitSeparation;
+                            } else if (slitConfig === 2) {
+                                slitChoice = -slitSeparation;
+                            } else {
+                                slitChoice = Math.random() < 0.5 ? slitSeparation : -slitSeparation;
+                            }
+                            velocities[i * 3] = (slitChoice + (Math.random() - 0.5) * slitWidth - positions[i * 3]) / 140;
+                            velocities[i * 3 + 1] = ((Math.random() - 0.5) * 0.3 - positions[i * 3 + 1]) / 140;
+                            spawnTimes[i] = elapsedTime + spawnInterval;
+                        }
+                    }
+
+                    // Reset particles at screen
+                    if (positions[i * 3 + 2] > 10) {
+                        positions[i * 3] = 0;
+                        positions[i * 3 + 1] = 0;
+                        positions[i * 3 + 2] = -2;
+                        let slitChoice;
+                        if (slitConfig === 1) {
+                            slitChoice = slitSeparation;
+                        } else if (slitConfig === 2) {
+                            slitChoice = -slitSeparation;
+                        } else {
+                            slitChoice = Math.random() < 0.5 ? slitSeparation : -slitSeparation;
+                        }
+                        velocities[i * 3] = (slitChoice + (Math.random() - 0.5) * slitWidth - positions[i * 3]) / 140;
+                        velocities[i * 3 + 1] = ((Math.random() - 0.5) * 0.3 - positions[i * 3 + 1]) / 140;
+                        spawnTimes[i] = elapsedTime + spawnInterval;
+                    }
+                }
+            }
+            particleSystem.geometry.attributes.position.needsUpdate = true;
+
+            // Update shader time
+            screenMaterial.uniforms.time.value += 0.01;
+            wavePlane1.material.uniforms.time.value += 0.01;
+            wavePlane2.material.uniforms.time.value += 0.01;
+
+            // Auto-change settings
+            autoChangeSettings();
+
+            // Update orbit controls
+            controls.update();
+
+            renderer.render(scene, camera);
+        }
+
+        // Initialize slits
+        updateSlits();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
