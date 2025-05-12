@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ping Pong Bounce Game - V0.1</title>
+    <title>Ping Pong Bounce Game</title>
     <style>
         body { margin: 0; overflow: hidden; background: #1a1a1a; }
         canvas { display: block; }
@@ -200,8 +200,8 @@
         scene.add(edgeRight);
 
         // Hollow Cups
-        const cupOuterRadius = 0.35; // Wider visual cylinder
-        const cupInnerRadius = 0.4; // Wider trigger for easy passage
+        const cupOuterRadius = 0.45; // Wider visual cylinder
+        const cupInnerRadius = 0.5; // Wider trigger for easy passage
         const cupHeight = 0.5;
         const cupGeometry = new THREE.CylinderGeometry(cupOuterRadius, cupOuterRadius, cupHeight, 32, 1, true);
         const cupMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
@@ -336,6 +336,11 @@
 
         // Ball launch (manual)
         document.addEventListener('touchstart', (e) => {
+            const target = e.target;
+            if (target.id === 'cameraButton' || target.id === 'restartButton' || 
+                target.id === 'aiButton' || target.id === 'tryAgainButton') {
+                return; // Prevent ball launch when tapping buttons
+            }
             if (gameOver) {
                 resetGame();
                 return;
@@ -345,7 +350,7 @@
             const x = (touch.clientX / window.innerWidth) * 2 - 1;
             const y = -(touch.clientY / window.innerHeight) * 2 + 1;
             const forceX = x * 3;
-            const forceZ = -6 - y * 2.5;
+            const forceZ = -5 - y * 2; // Adjusted for better cylinder targeting
             const { ballBody } = createBall();
             ballBody.wakeUp();
             ballBody.velocity.set(forceX, 3.5, forceZ);
