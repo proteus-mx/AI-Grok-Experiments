@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ping Pong Bounce Game</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #1a1a1a; }
+        canvas { display: block; }
+        #ui { 
+            position: absolute; 
+            top: 10px; 
+            left: 10px; 
+            color: white; 
+            font-family: Arial, sans-serif; 
+            font-size: 20px; 
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        #gameOver { 
+            display: none; 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            color: #ff4444; 
+            font-family: Arial, sans-serif; 
+            font-size: 48px; 
+            text-align: center; 
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.9);
+        }
+        #pointsFlash { 
+            display: none; 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            color: #ffd700; 
+            font-family: Arial, sans-serif; 
+            font-size: 48px; 
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.9);
+        }
+        #cameraButton {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            cursor: pointer;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        #cameraButton:hover {
+            background: #45a049;
+        }
+        #tryAgainButton {
+            display: none;
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 15px 30px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            cursor: pointer;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        #tryAgainButton:hover {
+            background: #1e88e5;
+        }
+        #restartButton {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            padding: 10px 20px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            cursor: pointer;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        #restartButton:hover {
+            background: #e53935;
+        }
+        #aiButton {
+            position: absolute;
+            top: 90px;
+            right: 10px;
+            padding: 10px 20px;
+            background: #ff9800;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            cursor: pointer;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        #aiButton:hover {
+            background: #fb8c00;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        Lives: <span id="lives">3</span> | Score: <span id="score">0</span> | Balls: <span id="balls">10</span>
+    </div>
+    <div id="gameOver">
+        Game Over!<br>Final Score: <span id="finalScore">0</span><br>Tap to Restart
+    </div>
+    <div id="pointsFlash">+100</div>
+    <button id="cameraButton">Cycle Camera</button>
+    <button id="tryAgainButton">Try Again</button>
+    <button id="restartButton">Restart Game</button>
+    <button id="aiButton">Toggle AI Mode</button>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // Skybox
+        const textureLoader = new THREE.TextureLoader();
+        const skyTexture = textureLoader.load('https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg');
+        const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
+        const skyMaterial = new THREE.MeshBasicMaterial({
+            map: skyTexture,
+            side: THREE.BackSide
+        });
+        const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+        scene.add(sky);
+
+        // Physics world
+        const world = new CANNON.World();
+        world.gravity.set(0, -9.81, 0);
+        world.broadphase = new CANNON.NaiveBroadphase();
+        world.solver.iterations = 10;
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7);
+        directionalLight.position.set(5, 10, 5);
+        directionalLight.castShadow = true;
+        scene.add(directionalLight);
+
+        // Table
+        const tableGeometry = new THREE.BoxGeometry(7, 0.2, 7);
+        const woodTexture = textureLoader.load('https://threejs.org/examples/textures/hardwood2_diffuse.jpg');
+        const tableMaterial = new THREE.MeshPhongMaterial({
+            map: woodTexture,
+            shininess: 50,
+            specular: 0x555555
+        });
+        const table = new THREE.Mesh(tableGeometry, tableMaterial);
+        table.receiveShadow = true;
+        table.position.y = -0.1;
+        const tiltAngle = THREE.MathUtils.degToRad(5); // 5-degree tilt
+        table.rotation.x = tiltAngle; // Tilt front (z=3) down
+        scene.add(table);
+        const tableBody = new CANNON.Body({ mass: 0 });
+        tableBody.addShape(new CANNON.Box(new CANNON.Vec3(3.5, 0.1, 3.5)));
+        tableBody.position.copy(table.position);
+        tableBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), tiltAngle);
+        world.addBody(tableBody);
+
+        // Table edges
+        const edgeGeometry = new THREE.BoxGeometry(7, 0.1, 0.2);
+        const edgeMaterial = new THREE.MeshPhongMaterial({ color: 0x3c2f2f, shininess: 30 });
+        const edgeTop = new THREE.Mesh(edgeGeometry, edgeMaterial);
+        edgeTop.position.set(0, 0, 3.6);
+        edgeTop.rotation.x = tiltAngle;
+        scene.add(edgeTop);
+        const edgeBottom = new THREE.Mesh(edgeGeometry, edgeMaterial);
+        edgeBottom.position.set(0, 0, -3.6);
+        edgeBottom.rotation.x = tiltAngle;
+        scene.add(edgeBottom);
+        const edgeSideGeometry = new THREE.BoxGeometry(0.2, 0.1, 7);
+        const edgeLeft = new THREE.Mesh(edgeSideGeometry, edgeMaterial);
+        edgeLeft.position.set(3.6, 0, 0);
+        edgeLeft.rotation.x = tiltAngle;
+        scene.add(edgeLeft);
+        const edgeRight = new THREE.Mesh(edgeSideGeometry, edgeMaterial);
+        edgeRight.position.set(-3.6, 0, 0);
+        edgeRight.rotation.x = tiltAngle;
+        scene.add(edgeRight);
+
+        // Hollow Cups
+        const cupOuterRadius = 0.35; // Wider visual cylinder
+        const cupInnerRadius = 0.4; // Wider trigger for easy passage
+        const cupHeight = 0.5;
+        const cupGeometry = new THREE.CylinderGeometry(cupOuterRadius, cupOuterRadius, cupHeight, 32, 1, true);
+        const cupMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
+        const cups = [];
+        const cupBodies = [];
+        const rows = 4;
+        let cupCount = 0;
+        for (let row = 0; row < rows; row++) {
+            for (let col = 0; col <= row; col++) {
+                const cup = new THREE.Mesh(cupGeometry, cupMaterial);
+                cup.castShadow = true;
+                cup.receiveShadow = true;
+                const x = col * 0.65 - row * 0.325;
+                const z = -0.5 - row * 0.65;
+                const tableSurfaceY = Math.tan(tiltAngle) * (z + 3.5);
+                const cupBottomY = tableSurfaceY + 0.1;
+                const cupCenterY = cupBottomY + cupHeight / 2;
+                cup.position.set(x, cupCenterY, z);
+                scene.add(cup);
+                cups.push(cup);
+
+                const cupBody = new CANNON.Body({ mass: 0 });
+                const triggerShape = new CANNON.Cylinder(cupInnerRadius, cupInnerRadius, cupHeight, 16);
+                cupBody.addShape(triggerShape, new CANNON.Vec3(0, 0, 0), null, { isTrigger: true });
+                cupBody.position.set(x, cupCenterY, z);
+                cupBody.isCup = true;
+                cupBody.cupIndex = cupCount++;
+                world.addBody(cupBody);
+                cupBodies.push(cupBody);
+            }
+        }
+
+        // Balls
+        const balls = [];
+        const ballBodies = [];
+        const ballGeometry = new THREE.SphereGeometry(0.1, 32, 32);
+        const ballMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 100 });
+
+        // Game state
+        let lives = 3;
+        let score = 0;
+        let ballsLeft = 10;
+        let gameOver = false;
+        let scoredCups = new Set();
+        let bounceCounts = [];
+        let aiMode = false;
+        let ballInCup = false;
+
+        // Camera setup
+        const cameras = [
+            { type: 'static', position: new THREE.Vector3(0, 2, 4), lookAt: new THREE.Vector3(0, 0, 0) },
+            { type: 'orbit', radius: 4, angle: 0, height: 2 },
+            { type: 'birdsEye', position: new THREE.Vector3(0, 5, 0), lookAt: new THREE.Vector3(0, 0, 0) }
+        ];
+        let currentCameraIndex = 0;
+        let activeCamera = camera;
+
+        function updateCamera() {
+            const cam = cameras[currentCameraIndex];
+            if (cam.type === 'static' || cam.type === 'birdsEye') {
+                activeCamera.position.copy(cam.position);
+                activeCamera.lookAt(cam.lookAt);
+            } else if (cam.type === 'orbit') {
+                cam.angle += 0.01;
+                activeCamera.position.set(
+                    Math.cos(cam.angle) * cam.radius,
+                    cam.height,
+                    Math.sin(cam.angle) * cam.radius
+                );
+                activeCamera.lookAt(0, 0, 0);
+            }
+        }
+
+        document.getElementById('cameraButton').addEventListener('click', () => {
+            currentCameraIndex = (currentCameraIndex + 1) % cameras.length;
+        });
+
+        // Restart button
+        document.getElementById('restartButton').addEventListener('click', () => {
+            resetGame();
+        });
+
+        // AI Mode button
+        document.getElementById('aiButton').addEventListener('click', () => {
+            aiMode = !aiMode;
+            document.getElementById('aiButton').textContent = aiMode ? 'AI Mode: ON' : 'Toggle AI Mode';
+            if (aiMode && !gameOver) {
+                launchAIBall();
+            }
+        });
+
+        function createBall() {
+            const ball = new THREE.Mesh(ballGeometry, ballMaterial);
+            ball.castShadow = true;
+            ball.position.set(0, 1.5, 3.0);
+            scene.add(ball);
+            const ballBody = new CANNON.Body({ mass: 0.5 });
+            ballBody.addShape(new CANNON.Sphere(0.1)); // Matches ball geometry
+            ballBody.position.copy(ball.position);
+            ballBody.linearDamping = 0.6;
+            ballBody.angularDamping = 0.6;
+            ballBody.restitution = 1.0;
+            world.addBody(ballBody);
+            balls.push(ball);
+            ballBodies.push(ballBody);
+            bounceCounts.push(0);
+            ballBody.sleep();
+            return { ball, ballBody };
+        }
+
+        function launchAIBall() {
+            if (ballsLeft <= 0 || gameOver) return;
+            const availableCups = cupBodies.filter(cup => cup && !scoredCups.has(cup.cupIndex));
+            if (availableCups.length === 0) return;
+            const targetCup = availableCups[Math.floor(Math.random() * availableCups.length)];
+            const targetPos = targetCup.position;
+
+            const { ballBody } = createBall();
+            const deltaX = targetPos.x - ballBody.position.x;
+            const deltaZ = targetPos.z - ballBody.position.z;
+            const distance = Math.sqrt(deltaX * deltaX + deltaZ * deltaZ);
+            const timeToTarget = 1.0;
+            const vy = 3 + (0.5 * 9.81 * timeToTarget);
+            const vx = deltaX / timeToTarget;
+            const vz = deltaZ / timeToTarget;
+
+            ballBody.wakeUp();
+            ballBody.velocity.set(vx, vy, vz);
+            ballsLeft--;
+            updateUI();
+        }
+
+        // Ball launch (manual)
+        document.addEventListener('touchstart', (e) => {
+            if (gameOver) {
+                resetGame();
+                return;
+            }
+            if (aiMode || ballsLeft <= 0) return;
+            const touch = e.touches[0];
+            const x = (touch.clientX / window.innerWidth) * 2 - 1;
+            const y = -(touch.clientY / window.innerHeight) * 2 + 1;
+            const forceX = x * 3;
+            const forceZ = -6 - y * 2.5;
+            const { ballBody } = createBall();
+            ballBody.wakeUp();
+            ballBody.velocity.set(forceX, 3.5, forceZ);
+            ballsLeft--;
+            updateUI();
+        });
+
+        // Try Again button
+        document.getElementById('tryAgainButton').addEventListener('click', () => {
+            if (!gameOver && !aiMode) {
+                // Optional: Could trigger something else
+            }
+        });
+
+        // Collision detection
+        world.addEventListener('beginContact', (e) => {
+            const bodyA = e.bodyA;
+            const bodyB = e.bodyB;
+            let cupIndex, isCupCollision = false;
+
+            if (bodyA.isCup && ballBodies.includes(bodyB) && !scoredCups.has(bodyA.cupIndex)) {
+                cupIndex = bodyA.cupIndex;
+                isCupCollision = true;
+            } else if (bodyB.isCup && ballBodies.includes(bodyA) && !scoredCups.has(bodyB.cupIndex)) {
+                cupIndex = bodyB.cupIndex;
+                isCupCollision = true;
+            } else if ((bodyA === tableBody || bodyB === tableBody) && ballBodies.includes(bodyA)) {
+                const ballIndex = ballBodies.indexOf(bodyA);
+                if (ballIndex !== -1) bounceCounts[ballIndex]++;
+            } else if ((bodyA === tableBody || bodyB === tableBody) && ballBodies.includes(bodyB)) {
+                const ballIndex = ballBodies.indexOf(bodyB);
+                if (ballIndex !== -1) bounceCounts[ballIndex]++;
+            }
+
+            if (isCupCollision && cupIndex !== undefined) {
+                const ballBody = ballBodies.includes(bodyA) ? bodyA : bodyB;
+                if (e.shapeA.isTrigger || e.shapeB.isTrigger) {
+                    score += 100;
+                    scoredCups.add(cupIndex);
+                    ballInCup = true;
+                    scene.remove(cups[cupIndex]);
+                    world.removeBody(cupBodies[cupIndex]);
+                    cups[cupIndex] = null;
+                    cupBodies[cupIndex] = null;
+                    updateUI();
+                    flashPoints();
+                }
+            }
+        });
+
+        function updateUI() {
+            document.getElementById('lives').textContent = lives;
+            document.getElementById('score').textContent = score;
+            document.getElementById('balls').textContent = ballsLeft;
+            document.getElementById('tryAgainButton').style.display = (gameOver || aiMode) ? 'none' : 'block';
+        }
+
+        function flashPoints() {
+            const pointsDiv = document.getElementById('pointsFlash');
+            pointsDiv.style.display = 'block';
+            setTimeout(() => {
+                pointsDiv.style.display = 'none';
+            }, 1000);
+        }
+
+        function endGame() {
+            gameOver = true;
+            aiMode = false;
+            document.getElementById('aiButton').textContent = 'Toggle AI Mode';
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        function resetGame() {
+            lives = 3;
+            score = 0;
+            ballsLeft = 10;
+            gameOver = false;
+            aiMode = false;
+            document.getElementById('aiButton').textContent = 'Toggle AI Mode';
+            scoredCups.clear();
+
+            // Remove all balls
+            balls.forEach(ball => { if (ball) scene.remove(ball); });
+            ballBodies.forEach(body => { if (body) world.removeBody(body); });
+            balls.length = 0;
+            ballBodies.length = 0;
+            bounceCounts.length = 0;
+
+            // Recreate cups
+            cups.forEach(cup => { if (cup) scene.remove(cup); });
+            cupBodies.forEach(body => { if (body) world.removeBody(body); });
+            cups.length = 0;
+            cupBodies.length = 0;
+            cupCount = 0;
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col <= row; col++) {
+                    const cup = new THREE.Mesh(cupGeometry, cupMaterial);
+                    cup.castShadow = true;
+                    cup.receiveShadow = true;
+                    const x = col * 0.65 - row * 0.325;
+                    const z = -0.5 - row * 0.65;
+                    const tableSurfaceY = Math.tan(tiltAngle) * (z + 3.5);
+                    const cupBottomY = tableSurfaceY + 0.1;
+                    const cupCenterY = cupBottomY + cupHeight / 2;
+                    cup.position.set(x, cupCenterY, z);
+                    scene.add(cup);
+                    cups.push(cup);
+
+                    const cupBody = new CANNON.Body({ mass: 0 });
+                    const triggerShape = new CANNON.Cylinder(cupInnerRadius, cupInnerRadius, cupHeight, 16);
+                    cupBody.addShape(triggerShape, new CANNON.Vec3(0, 0, 0), null, { isTrigger: true });
+                    cupBody.position.set(x, cupCenterY, z);
+                    cupBody.isCup = true;
+                    cupBody.cupIndex = cupCount++;
+                    world.addBody(cupBody);
+                    cupBodies.push(cupBody);
+                }
+            }
+
+            document.getElementById('gameOver').style.display = 'none';
+            createBall();
+            updateUI();
+        }
+
+        // Animation loop
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+            if (!gameOver) {
+                world.step(1 / 60);
+                updateCamera();
+                balls.forEach((ball, index) => {
+                    if (ball && ballBodies[index]) {
+                        ball.position.copy(ballBodies[index].position);
+                        ball.quaternion.copy(ballBodies[index].quaternion);
+                    }
+                });
+                balls.forEach((_, index) => {
+                    if (ballBodies[index].position.y < -1 || 
+                        (ballBodies[index].velocity.length() < 0.1 && ballBodies[index].position.y < 0.2) || 
+                        bounceCounts[index] >= 2) {
+                        scene.remove(balls[index]);
+                        world.removeBody(ballBodies[index]);
+                        balls.splice(index, 1);
+                        ballBodies.splice(index, 1);
+                        bounceCounts.splice(index, 1);
+                    }
+                });
+                if (aiMode && balls.length === 0 && ballsLeft > 0) {
+                    setTimeout(launchAIBall, 500);
+                }
+                if (ballsLeft <= 0 && balls.length === 0) {
+                    lives--;
+                    updateUI();
+                    if (lives <= 0) {
+                        endGame();
+                    } else {
+                        ballsLeft = 10;
+                        updateUI();
+                        if (aiMode) {
+                            setTimeout(launchAIBall, 500);
+                        }
+                    }
+                }
+            }
+            renderer.render(scene, activeCamera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            activeCamera.aspect = window.innerWidth / window.innerHeight;
+            activeCamera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start game
+        createBall();
+        animate();
+    </script>
+</body>
+</html>
