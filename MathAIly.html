@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Quiz 3D Game (Version 0.1 alpha)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 20px;
+            text-shadow: 1px 1px 2px black;
+        }
+        #question {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            color: yellow;
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+            text-shadow: 1px 1px 2px black;
+        }
+        #error, #game-over {
+            position: absolute;
+            top: 50%;
+            width: 100%;
+            text-align: center;
+            color: red;
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+            display: none;
+        }
+        #start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            color: white;
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        #progress-bar {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 20px;
+            background: #333;
+            border: 2px solid white;
+        }
+        #progress-fill {
+            height: 100%;
+            background: #00ff00;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        #hint-button {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        #hint-button:active {
+            transform: scale(1.1);
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div>Score: <span id="score">0</span></div>
+        <div>High Score: <span id="high-score">0</span></div>
+        <div>Time: <span id="timer">0</span>s</div>
+        <div>Level: <span id="level">1</span></div>
+        <div>Combo: <span id="combo">1x</span></div>
+    </div>
+    <div id="question"></div>
+    <div id="error"></div>
+    <div id="game-over">Game Over! Score: <span id="final-score"></span><br><button onclick="restartGame()">Restart</button></div>
+    <div id="start-screen">
+        <h2>Math Quiz 3D</h2>
+        <p>Click or tap blocks to answer math questions! Get 10 correct to level up! Hold Hint for answer.</p>
+        <button onclick="startGame()">Start Game</button>
+    </div>
+    <div id="progress-bar"><div id="progress-fill"></div></div>
+    <button id="hint-button">Hint: Off</button>
+
+    <script>
+        if (typeof THREE === 'undefined') {
+            document.getElementById('error').textContent = 'Error: Three.js failed to load.';
+            throw new Error('Three.js not available');
+        }
+
+        let scene, camera, renderer, controls, blocks = [], powerUps = [];
+        const blockSize = 1, gridSize = 10;
+        let score = 0, highScore = localStorage.getItem('highScore') || 0, time = 0, currentAnswer = null, questionText = '';
+        let gameActive = false, level = 1, timeLimit = 30, timerInterval;
+        let correctCount = 0, combo = 0, comboMultiplier = 1;
+        let hintTimeout = null;
+        const levelSettings = {
+            1: { maxNum: 50, timeLimit: 30 },
+            2: { maxNum: 75, timeLimit: 20 },
+            3: { maxNum: 100, timeLimit: 15 },
+            4: { maxNum: 100, timeLimit: 10 }
+        };
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(0, 10, 10);
+            scene.add(directionalLight);
+
+            // Orbit Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 5;
+            controls.maxDistance = 20;
+
+            // Create 10x10 grid (1 at bottom-left, 100 at top-right)
+            for (let z = 0; z < gridSize; z++) {
+                for (let x = 0; x < gridSize; x++) {
+                    const number = (gridSize - z - 1) * gridSize + x + 1;
+                    const hue = (x + z * gridSize) / (gridSize * gridSize); // Rainbow gradient
+                    const color = new THREE.Color().setHSL(hue, 1, 0.5);
+                    const geometry = new THREE.BoxGeometry(blockSize * 0.95, 0.2, blockSize * 0.95);
+                    const material = new THREE.MeshPhongMaterial({ color, specular: 0x555555, shininess: 30 });
+                    const block = new THREE.Mesh(geometry, material);
+                    block.position.set(x - gridSize / 2 + 0.5, 0, z - gridSize / 2 + 0.5);
+                    block.userData = { number, isPowerUp: false, baseColor: color };
+                    scene.add(block);
+                    blocks.push(block);
+
+                    // White border
+                    const edges = new THREE.EdgesGeometry(geometry);
+                    const edgeMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+                    const edgeLines = new THREE.LineSegments(edges, edgeMaterial);
+                    edgeLines.position.copy(block.position);
+                    scene.add(edgeLines);
+
+                    // Number text
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 128;
+                    canvas.height = 128;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = 'black';
+                    ctx.font = '48px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(number, 64, 64);
+                    const texture = new THREE.CanvasTexture(canvas);
+                    const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+                    const sprite = new THREE.Sprite(spriteMaterial);
+                    sprite.position.set(x - gridSize / 2 + 0.5, 0.2, z - gridSize / 2 + 0.5);
+                    sprite.scale.set(0.5, 0.5, 1);
+                    scene.add(sprite);
+                }
+            }
+
+            // Grid background
+            const gridGeometry = new THREE.PlaneGeometry(gridSize, gridSize);
+            const gridMaterial = new THREE.MeshBasicMaterial({ color: 0x333333, wireframe: true });
+            const grid = new THREE.Mesh(gridGeometry, gridMaterial);
+            grid.rotation.x = -Math.PI / 2;
+            grid.position.y = -0.1;
+            scene.add(grid);
+
+            camera.position.set(0, 10, 10);
+            camera.lookAt(0, 0, 0);
+
+            // Event listeners
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+            function onClick(event) {
+                if (!gameActive) return;
+                event.preventDefault();
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(blocks);
+                if (intersects.length > 0) {
+                    const block = intersects[0].object;
+                    if (block.userData.isPowerUp) {
+                        handlePowerUp(block);
+                    } else if (block.userData.number === currentAnswer) {
+                        correctCount++;
+                        combo++;
+                        comboMultiplier = Math.min(1 + Math.floor(combo / 3) * 0.5, 3);
+                        score += 10 * comboMultiplier;
+                        flashBlock(block, 0x00ff00); // Flash green
+                        createParticleEffect(block.position);
+                        playSound('correct');
+                        document.getElementById('score').textContent = score;
+                        document.getElementById('combo').textContent = `${comboMultiplier}x`;
+                        updateProgress();
+                        if (correctCount >= 10) levelUp();
+                        generateQuestion();
+                        spawnPowerUp();
+                    } else {
+                        combo = 0;
+                        comboMultiplier = 1;
+                        flashBlock(block, 0xff0000); // Flash red
+                        playSound('incorrect');
+                        document.getElementById('score').textContent = score;
+                        document.getElementById('combo').textContent = `${comboMultiplier}x`;
+                    }
+                }
+            }
+            window.addEventListener('click', onClick);
+            window.addEventListener('touchstart', (e) => onClick(e.touches[0]));
+
+            // Hint button
+            const hintButton = document.getElementById('hint-button');
+            hintButton.addEventListener('mousedown', startHint);
+            hintButton.addEventListener('touchstart', (e) => { e.preventDefault(); startHint(e); });
+            hintButton.addEventListener('mouseup', clearHint);
+            hintButton.addEventListener('touchend', clearHint);
+
+            function startHint() {
+                if (!gameActive) return;
+                hintButton.textContent = 'Hint: On';
+                hintTimeout = setTimeout(() => {
+                    const correctBlock = blocks.find(b => b.userData.number === currentAnswer);
+                    if (correctBlock) flashBlock(correctBlock, 0xffffff);
+                }, 2000);
+            }
+
+            function clearHint() {
+                clearTimeout(hintTimeout);
+                hintButton.textContent = 'Hint: Off';
+            }
+
+            // Window resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        function flashBlock(block, color) {
+            const originalColor = block.userData.baseColor;
+            block.material.color.set(color);
+            setTimeout(() => block.material.color.set(originalColor), 200);
+            setTimeout(() => block.material.color.set(color), 400);
+            setTimeout(() => block.material.color.set(originalColor), 600);
+        }
+
+        function generateQuestion() {
+            const ops = ['+', '-', '*', '/'];
+            const op = ops[Math.floor(Math.random() * ops.length)];
+            const settings = levelSettings[Math.min(level, 4)];
+            let a, b;
+            switch (op) {
+                case '+':
+                    a = Math.floor(Math.random() * settings.maxNum) + 1;
+                    b = Math.floor(Math.random() * settings.maxNum) + 1;
+                    currentAnswer = a + b;
+                    questionText = `${a} + ${b} = ?`;
+                    break;
+                case '-':
+                    a = Math.floor(Math.random() * settings.maxNum) + 50;
+                    b = Math.floor(Math.random() * settings.maxNum) + 1;
+                    currentAnswer = a - b;
+                    questionText = `${a} - ${b} = ?`;
+                    break;
+                case '*':
+                    a = Math.floor(Math.random() * (settings.maxNum / 5)) + 1;
+                    b = Math.floor(Math.random() * (settings.maxNum / 5)) + 1;
+                    currentAnswer = a * b;
+                    questionText = `${a} * ${b} = ?`;
+                    break;
+                case '/':
+                    b = Math.floor(Math.random() * (settings.maxNum / 10)) + 1;
+                    currentAnswer = Math.floor(Math.random() * (settings.maxNum / 10)) + 1;
+                    a = currentAnswer * b;
+                    questionText = `${a} / ${b} = ?`;
+                    break;
+            }
+            if (currentAnswer < 1 || currentAnswer > 100) generateQuestion();
+            else document.getElementById('question').textContent = questionText;
+        }
+
+        function updateProgress() {
+            const progress = (correctCount % 10) * 10;
+            document.getElementById('progress-fill').style.width = `${progress}%`;
+        }
+
+        function levelUp() {
+            correctCount = 0;
+            level++;
+            timeLimit = levelSettings[Math.min(level, 4)].timeLimit;
+            document.getElementById('level').textContent = level;
+            document.getElementById('progress-fill').style.width = '0%';
+            startTimer();
+        }
+
+        function spawnPowerUp() {
+            if (Math.random() < 0.2 && powerUps.length < 3) {
+                const block = blocks[Math.floor(Math.random() * blocks.length)];
+                if (!block.userData.isPowerUp) {
+                    block.userData.isPowerUp = true;
+                    block.material.color.set(0xffff00);
+                    powerUps.push(block);
+                    setTimeout(() => removePowerUp(block), 5000);
+                }
+            }
+        }
+
+        function removePowerUp(block) {
+            if (block.userData.isPowerUp) {
+                block.userData.isPowerUp = false;
+                block.material.color.set(block.userData.baseColor);
+                powerUps = powerUps.filter(p => p !== block);
+            }
+        }
+
+        function handlePowerUp(block) {
+            removePowerUp(block);
+            const type = Math.random() < 0.5 ? 'time' : 'score';
+            if (type === 'time') {
+                time = Math.max(0, time - 5);
+                document.getElementById('timer').textContent = time;
+            } else {
+                score += 20 * comboMultiplier;
+                document.getElementById('score').textContent = score;
+            }
+            playSound('correct');
+        }
+
+        function createParticleEffect(position) {
+            const particleCount = 20;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3] = position.x + (Math.random() - 0.5) * 0.5;
+                positions[i * 3 + 1] = position.y + Math.random() * 0.5;
+                positions[i * 3 + 2] = position.z + (Math.random() - 0.5) * 0.5;
+                colors[i * 3] = 1;
+                colors[i * 3 + 1] = Math.random();
+                colors[i * 3 + 2] = 0;
+            }
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            const material = new THREE.PointsMaterial({ size: 0.1, vertexColors: true });
+            const particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+            setTimeout(() => scene.remove(particles), 1000);
+        }
+
+        function startGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            gameActive = true;
+            score = 0;
+            time = 0;
+            level = 1;
+            correctCount = 0;
+            combo = 0;
+            comboMultiplier = 1;
+            timeLimit = levelSettings[1].timeLimit;
+            document.getElementById('score').textContent = score;
+            document.getElementById('level').textContent = level;
+            document.getElementById('combo').textContent = `${comboMultiplier}x`;
+            document.getElementById('progress-fill').style.width = '0%';
+            document.getElementById('high-score').textContent = highScore;
+            document.getElementById('hint-button').textContent = 'Hint: Off';
+            generateQuestion();
+            startTimer();
+        }
+
+        function restartGame() {
+            document.getElementById('game-over').style.display = 'none';
+            startGame();
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            time = 0;
+            document.getElementById('timer').textContent = time;
+            timerInterval = setInterval(() => {
+                time++;
+                document.getElementById('timer').textContent = time;
+                if (time >= timeLimit) {
+                    gameActive = false;
+                    clearInterval(timerInterval);
+                    if (score > highScore) {
+                        highScore = score;
+                        localStorage.setItem('highScore', highScore);
+                        document.getElementById('high-score').textContent = highScore;
+                    }
+                    document.getElementById('final-score').textContent = score;
+                    document.getElementById('game-over').style.display = 'block';
+                }
+            }, 1000);
+        }
+
+        function playSound(type) {
+            const sounds = {
+                correct: new Audio('https://www.soundjay.com/buttons/beep-01a.mp3'),
+                incorrect: new Audio('https://www.soundjay.com/buttons/beep-02.mp3')
+            };
+            sounds[type].play().catch(() => {});
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        try {
+            init();
+            animate();
+            document.getElementById('high-score').textContent = highScore;
+        } catch (e) {
+            document.getElementById('error').textContent = `Error: ${e.message}`;
+            console.error(e);
+        }
+    </script>
+</body>
+</html>
