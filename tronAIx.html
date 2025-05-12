@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>tronAIx Game - V0.94</title>
+    <title>tronAIx Game - V0.95</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
         canvas { display: block; }
@@ -192,7 +192,7 @@
             box-shadow: 0 0 15px #00b7eb;
             transform: scale(1.05);
         }
-        #gameModeLabel, #gridSizeLabel {
+        #gameModeLabel, #gridSizeLabel, #speedLabel {
             font-size: 20px;
             margin: 10px 0;
             text-shadow: 0 0 10px #00ff00;
@@ -213,7 +213,12 @@
             gap: 10px;
             z-index: 17;
         }
-        #gridSizeButtons button {
+        #speedButtons {
+            display: flex;
+            gap: 10px;
+            z-index: 17;
+        }
+        #gridSizeButtons button, #speedButtons button {
             font-size: 16px;
             padding: 8px 16px;
             background: #00ff00;
@@ -227,12 +232,12 @@
             opacity: 0;
             animation: fadeIn 1s ease-in 1.2s forwards;
         }
-        #gridSizeButtons button:hover {
+        #gridSizeButtons button:hover, #speedButtons button:hover {
             background: #00b7eb;
             box-shadow: 0 0 12px #00b7eb;
             transform: scale(1.05);
         }
-        #gridSizeButtons button.selected {
+        #gridSizeButtons button.selected, #speedButtons button.selected {
             background: #00b7eb;
             box-shadow: 0 0 12px #00b7eb;
         }
@@ -295,20 +300,7 @@
             gap: 5px;
             z-index: 6;
         }
-        #gameRestartButton {
-            font-size: 12px;
-            padding: 8px 16px;
-            background: #ff0000;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        #gameRestartButton:hover {
-            background: #cc0000;
-        }
-        #cameraButton {
+        #gameRestartButton, #cameraButton, #speedButton {
             font-size: 12px;
             padding: 8px 16px;
             background: #00ff00;
@@ -318,7 +310,14 @@
             cursor: pointer;
             transition: background 0.3s;
         }
-        #cameraButton:hover {
+        #gameRestartButton {
+            background: #ff0000;
+            color: #fff;
+        }
+        #gameRestartButton:hover {
+            background: #cc0000;
+        }
+        #cameraButton:hover, #speedButton:hover {
             background: #00b7eb;
         }
         #welcomeScreen:not([style*="display: none"]) ~ #buttonContainer {
@@ -413,10 +412,10 @@
             #gameOverTitle {
                 font-size: 24px;
             }
-            #gameModeLabel, #gridSizeLabel {
+            #gameModeLabel, #gridSizeLabel, #speedLabel {
                 font-size: 16px;
             }
-            #gameModeButtons button, #gridSizeButtons button {
+            #gameModeButtons button, #gridSizeButtons button, #speedButtons button {
                 font-size: 12px;
                 padding: 6px 12px;
             }
@@ -454,6 +453,12 @@
             <button id="gridLarge">Large</button>
             <button id="gridLudicrous">Ludicrous</button>
         </div>
+        <div id="speedLabel">Game Speed</div>
+        <div id="speedButtons">
+            <button id="speedSlow" class="selected">Slow</button>
+            <button id="speedMedium">Medium</button>
+            <button id="speedFast">Fast</button>
+        </div>
     </div>
     <div id="fadeOverlay"></div>
     <div id="titleBar">
@@ -466,6 +471,7 @@
     <div id="buttonContainer">
         <button id="gameRestartButton">Restart</button>
         <button id="cameraButton">Cycle</button>
+        <button id="speedButton">Speed</button>
     </div>
     <div id="ui">
         <div id="redStats">
@@ -682,6 +688,19 @@
             });
         });
 
+        // Game speed selection
+        let selectedSpeed = 0.5;
+        const speedButtons = document.querySelectorAll('#speedButtons button');
+        speedButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                speedButtons.forEach(btn => btn.classList.remove('selected'));
+                e.target.classList.add('selected');
+                if (e.target.id === 'speedSlow') selectedSpeed = 0.5;
+                if (e.target.id === 'speedMedium') selectedSpeed = 1;
+                if (e.target.id === 'speedFast') selectedSpeed = 2;
+            });
+        });
+
         // Grid setup
         let grid = [];
         function setupGrid() {
@@ -739,13 +758,27 @@
         setupGrid();
 
         // Players setup
+        function getInitialPlayerPositions() {
+            if (gridSize === 20) {
+                return {
+                    player1: { x: 5, z: 5 },
+                    player2: { x: 10, z: 10 }
+                };
+            }
+            return {
+                player1: { x: Math.floor(gridSize / 4), z: Math.floor(gridSize / 4) },
+                player2: { x: Math.floor(3 * gridSize / 4), z: Math.floor(3 * gridSize / 4) }
+            };
+        }
+
+        const initialPositions = getInitialPlayerPositions();
         const player1 = { 
-            x: Math.floor(gridSize / 4), 
-            z: Math.floor(gridSize / 4), 
+            x: initialPositions.player1.x, 
+            z: initialPositions.player1.z, 
             color: 0xff0000, 
             direction: 'right', 
             distance: 0, 
-            lastPos: { x: Math.floor(gridSize / 4), z: Math.floor(gridSize / 4) }, 
+            lastPos: { x: initialPositions.player1.x, z: initialPositions.player1.z }, 
             gridCovered: 0, 
             wallsMade: 0, 
             score: 0,
@@ -753,12 +786,12 @@
             isThrobbing: false
         };
         const player2 = { 
-            x: Math.floor(3 * gridSize / 4), 
-            z: Math.floor(3 * gridSize / 4), 
+            x: initialPositions.player2.x, 
+            z: initialPositions.player2.z, 
             color: 0x00b7eb, 
             direction: 'left', 
             distance: 0, 
-            lastPos: { x: Math.floor(3 * gridSize / 4), z: Math.floor(3 * gridSize / 4) }, 
+            lastPos: { x: initialPositions.player2.x, z: initialPositions.player2.z }, 
             gridCovered: 0, 
             wallsMade: 0, 
             score: 0,
@@ -928,6 +961,12 @@
             updateCamera();
         });
 
+        // Speed increase button
+        document.getElementById('speedButton').addEventListener('click', () => {
+            speedMultiplier += 0.5;
+            updateInterval = baseUpdateInterval / speedMultiplier;
+        });
+
         // Initial camera position
         updateCamera();
 
@@ -940,7 +979,7 @@
         }
 
         // Check if player is trapped
-        function isTrapped(player) {
+        function isTrapped(player, otherPlayer) {
             const directions = [
                 { dir: 'up', x: player.x, z: player.z - 1 },
                 { dir: 'down', x: player.x, z: player.z + 1 },
@@ -965,6 +1004,39 @@
             );
         }
 
+        // Find a valid nearby cell
+        function findValidNearbyCell(player, otherPlayer) {
+            const searchDist = gridSize === 20 ? 2 : 1;
+            const directions = [];
+            for (let dx = -searchDist; dx <= searchDist; dx++) {
+                for (let dz = -searchDist; dz <= searchDist; dz++) {
+                    if (dx === 0 && dz === 0) continue;
+                    const x = player.x + dx;
+                    const z = player.z + dz;
+                    let dir = 'right';
+                    if (dx < 0) dir = 'left';
+                    else if (dx > 0) dir = 'right';
+                    else if (dz < 0) dir = 'up';
+                    else if (dz > 0) dir = 'down';
+                    directions.push({ x, z, dir });
+                }
+            }
+            for (const { x, z, dir } of directions) {
+                if (x >= 0 && x < gridSize && z >= 0 && z < gridSize && !grid[x][z].isWall && !(x === otherPlayer.x && z === otherPlayer.z)) {
+                    return { x, z, dir };
+                }
+            }
+            // Fallback to reset position
+            for (let x = 0; x < gridSize; x++) {
+                for (let z = 0; z < gridSize; z++) {
+                    if (!grid[x][z].isWall && !(x === otherPlayer.x && z === otherPlayer.z)) {
+                        return { x, z, dir: getRandomDirection(player.direction) };
+                    }
+                }
+            }
+            return null;
+        }
+
         // Display bonus message
         function showBonusMessage(message, color) {
             const bonusDiv = document.getElementById('bonusMessage');
@@ -976,11 +1048,12 @@
 
         // Reset game state
         function resetGame() {
-            player1.x = Math.floor(gridSize / 4);
-            player1.z = Math.floor(gridSize / 4);
+            const initialPositions = getInitialPlayerPositions();
+            player1.x = initialPositions.player1.x;
+            player1.z = initialPositions.player1.z;
             player1.direction = 'right';
             player1.distance = 0;
-            player1.lastPos = { x: Math.floor(gridSize / 4), z: Math.floor(gridSize / 4) };
+            player1.lastPos = { x: initialPositions.player1.x, z: initialPositions.player1.z };
             player1.gridCovered = 0;
             player1.wallsMade = 0;
             player1.score = 0;
@@ -989,11 +1062,11 @@
             player1Mesh.position.set(player1.x - gridSize / 2, 0.1, player1.z - gridSize / 2);
             player1Mesh.className = '';
 
-            player2.x = Math.floor(3 * gridSize / 4);
-            player2.z = Math.floor(3 * gridSize / 4);
+            player2.x = initialPositions.player2.x;
+            player2.z = initialPositions.player2.z;
             player2.direction = 'left';
             player2.distance = 0;
-            player2.lastPos = { x: Math.floor(3 * gridSize / 4), z: Math.floor(3 * gridSize / 4) };
+            player2.lastPos = { x: initialPositions.player2.x, z: initialPositions.player2.z };
             player2.gridCovered = 0;
             player2.wallsMade = 0;
             player2.score = 0;
@@ -1029,8 +1102,9 @@
 
             gameOver = false;
             gameStarted = false;
-            speedMultiplier = 1;
-            updateInterval = baseUpdateInterval;
+            gameStartTime = 0;
+            speedMultiplier = selectedSpeed;
+            updateInterval = baseUpdateInterval / speedMultiplier;
             lastSpeedIncrease = performance.now();
 
             document.getElementById('gameOver').style.display = 'none';
@@ -1041,6 +1115,7 @@
 
         // End game
         let gameOver = false;
+        let gameStartTime = 0;
         function endGame(winner, loser) {
             gameOver = true;
             cameraMode = 'flyAround';
@@ -1086,7 +1161,7 @@
         // Speed control
         let baseUpdateInterval = 100;
         let updateInterval = baseUpdateInterval;
-        let speedMultiplier = 1;
+        let speedMultiplier = selectedSpeed;
         let lastSpeedIncrease = performance.now();
 
         // Timer and UI
@@ -1104,7 +1179,7 @@
             document.getElementById('blueGrid').textContent = player2.gridCovered;
             document.getElementById('blueWalls').textContent = player2.wallsMade;
             document.getElementById('speed').textContent = speedMultiplier.toFixed(1);
-            document.getElementById('countdown').textContent = timeToNextIncrease > 0 ? timeToNextIncrease : 0;
+            document.getElementById('countdown').textContent = is1PlayerMode ? 'N/A' : (timeToNextIncrease > 0 ? timeToNextIncrease : 0);
         }
 
         // Fade-in grid
@@ -1185,6 +1260,7 @@
                         fadeOverlay.style.display = 'none';
                         document.getElementById('controlBox').style.display = is1PlayerMode ? 'flex' : 'none';
                         gameStarted = true;
+                        gameStartTime = performance.now();
                         startTime = performance.now();
                         animate();
                     }, 1000);
@@ -1203,11 +1279,13 @@
             requestAnimationFrame(animate);
             const now = performance.now();
 
-            if (now - lastSpeedIncrease >= 5000) {
+            if (!is1PlayerMode && now - lastSpeedIncrease >= 5000) {
                 speedMultiplier += 0.5;
                 updateInterval = baseUpdateInterval / speedMultiplier;
                 lastSpeedIncrease = now;
             }
+
+            updateInterval = gridSize === 20 ? baseUpdateInterval / (speedMultiplier * 1.2) : baseUpdateInterval / speedMultiplier;
 
             if (now - lastUpdate >= updateInterval) {
                 if (!is1PlayerMode) {
@@ -1215,7 +1293,8 @@
                         player1.direction = getRandomDirection(player1.direction);
                     }
                 }
-                if (Math.random() < 0.3) {
+                const directionChangeProbability = gridSize === 20 ? 0.4 : 0.3;
+                if (Math.random() < directionChangeProbability) {
                     player2.direction = getRandomDirection(player2.direction);
                 }
 
@@ -1230,7 +1309,20 @@
 
                     if (newX === otherPlayer.x && newZ === otherPlayer.z) {
                         if (!is1PlayerMode || player !== player1) {
-                            player.direction = getRandomDirection(player.direction);
+                            const directions = [
+                                { dir: 'up', x: player.x, z: player.z - 1 },
+                                { dir: 'down', x: player.x, z: player.z + 1 },
+                                { dir: 'left', x: player.x - 1, z: player.z },
+                                { dir: 'right', x: player.x + 1, z: player.z }
+                            ];
+                            let validDirection = null;
+                            for (const { dir, x, z } of directions) {
+                                if (x >= 0 && x < gridSize && z >= 0 && z < gridSize && !grid[x][z].isWall && !(x === otherPlayer.x && z === otherPlayer.z)) {
+                                    validDirection = dir;
+                                    break;
+                                }
+                            }
+                            player.direction = validDirection || getRandomDirection(player.direction);
                         }
                         return;
                     }
@@ -1256,7 +1348,8 @@
                             cell.owner = player;
                             player.gridCovered++;
                         }
-                        if (cell.visits >= 5) {
+                        const wallVisitThreshold = gridSize === 20 ? 8 : 5;
+                        if (cell.visits >= wallVisitThreshold) {
                             cell.isWall = true;
                             cell.mesh.position.y = 0.02;
                             cell.mesh.material.opacity = 0.9;
@@ -1281,18 +1374,43 @@
 
                         const targetPos = new THREE.Vector3(player.x - gridSize / 2, 0.1, player.z - gridSize / 2);
                         mesh.position.lerp(targetPos, 0.9);
-                    } else {
-                        if (!is1PlayerMode || player !== player1) {
-                            player.direction = getRandomDirection(player.direction);
+                    } else if (!is1PlayerMode || player !== player1) {
+                        const directions = [
+                            { dir: 'up', x: player.x, z: player.z - 1 },
+                            { dir: 'down', x: player.x, z: player.z + 1 },
+                            { dir: 'left', x: player.x - 1, z: player.z },
+                            { dir: 'right', x: player.x + 1, z: player.z }
+                        ];
+                        let validDirection = null;
+                        for (const { dir, x, z } of directions) {
+                            if (x >= 0 && x < gridSize && z >= 0 && z < gridSize && !grid[x][z].isWall && !(x === otherPlayer.x && z === otherPlayer.z)) {
+                                validDirection = dir;
+                                break;
+                            }
+                        }
+                        if (validDirection) {
+                            player.direction = validDirection;
+                        } else {
+                            const fallback = findValidNearbyCell(player, otherPlayer);
+                            if (fallback) {
+                                player.x = fallback.x;
+                                player.z = fallback.z;
+                                player.direction = fallback.dir;
+                                player.distance++;
+                                player.score += 1;
+                                player.lastPos = { x: player.x, z: player.z };
+                                player.lastMoveTime = now;
+                                player.isThrobbing = false;
+                                mesh.className = '';
+                                const targetPos = new THREE.Vector3(player.x - gridSize / 2, 0.1, player.z - gridSize / 2);
+                                mesh.position.lerp(targetPos, 0.9);
+                            } else {
+                                player.direction = getRandomDirection(player.direction);
+                            }
                         }
                     }
 
-                    if (now - player.lastMoveTime >= 2000 && !player.isThrobbing) {
-                        player.isThrobbing = true;
-                        mesh.className = 'throbbing';
-                    }
-
-                    if (isTrapped(player)) {
+                    if (now - gameStartTime >= 5000 && isTrapped(player, otherPlayer)) {
                         endGame(otherPlayer, player);
                     }
                 }
@@ -1314,6 +1432,8 @@
             document.getElementById('welcomeScreen').style.display = 'none';
             is1PlayerMode = true;
             setupGrid();
+            speedMultiplier = selectedSpeed;
+            updateInterval = baseUpdateInterval / speedMultiplier;
             startCountdown();
         });
 
@@ -1322,6 +1442,8 @@
             document.getElementById('welcomeScreen').style.display = 'none';
             is1PlayerMode = false;
             setupGrid();
+            speedMultiplier = selectedSpeed;
+            updateInterval = baseUpdateInterval / speedMultiplier;
             startCountdown();
         });
 
