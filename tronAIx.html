@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>tronAIx Game - V0.9</title>
+    <title>tronAIx Game - V0.92</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
         canvas { display: block; }
@@ -285,28 +285,16 @@
         #titleBar #speedStats {
             font-size: 16px;
         }
-        #cameraButton {
-            position: absolute;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 16px;
-            padding: 8px 16px;
-            background: #00ff00;
-            color: #000;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            z-index: 6;
-            transition: background 0.3s;
-        }
-        #cameraButton:hover {
-            background: #00b7eb;
-        }
-        #gameRestartButton {
+        #buttonContainer {
             position: absolute;
             top: 10px;
             left: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            z-index: 6;
+        }
+        #gameRestartButton {
             font-size: 16px;
             padding: 8px 16px;
             background: #ff0000;
@@ -314,15 +302,48 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            z-index: 6;
             transition: background 0.3s;
         }
         #gameRestartButton:hover {
             background: #cc0000;
         }
-        #welcomeScreen:not([style*="display: none"]) ~ #cameraButton,
-        #welcomeScreen:not([style*="display: none"]) ~ #gameRestartButton {
+        #cameraButton {
+            font-size: 16px;
+            padding: 8px 16px;
+            background: #00ff00;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        #cameraButton:hover {
+            background: #00b7eb;
+        }
+        #welcomeScreen:not([style*="display: none"]) ~ #buttonContainer {
             display: none;
+        }
+        #controlBox {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #ff0000;
+            border-radius: 5px;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            color: #ff0000;
+            font-family: 'Arial', sans-serif;
+            font-size: 12px;
+            text-align: center;
+            z-index: 6;
+            width: 110px;
+            height: 80px;
+        }
+        #controlBoxText {
+            pointer-events: none;
         }
         #miniGrid {
             position: relative;
@@ -397,6 +418,11 @@
                 font-size: 12px;
                 padding: 6px 12px;
             }
+            #controlBox {
+                width: 90px;
+                height: 66px;
+                font-size: 10px;
+            }
         }
     </style>
 </head>
@@ -435,8 +461,10 @@
             Speed: <span id="speed">1</span> (Next in <span id="countdown">5</span>s)
         </div>
     </div>
-    <button id="cameraButton">Cycle Camera</button>
-    <button id="gameRestartButton">Restart</button>
+    <div id="buttonContainer">
+        <button id="gameRestartButton">Restart</button>
+        <button id="cameraButton">Cycle Camera</button>
+    </div>
     <div id="ui">
         <div id="redStats">
             <div>Score: <span id="redScore">0</span></div>
@@ -464,6 +492,9 @@
     </div>
     <div id="bonusMessage"></div>
     <div id="countdownDisplay"></div>
+    <div id="controlBox">
+        <span id="controlBoxText">Touch to move</span>
+    </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
         // Star field for welcome screen
@@ -833,19 +864,35 @@
         function handleInput(event) {
             if (document.getElementById('welcomeScreen').style.display !== 'none' || !is1PlayerMode) return;
 
-            if (event.target.tagName === 'BUTTON' || event.target.closest('#ui')) return;
+            const controlBox = document.getElementById('controlBox');
+            const controlBoxText = document.getElementById('controlBoxText');
+            const rect = controlBox.getBoundingClientRect();
+            const clientX = event.type.includes('touch') ? event.touches[0].clientX : event.clientX;
+            const clientY = event.type.includes('touch') ? event.touches[0].clientY : event.clientY;
 
-            const clientX = event.type === 'click' ? event.clientX : event.touches[0].clientX;
-            const clientY = event.type === 'click' ? event.clientY : event.touches[0].clientY;
-            const screenCenterX = window.innerWidth / 2;
-            const screenCenterY = window.innerHeight / 2;
-            const deltaX = clientX - screenCenterX;
-            const deltaY = clientY - screenCenterY;
+            if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+                const relativeX = clientX - rect.left;
+                const relativeY = clientY - rect.top;
+                const boxWidth = rect.width;
+                const boxHeight = rect.height;
 
-            if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                player1.direction = deltaX > 0 ? 'right' : 'left';
-            } else {
-                player1.direction = deltaY > 0 ? 'down' : 'up';
+                const edgeThreshold = 0.3;
+
+                if (relativeX < boxWidth * edgeThreshold) {
+                    player1.direction = 'left';
+                    controlBoxText.textContent = 'Left';
+                } else if (relativeX > boxWidth * (1 - edgeThreshold)) {
+                    player1.direction = 'right';
+                    controlBoxText.textContent = 'Right';
+                } else if (relativeY < boxHeight * edgeThreshold) {
+                    player1.direction = 'up';
+                    controlBoxText.textContent = 'Up';
+                } else if (relativeY > boxHeight * (1 - edgeThreshold)) {
+                    player1.direction = 'down';
+                    controlBoxText.textContent = 'Down';
+                } else {
+                    controlBoxText.textContent = 'Touch edges';
+                }
             }
         }
 
@@ -974,6 +1021,9 @@
 
             resetMiniGrid();
 
+            document.getElementById('controlBox').style.display = 'none';
+            document.getElementById('controlBoxText').textContent = 'Touch to move';
+
             gameOver = false;
             gameStarted = false;
             speedMultiplier = 1;
@@ -1002,6 +1052,7 @@
             document.getElementById('winnerWalls').textContent = winner.wallsMade;
             document.getElementById('redScoreValue').textContent = player1.score;
             document.getElementById('blueScoreValue').textContent = player2.score;
+            document.getElementById('controlBox').style.display = 'none';
         }
 
         // Restart button handler for game over
@@ -1026,6 +1077,7 @@
             document.getElementById('winnerWalls').textContent = 'N/A';
             document.getElementById('redScoreValue').textContent = player1.score;
             document.getElementById('blueScoreValue').textContent = player2.score;
+            document.getElementById('controlBox').style.display = 'none';
         });
 
         // Speed control
@@ -1128,6 +1180,7 @@
                     setTimeout(() => {
                         countdownDiv.style.display = 'none';
                         fadeOverlay.style.display = 'none';
+                        document.getElementById('controlBox').style.display = is1PlayerMode ? 'flex' : 'none';
                         gameStarted = true;
                         startTime = performance.now();
                         animate();
