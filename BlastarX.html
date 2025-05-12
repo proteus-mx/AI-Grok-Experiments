@@ -1,68 +1,38 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
-  <title>Blastar Enhanced</title>
+  <title>BlastarX - V0.3</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
   <style>
-    body { display: flex; flex-direction: column; align-items: center; background: #000; color: #fff; font-family: Arial; }
-    canvas { border: 2px solid #fff; box-shadow: 0 0 20px rgba(255,255,255,0.5); }
+    body { margin: 0; display: flex; flex-direction: column; align-items: center; background: #000; color: #fff; font-family: Arial; }
+    canvas { display: block; }
     button { margin: 10px; padding: 10px 20px; font-size: 16px; cursor: pointer; background: #222; color: #fff; border: 2px solid #fff; border-radius: 5px; }
     button:hover { background: #444; }
   </style>
 </head>
 <body>
 <script>
-let player, bullets, freighters, bombs, beams, particles, pointFlashes, powerUps, autoPlay = true, gameOver = false, gameOverTime;
+let player, bullets, freighters, bombs, beams, particles, pointFlashes, powerUps, autoPlay = true, autoFire = false, gameOver = false, gameOverTime;
 let buddy = null;
 let starfield = [];
 let stats = { freightersDestroyed: 0, shotsFired: 0, gamesPlayed: 0, level: 1, levelTime: 0, levelFlash: 0, points: 0 };
 let shakeTime = 0, shakeIntensity = 0, slowTime = 0, lightningTime = 0;
 let powerUpStatus = { firepower: false, shield: false, firepowerTime: 0, shieldTime: 0 };
+let playAgainButton;
 
 function setup() {
-  createCanvas(800, 600);
+  createCanvas(windowWidth, windowHeight);
   resetGame();
-  let toggleButton = createButton('Toggle Auto-Play');
-  toggleButton.mousePressed(() => autoPlay = !autoPlay);
+  let toggleButton = createButton('Auto-Play: ON');
+  toggleButton.mousePressed(() => {
+    autoPlay = !autoPlay;
+    toggleButton.html(`Auto-Play: ${autoPlay ? 'ON' : 'OFF'}`);
+  });
+  let fireButton = createButton('Auto-Fire: OFF');
+  fireButton.mousePressed(() => {
+    autoFire = !autoFire;
+    fireButton.html(`Auto-Fire: ${autoFire ? 'ON' : 'OFF'}`);
+  });
 }
 
 function resetGame() {
@@ -90,13 +60,20 @@ function resetGame() {
   slowTime = 0;
   lightningTime = 0;
   powerUpStatus = { firepower: false, shield: false, firepowerTime: 0, shieldTime: 0 };
+  if (playAgainButton) playAgainButton.hide();
   loop();
+}
+
+function touchStarted() {
+  if (!autoPlay && !gameOver) {
+    player.targetX = mouseX;
+  }
+  return false;
 }
 
 function draw() {
   background(0);
   
-  // Apply screen shake
   let shakeX = 0, shakeY = 0;
   if (millis() - shakeTime < 500) {
     shakeX = random(-shakeIntensity, shakeIntensity);
@@ -104,7 +81,6 @@ function draw() {
     translate(shakeX, shakeY);
   }
   
-  // Apply slow motion
   let speedFactor = (millis() - slowTime < 500) ? 0.3 : 1;
   
   for (let star of starfield) {
@@ -115,14 +91,12 @@ function draw() {
   }
   
   if (!gameOver) {
-    // Level progression
     if (millis() - stats.levelTime > 10000) {
       stats.level++;
       stats.levelTime = millis();
       stats.levelFlash = millis();
     }
     
-    // Power-up timers
     if (powerUpStatus.firepower && millis() - powerUpStatus.firepowerTime > 10000) {
       powerUpStatus.firepower = false;
     }
@@ -140,6 +114,15 @@ function draw() {
       }
     }
     if (!autoPlay) player.move(speedFactor);
+    
+    if (!autoPlay && (mouseIsPressed || autoFire) && frameCount % 10 === 0) {
+      bullets.push(new Bullet(player.x, player.y));
+      if (powerUpStatus.firepower) {
+        bullets.push(new Bullet(player.x - 15, player.y));
+        bullets.push(new Bullet(player.x + 15, player.y));
+      }
+      stats.shotsFired++;
+    }
     
     if (autoPlay) {
       if (frameCount % Math.max(10 - stats.level, 5) === 0) {
@@ -165,13 +148,11 @@ function draw() {
       player.x = constrain(player.x, 0, width);
     }
     
-    // Handle bullet collisions
     for (let i = bullets.length - 1; i >= 0; i--) {
       let bullet = bullets[i];
       bullet.show();
       bullet.move(speedFactor);
       
-      // Check freighter collisions
       for (let j = freighters.length - 1; j >= 0; j--) {
         let freighter = freighters[j];
         if (bullet.hits(freighter)) {
@@ -187,7 +168,6 @@ function draw() {
         }
       }
       
-      // Check bomb collisions
       for (let j = bombs.length - 1; j >= 0; j--) {
         let bomb = bombs[j];
         if (bullet.hits(bomb)) {
@@ -199,7 +179,6 @@ function draw() {
         }
       }
       
-      // Check beam collisions
       for (let j = beams.length - 1; j >= 0; j--) {
         let beam = beams[j];
         if (bullet.hits(beam)) {
@@ -274,7 +253,6 @@ function draw() {
     if (frameCount % (150 - stats.level * 5) === 0) bombs.push(new Bomb());
     if (frameCount % (200 - stats.level * 5) === 0) beams.push(new Beam());
     
-    // Display stats
     textSize(16);
     fill(255, 255, 255, 220);
     textAlign(LEFT);
@@ -284,7 +262,6 @@ function draw() {
     text(`Shots Fired: ${stats.shotsFired}`, 10, 80);
     text(`Games Played: ${stats.gamesPlayed}`, 10, 100);
     
-    // Flash level and score
     if (millis() - stats.levelFlash < 2000) {
       textSize(60);
       fill(255, 255, 0, 220 * (1 - sin(millis() * 0.005)));
@@ -295,7 +272,6 @@ function draw() {
       text(`Score: ${stats.points}`, width / 2, height / 2 + 50);
     }
     
-    // Flash enhanced lightning strike
     if (millis() - lightningTime < 200) {
       let alpha = 220 * (1 - (millis() - lightningTime) / 200);
       stroke(0, 255, 255, alpha);
@@ -322,26 +298,32 @@ function draw() {
     if (player.destroyed) {
       gameOver = true;
       gameOverTime = millis();
+      playAgainButton = createButton('Play Again');
+      playAgainButton.position(width / 2 - 60, height / 2 + 180);
+      playAgainButton.mousePressed(resetGame);
       noLoop();
     }
   } else {
-    textSize(40);
+    textSize(60);
     fill(255, 0, 0, 220);
     textAlign(CENTER);
-    text("Game Over", width / 2, height / 2);
+    text("Game Over", width / 2, height / 2 - 100);
     textSize(20);
     fill(255, 255, 255, 220);
-    text("Restarting...", width / 2, height / 2 + 50);
-    text(`Level: ${stats.level}`, width / 2, height / 2 + 80);
-    text(`Points: ${stats.points}`, width / 2, height / 2 + 100);
-    text(`Freighters Destroyed: ${stats.freightersDestroyed}`, width / 2, height / 2 + 120);
-    text(`Shots Fired: ${stats.shotsFired}`, width / 2, height / 2 + 140);
-    if (millis() - gameOverTime > 3000) resetGame();
+    text(`Level: ${stats.level}`, width / 2, height / 2);
+    text(`Points: ${stats.points}`, width / 2, height / 2 + 30);
+    text(`Freighters Destroyed: ${stats.freightersDestroyed}`, width / 2, height / 2 + 60);
+    text(`Shots Fired: ${stats.shotsFired}`, width / 2, height / 2 + 90);
+    text(`Games Played: ${stats.gamesPlayed}`, width / 2, height / 2 + 120);
   }
 }
 
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
 function keyPressed() {
-  if (key === ' ') {
+  if (key === ' ' && !autoFire) {
     bullets.push(new Bullet(player.x, player.y));
     if (powerUpStatus.firepower) {
       bullets.push(new Bullet(player.x - 15, player.y));
@@ -357,6 +339,7 @@ class Player {
     this.y = height - 50;
     this.size = 20;
     this.destroyed = false;
+    this.targetX = this.x;
   }
   show() {
     push();
@@ -407,8 +390,12 @@ class Player {
     pop();
   }
   move(speedFactor) {
-    if (keyIsDown(LEFT_ARROW)) this.x -= (5 + stats.level * 0.5) * speedFactor;
-    if (keyIsDown(RIGHT_ARROW)) this.x += (5 + stats.level * 0.5) * speedFactor;
+    let speed = (5 + stats.level * 0.5) * speedFactor;
+    if (abs(this.x - this.targetX) > speed) {
+      this.x += this.targetX > this.x ? speed : -speed;
+    } else {
+      this.x = this.targetX;
+    }
     this.x = constrain(this.x, 0, width);
   }
 }
