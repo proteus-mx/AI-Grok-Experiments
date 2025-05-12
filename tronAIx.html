@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>tronAIx Game - V0.95</title>
+    <title>tronAIx Game - V0.96</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
         canvas { display: block; }
@@ -192,7 +192,7 @@
             box-shadow: 0 0 15px #00b7eb;
             transform: scale(1.05);
         }
-        #gameModeLabel, #gridSizeLabel, #speedLabel {
+        #gameModeLabel, #gridSizeLabel, #speedLabel, #gameTimeLabel {
             font-size: 20px;
             margin: 10px 0;
             text-shadow: 0 0 10px #00ff00;
@@ -203,22 +203,12 @@
         #gameModeLabel {
             margin-top: 20px;
         }
-        #gameModeButtons {
+        #gameModeButtons, #gridSizeButtons, #speedButtons, #gameTimeButtons {
             display: flex;
             gap: 10px;
             z-index: 17;
         }
-        #gridSizeButtons {
-            display: flex;
-            gap: 10px;
-            z-index: 17;
-        }
-        #speedButtons {
-            display: flex;
-            gap: 10px;
-            z-index: 17;
-        }
-        #gridSizeButtons button, #speedButtons button {
+        #gridSizeButtons button, #speedButtons button, #gameTimeButtons button {
             font-size: 16px;
             padding: 8px 16px;
             background: #00ff00;
@@ -232,12 +222,12 @@
             opacity: 0;
             animation: fadeIn 1s ease-in 1.2s forwards;
         }
-        #gridSizeButtons button:hover, #speedButtons button:hover {
+        #gridSizeButtons button:hover, #speedButtons button:hover, #gameTimeButtons button:hover {
             background: #00b7eb;
             box-shadow: 0 0 12px #00b7eb;
             transform: scale(1.05);
         }
-        #gridSizeButtons button.selected, #speedButtons button.selected {
+        #gridSizeButtons button.selected, #speedButtons button.selected, #gameTimeButtons button.selected {
             background: #00b7eb;
             box-shadow: 0 0 12px #00b7eb;
         }
@@ -412,10 +402,10 @@
             #gameOverTitle {
                 font-size: 24px;
             }
-            #gameModeLabel, #gridSizeLabel, #speedLabel {
+            #gameModeLabel, #gridSizeLabel, #speedLabel, #gameTimeLabel {
                 font-size: 16px;
             }
-            #gameModeButtons button, #gridSizeButtons button, #speedButtons button {
+            #gameModeButtons button, #gridSizeButtons button, #speedButtons button, #gameTimeButtons button {
                 font-size: 12px;
                 padding: 6px 12px;
             }
@@ -459,12 +449,18 @@
             <button id="speedMedium">Medium</button>
             <button id="speedFast">Fast</button>
         </div>
+        <div id="gameTimeLabel">Game Time</div>
+        <div id="gameTimeButtons">
+            <button id="time60s">60s</button>
+            <button id="time120s">120s</button>
+            <button id="timeUnlimited" class="selected">Unlimited</button>
+        </div>
     </div>
     <div id="fadeOverlay"></div>
     <div id="titleBar">
         <h1>tronAIx</h1>
         <div id="speedStats">
-            Time: <span id="timer">0</span>s<br>
+            Game Time: <span id="timer">0</span>s<br>
             Speed: <span id="speed">1</span> (Next in <span id="countdown">5</span>s)
         </div>
     </div>
@@ -491,7 +487,7 @@
         <div id="gameOverTitle">Game Over!</div>
         <br/>
         <div>Winner: <span id="winner"></span></div>
-        <div>Loser: <span id="loser"></span> <p>(Player Trapped)</p></div>
+        <div>Loser: <span id="loser"></span> <p id="endReason">(Player Trapped)</p></div>
         <div>Traveled: <span id="winnerDistance"></span></div>
         <div>Area Covered: <span id="winnerGrid"></span></div>
         <div>Walls: <span id="winnerWalls"></span></div>
@@ -698,6 +694,27 @@
                 if (e.target.id === 'speedSlow') selectedSpeed = 0.5;
                 if (e.target.id === 'speedMedium') selectedSpeed = 1;
                 if (e.target.id === 'speedFast') selectedSpeed = 2;
+            });
+        });
+
+        // Game time selection
+        let gameTime = 'unlimited';
+        let gameTimeDuration = Infinity;
+        const gameTimeButtons = document.querySelectorAll('#gameTimeButtons button');
+        gameTimeButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                gameTimeButtons.forEach(btn => btn.classList.remove('selected'));
+                e.target.classList.add('selected');
+                if (e.target.id === 'time60s') {
+                    gameTime = '60s';
+                    gameTimeDuration = 60;
+                } else if (e.target.id === 'time120s') {
+                    gameTime = '120s';
+                    gameTimeDuration = 120;
+                } else if (e.target.id === 'timeUnlimited') {
+                    gameTime = 'unlimited';
+                    gameTimeDuration = Infinity;
+                }
             });
         });
 
@@ -1026,7 +1043,6 @@
                     return { x, z, dir };
                 }
             }
-            // Fallback to reset position
             for (let x = 0; x < gridSize; x++) {
                 for (let z = 0; z < gridSize; z++) {
                     if (!grid[x][z].isWall && !(x === otherPlayer.x && z === otherPlayer.z)) {
@@ -1116,7 +1132,7 @@
         // End game
         let gameOver = false;
         let gameStartTime = 0;
-        function endGame(winner, loser) {
+        function endGame(winner, loser, reason = 'Player Trapped') {
             gameOver = true;
             cameraMode = 'flyAround';
             const gameOverDiv = document.getElementById('gameOver');
@@ -1125,6 +1141,7 @@
             document.getElementById('winner').style.color = winner === player1 ? '#ff0000' : '#00b7eb';
             document.getElementById('loser').textContent = loser === player1 ? 'Red' : 'Blue';
             document.getElementById('loser').style.color = loser === player1 ? '#ff0000' : '#00b7eb';
+            document.getElementById('endReason').textContent = `(${reason})`;
             document.getElementById('winnerDistance').textContent = winner.distance;
             document.getElementById('winnerGrid').textContent = winner.gridCovered;
             document.getElementById('winnerWalls').textContent = winner.wallsMade;
@@ -1150,6 +1167,7 @@
             document.getElementById('winner').style.color = '#ffffff';
             document.getElementById('loser').textContent = 'None';
             document.getElementById('loser').style.color = '#ffffff';
+            document.getElementById('endReason').textContent = '(Game Restarted)';
             document.getElementById('winnerDistance').textContent = 'N/A';
             document.getElementById('winnerGrid').textContent = 'N/A';
             document.getElementById('winnerWalls').textContent = 'N/A';
@@ -1167,7 +1185,17 @@
         // Timer and UI
         let startTime = performance.now();
         function updateUI() {
-            const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+            let elapsed;
+            if (gameTime === 'unlimited') {
+                elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+            } else {
+                elapsed = Math.max(0, gameTimeDuration - ((performance.now() - startTime) / 1000)).toFixed(1);
+                if (elapsed <= 0 && !gameOver) {
+                    const winner = player1.score >= player2.score ? player1 : player2;
+                    const loser = winner === player1 ? player2 : player1;
+                    endGame(winner, loser, 'Time Up');
+                }
+            }
             const timeToNextIncrease = (5 - ((performance.now() - lastSpeedIncrease) / 1000)).toFixed(1);
             document.getElementById('timer').textContent = elapsed;
             document.getElementById('redScore').textContent = player1.score;
@@ -1411,7 +1439,7 @@
                     }
 
                     if (now - gameStartTime >= 5000 && isTrapped(player, otherPlayer)) {
-                        endGame(otherPlayer, player);
+                        endGame(otherPlayer, player, 'Player Trapped');
                     }
                 }
 
