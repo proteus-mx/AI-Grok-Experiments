@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>BlastarX - V0.4</title>
+  <title>BlastarX - V0.5</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
   <style>
     body { margin: 0; display: flex; flex-direction: column; align-items: center; background: #000; color: #fff; font-family: Arial; }
@@ -274,7 +274,7 @@ function draw() {
     noStroke();
     fill(0, 0, 0, 180);
     rect(0, 0, 200, 160, 10);
-    textSize(20);
+    textSize(24);
     textAlign(LEFT);
     fill(255, 255, 255, 220);
     text(`Level: `, 20, 30);
@@ -287,13 +287,13 @@ function draw() {
     fill(255, 255, 255, 220);
     text(`Freighters Destroyed: `, 20, 70);
     fill(255, 0, 0, 220);
-    text(`${stats.freightersDestroyed}`, 170, 70);
+    text(`${stats.freightersDestroyed}`, 190, 70);
     fill(255, 255, 255, 220);
-    text(`Shots Fired: `, 20, 90);
+    text(`Shots: `, 20, 90);
     fill(255, 165, 0, 220);
     text(`${stats.shotsFired}`, 110, 90);
     fill(255, 255, 255, 220);
-    text(`Games Played: `, 20, 110);
+    text(`Games: `, 20, 110);
     fill(0, 200, 0, 220);
     text(`${stats.gamesPlayed}`, 130, 110);
     pop();
@@ -354,9 +354,9 @@ function draw() {
     fill(255, 255, 255, 220);
     text(`Points: `, width / 2 - 50, height / 2 + 30);
     fill(0, 255, 255, 220);
-    text(`${stats.points}`, width / 2 + 10, height / 2 + 30);
+    text(`${stats.points}`, width / 2 + 30, height / 2 + 30);
     fill(255, 255, 255, 220);
-    text(`Freighters Destroyed: `, width / 2 - 80, height / 2 + 60);
+    text(`Freighters Destroyed: `, width / 2 - 90, height / 2 + 60);
     fill(255, 0, 0, 220);
     text(`${stats.freightersDestroyed}`, width / 2 + 60, height / 2 + 60);
     fill(255, 255, 255, 220);
@@ -366,7 +366,7 @@ function draw() {
     fill(255, 255, 255, 220);
     text(`Games Played: `, width / 2 - 70, height / 2 + 120);
     fill(0, 200, 0, 220);
-    text(`${stats.gamesPlayed}`, width / 2 + 30, height / 2 + 120);
+    text(`${stats.gamesPlayed}`, width / 2 + 20, height / 2 + 120);
   }
 }
 
