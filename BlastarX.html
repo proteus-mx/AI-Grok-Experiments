@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>BlastarX - V0.9</title>
+  <title>BlastarX - V0.91</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
   <style>
     body { margin: 0; display: flex; flex-direction: column; align-items: center; background: #000; color: #fff; font-family: Arial; }
@@ -301,10 +301,10 @@ function draw() {
     fill(255, 255, 255, 220);
     text(`Ships Destroyed: `, 20, 80);
     fill(255, 0, 0, 220);
-    text(`${stats.freightersDestroyed}`, 218, 80);
+    text(`${stats.freightersDestroyed}`, 215, 80);
     
     fill(255, 255, 255, 220);
-    text(`Shots Fired: `, 20, 105);
+    text(`Shots Fired: `, 20, 110);
     fill(255, 165, 0, 220);
     text(`${stats.shotsFired}`, 150, 105);
     
@@ -374,12 +374,12 @@ function draw() {
     text(`${stats.level}`, width / 2 + 10, height / 2);
     
     fill(255, 255, 255, 220);
-    text(`Points: `, width / 2 - 50, height / 2 + 30);
+    text(`Points: `, width / 2 - 40, height / 2 + 30);
     fill(0, 255, 255, 220);
     text(`${stats.points}`, width / 2 + 10, height / 2 + 30);
     
     fill(255, 255, 255, 220);
-    text(`Ships Destroyed: `, width / 2 - 90, height / 2 + 60);
+    text(`Ships Destroyed: `, width / 2 - 85, height / 2 + 60);
     fill(255, 0, 0, 220);
     text(`${stats.freightersDestroyed}`, width / 2 + 20, height / 2 + 60);
     
