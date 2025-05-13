@@ -1,8 +1,7 @@
-
 <!DOCTYPE html>
 <html>
 <head>
-  <title>BlastarX - V0.96</title>
+  <title>BlastarX - V0.97</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
   <style>
     body { margin: 0; display: flex; flex-direction: column; align-items: center; background: #000; color: #fff; font-family: Arial; }
@@ -27,7 +26,8 @@ let starfield = [];
 let stats = { freightersDestroyed: 0, shotsFired: 0, gamesPlayed: 0, level: 1, levelTime: 0, levelFlash: 0, points: 0 };
 let shakeTime = 0, shakeIntensity = 0, slowTime = 0, lightningTime = 0;
 let powerUpStatus = { firepower: false, shield: false, firepowerTime: 0, shieldTime: 0 };
-let playAgainButton, toggleButton, fireButton;
+let playAgainButton, toggleButton, fireButton, vibrateButton;
+let vibrateEnabled = false;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -42,6 +42,11 @@ function setup() {
   fireButton.position(30, 340);
   fireButton.mousePressed(toggleAutoFire);
   fireButton.touchStarted(toggleAutoFire);
+  
+  vibrateButton = createButton('Vibrate: OFF');
+  vibrateButton.position(30, 400);
+  vibrateButton.mousePressed(toggleVibrate);
+  vibrateButton.touchStarted(toggleVibrate);
 }
 
 function toggleAutoPlay() {
@@ -54,10 +59,15 @@ function toggleAutoFire() {
   fireButton.html(`Auto-Fire: ${autoFire ? 'ON' : 'OFF'}`);
 }
 
+function toggleVibrate() {
+  vibrateEnabled = !vibrateEnabled;
+  vibrateButton.html(`Vibrate: ${vibrateEnabled ? 'ON' : 'OFF'}`);
+}
+
 function vibrateDevice() {
-    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.blastarXHandler) {
-        window.webkit.messageHandlers.blastarXHandler.postMessage("vibrate");
-    }
+  if (vibrateEnabled && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.blastarXHandler) {
+    window.webkit.messageHandlers.blastarXHandler.postMessage("vibrate");
+  }
 }  
 
 function resetGame() {
@@ -359,9 +369,9 @@ function draw() {
   }
   
   if (gameOver) {
-    //vibrateDevice();
-
     toggleButton.style.display = 'none';
+    fireButton.style.display = 'none';
+    vibrateButton.style.display = 'none';
     
     textSize(60);
     fill(255, 0, 0, 220);
@@ -399,7 +409,8 @@ function draw() {
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
   toggleButton.position(30, 280);
-  fireButton.position(30, 320);
+  fireButton.position(30, 340);
+  vibrateButton.position(30, 400);
   if (playAgainButton) playAgainButton.position(width / 2 - 60, height / 2 + 180);
 }
 
