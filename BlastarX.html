@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>BlastarX - V0.91</title>
+  <title>BlastarX - V0.92</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
   <style>
     body { margin: 0; display: flex; flex-direction: column; align-items: center; background: #000; color: #fff; font-family: Arial; }
@@ -306,7 +306,7 @@ function draw() {
     fill(255, 255, 255, 220);
     text(`Shots Fired: `, 20, 110);
     fill(255, 165, 0, 220);
-    text(`${stats.shotsFired}`, 150, 105);
+    text(`${stats.shotsFired}`, 160, 110);
     
     fill(255, 255, 255, 220);
     text(`Game: `, 20, 130);
@@ -374,7 +374,7 @@ function draw() {
     text(`${stats.level}`, width / 2 + 10, height / 2);
     
     fill(255, 255, 255, 220);
-    text(`Points: `, width / 2 - 40, height / 2 + 30);
+    text(`Points: `, width / 2 - 20, height / 2 + 30);
     fill(0, 255, 255, 220);
     text(`${stats.points}`, width / 2 + 10, height / 2 + 30);
     
