@@ -1,13 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>BlastarX - V0.3</title>
+  <title>BlastarX - V0.4</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
   <style>
     body { margin: 0; display: flex; flex-direction: column; align-items: center; background: #000; color: #fff; font-family: Arial; }
     canvas { display: block; }
-    button { margin: 10px; padding: 10px 20px; font-size: 16px; cursor: pointer; background: #222; color: #fff; border: 2px solid #fff; border-radius: 5px; }
+    button { margin: 5px; padding: 10px 20px; font-size: 16px; cursor: pointer; background: #222; color: #fff; border: 2px solid #fff; border-radius: 5px; }
     button:hover { background: #444; }
+    .stats-container { 
+      background: rgba(0, 0, 0, 0.7); 
+      padding: 20px; 
+      border: 2px solid #fff; 
+      border-radius: 10px; 
+      margin: 10px 0; 
+    }
   </style>
 </head>
 <body>
@@ -18,21 +25,29 @@ let starfield = [];
 let stats = { freightersDestroyed: 0, shotsFired: 0, gamesPlayed: 0, level: 1, levelTime: 0, levelFlash: 0, points: 0 };
 let shakeTime = 0, shakeIntensity = 0, slowTime = 0, lightningTime = 0;
 let powerUpStatus = { firepower: false, shield: false, firepowerTime: 0, shieldTime: 0 };
-let playAgainButton;
+let playAgainButton, toggleButton, fireButton;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
   resetGame();
-  let toggleButton = createButton('Auto-Play: ON');
-  toggleButton.mousePressed(() => {
-    autoPlay = !autoPlay;
-    toggleButton.html(`Auto-Play: ${autoPlay ? 'ON' : 'OFF'}`);
-  });
-  let fireButton = createButton('Auto-Fire: OFF');
-  fireButton.mousePressed(() => {
-    autoFire = !autoFire;
-    fireButton.html(`Auto-Fire: ${autoFire ? 'ON' : 'OFF'}`);
-  });
+  toggleButton = createButton('Auto-Play: ON');
+  toggleButton.position(30, 280);
+  toggleButton.mousePressed(toggleAutoPlay);
+  toggleButton.touchStarted(toggleAutoPlay);
+  fireButton = createButton('Auto-Fire: OFF');
+  fireButton.position(30, 320);
+  fireButton.mousePressed(toggleAutoFire);
+  fireButton.touchStarted(toggleAutoFire);
+}
+
+function toggleAutoPlay() {
+  autoPlay = !autoPlay;
+  toggleButton.html(`Auto-Play: ${autoPlay ? 'ON' : 'OFF'}`);
+}
+
+function toggleAutoFire() {
+  autoFire = !autoFire;
+  fireButton.html(`Auto-Fire: ${autoFire ? 'ON' : 'OFF'}`);
 }
 
 function resetGame() {
@@ -253,14 +268,35 @@ function draw() {
     if (frameCount % (150 - stats.level * 5) === 0) bombs.push(new Bomb());
     if (frameCount % (200 - stats.level * 5) === 0) beams.push(new Beam());
     
-    textSize(16);
-    fill(255, 255, 255, 220);
+    push();
+    translate(10, 100);
+    rectMode(CORNER);
+    noStroke();
+    fill(0, 0, 0, 180);
+    rect(0, 0, 200, 160, 10);
+    textSize(20);
     textAlign(LEFT);
-    text(`Level: ${stats.level}`, 10, 20);
-    text(`Points: ${stats.points}`, 10, 40);
-    text(`Freighters Destroyed: ${stats.freightersDestroyed}`, 10, 60);
-    text(`Shots Fired: ${stats.shotsFired}`, 10, 80);
-    text(`Games Played: ${stats.gamesPlayed}`, 10, 100);
+    fill(255, 255, 255, 220);
+    text(`Level: `, 20, 30);
+    fill(255, 255, 0, 220);
+    text(`${stats.level}`, 80, 30);
+    fill(255, 255, 255, 220);
+    text(`Points: `, 20, 50);
+    fill(0, 255, 255, 220);
+    text(`${stats.points}`, 90, 50);
+    fill(255, 255, 255, 220);
+    text(`Freighters Destroyed: `, 20, 70);
+    fill(255, 0, 0, 220);
+    text(`${stats.freightersDestroyed}`, 170, 70);
+    fill(255, 255, 255, 220);
+    text(`Shots Fired: `, 20, 90);
+    fill(255, 165, 0, 220);
+    text(`${stats.shotsFired}`, 110, 90);
+    fill(255, 255, 255, 220);
+    text(`Games Played: `, 20, 110);
+    fill(0, 200, 0, 220);
+    text(`${stats.gamesPlayed}`, 130, 110);
+    pop();
     
     if (millis() - stats.levelFlash < 2000) {
       textSize(60);
@@ -295,31 +331,50 @@ function draw() {
       rect(0, 0, width, height);
     }
     
-    if (player.destroyed) {
+    if (player.destroyed && !gameOver) {
       gameOver = true;
       gameOverTime = millis();
       playAgainButton = createButton('Play Again');
       playAgainButton.position(width / 2 - 60, height / 2 + 180);
       playAgainButton.mousePressed(resetGame);
-      noLoop();
+      playAgainButton.touchStarted(resetGame);
     }
-  } else {
+  }
+  
+  if (gameOver) {
     textSize(60);
     fill(255, 0, 0, 220);
     textAlign(CENTER);
     text("Game Over", width / 2, height / 2 - 100);
     textSize(20);
     fill(255, 255, 255, 220);
-    text(`Level: ${stats.level}`, width / 2, height / 2);
-    text(`Points: ${stats.points}`, width / 2, height / 2 + 30);
-    text(`Freighters Destroyed: ${stats.freightersDestroyed}`, width / 2, height / 2 + 60);
-    text(`Shots Fired: ${stats.shotsFired}`, width / 2, height / 2 + 90);
-    text(`Games Played: ${stats.gamesPlayed}`, width / 2, height / 2 + 120);
+    text(`Level: `, width / 2 - 50, height / 2);
+    fill(255, 255, 0, 220);
+    text(`${stats.level}`, width / 2 + 10, height / 2);
+    fill(255, 255, 255, 220);
+    text(`Points: `, width / 2 - 50, height / 2 + 30);
+    fill(0, 255, 255, 220);
+    text(`${stats.points}`, width / 2 + 10, height / 2 + 30);
+    fill(255, 255, 255, 220);
+    text(`Freighters Destroyed: `, width / 2 - 80, height / 2 + 60);
+    fill(255, 0, 0, 220);
+    text(`${stats.freightersDestroyed}`, width / 2 + 60, height / 2 + 60);
+    fill(255, 255, 255, 220);
+    text(`Shots Fired: `, width / 2 - 60, height / 2 + 90);
+    fill(255, 165, 0, 220);
+    text(`${stats.shotsFired}`, width / 2 + 30, height / 2 + 90);
+    fill(255, 255, 255, 220);
+    text(`Games Played: `, width / 2 - 70, height / 2 + 120);
+    fill(0, 200, 0, 220);
+    text(`${stats.gamesPlayed}`, width / 2 + 30, height / 2 + 120);
   }
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+  toggleButton.position(30, 280);
+  fireButton.position(30, 320);
+  if (playAgainButton) playAgainButton.position(width / 2 - 60, height / 2 + 180);
 }
 
 function keyPressed() {
