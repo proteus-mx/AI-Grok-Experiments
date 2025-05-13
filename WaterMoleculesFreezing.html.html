@@ -1,0 +1,338 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Water to Ice Molecular Simulation</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #countdown {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 48px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+        #temperature {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <p>Water to Ice Simulation</p>
+        <button onclick="startFreezing()">Start Freezing</button>
+        <button onclick="resetSimulation()">Reset</button>
+    </div>
+    <div id="countdown"></div>
+    <div id="temperature">25°C</div>
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Water molecule representation
+        const molecules = [];
+        const numMolecules = 50;
+        const oxygenGeometry = new THREE.SphereGeometry(0.3, 32, 32);
+        const hydrogenGeometry = new THREE.SphereGeometry(0.15, 32, 32);
+        const oxygenMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+        const hydrogenMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
+
+        // Create water molecules (H2O)
+        function createMolecule() {
+            const molecule = new THREE.Group();
+            const oxygen = new THREE.Mesh(oxygenGeometry, oxygenMaterial);
+            molecule.add(oxygen);
+
+            const h1 = new THREE.Mesh(hydrogenGeometry, hydrogenMaterial);
+            h1.position.set(0.6, 0.3, 0);
+            molecule.add(h1);
+
+            const h2 = new THREE.Mesh(hydrogenGeometry, hydrogenMaterial);
+            h2.position.set(-0.6, 0.3, 0);
+            molecule.add(h2);
+
+            return molecule;
+        }
+
+        // Initialize molecules
+        for (let i = 0; i < numMolecules; i++) {
+            const molecule = createMolecule();
+            molecule.position.set(
+                (Math.random() - 0.5) * 10,
+                (Math.random() - 0.5) * 10,
+                (Math.random() - 0.5) * 10
+            );
+            molecule.velocity = new THREE.Vector3(
+                (Math.random() - 0.5) * 0.05,
+                (Math.random() - 0.5) * 0.05,
+                (Math.random() - 0.5) * 0.05
+            );
+            scene.add(molecule);
+            molecules.push(molecule);
+        }
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+        pointLight.position.set(10, 10, 10);
+        scene.add(pointLight);
+
+        camera.position.z = 15;
+
+        // Freezing simulation
+        let freezing = false;
+        let unfreezing = false;
+        let temperature = 25; // Starting temperature in Celsius
+        let cycleCount = 0;
+        const latticePositions = [];
+        for (let x = -3; x <= 3; x += 1.5) {
+            for (let y = -3; y <= 3; y += 1.5) {
+                for (let z = -3; z <= 3; z += 1.5) {
+                    latticePositions.push(new THREE.Vector3(x, y, z));
+                }
+            }
+        }
+
+        // Countdown and message
+        const countdownDiv = document.getElementById('countdown');
+        const temperatureDiv = document.getElementById('temperature');
+        let countdownTimer = null;
+
+        function showCountdown(seconds, message, callback) {
+            let timeLeft = seconds;
+            countdownDiv.style.display = 'block';
+            countdownDiv.innerText = `${message}: ${timeLeft}`;
+
+            countdownTimer = setInterval(() => {
+                timeLeft--;
+                countdownDiv.innerText = `${message}: ${timeLeft}`;
+                if (timeLeft <= 0) {
+                    clearInterval(countdownTimer);
+                    countdownDiv.style.display = 'none';
+                    callback();
+                }
+            }, 1000);
+        }
+
+        // Update temperature display
+        function updateTemperature() {
+            temperatureDiv.innerText = `${Math.round(temperature)}°C`;
+        }
+
+        // Freezing and unfreezing cycle
+        function startCycle() {
+            showCountdown(3, 'Freezing in', () => {
+                freezing = true;
+                // Decrease temperature to 0°C over 5 seconds
+                const freezeInterval = setInterval(() => {
+                    temperature -= 0.5;
+                    if (temperature <= 0) {
+                        temperature = 0;
+                        clearInterval(freezeInterval);
+                    }
+                    updateTemperature();
+                }, 100);
+                // Start unfreezing countdown after freezing
+                setTimeout(() => {
+                    showCountdown(3, 'Unfreezing in', () => {
+                        unfreezing = true;
+                        // Increase temperature based on cycle count
+                        const targetTemp = cycleCount === 1 ? 100 : 25;
+                        const unfreezeInterval = setInterval(() => {
+                            temperature += 0.5;
+                            if (temperature >= targetTemp) {
+                                temperature = targetTemp;
+                                clearInterval(unfreezeInterval);
+                                // Reset states
+                                freezing = false;
+                                unfreezing = false;
+                                cycleCount++;
+                                // Restart cycle or stop after second cycle
+                                if (cycleCount < 2) {
+                                    setTimeout(startCycle, 3000); // Wait 3 seconds before next cycle
+                                }
+                            }
+                            updateTemperature();
+                        }, 100);
+                    });
+                }, 5000); // Wait 5 seconds after freezing
+            });
+        }
+
+        // Start the first cycle after 3 seconds
+        setTimeout(startCycle, 3000);
+
+        function startFreezing() {
+            if (countdownTimer) clearInterval(countdownTimer);
+            countdownDiv.style.display = 'none';
+            freezing = true;
+            unfreezing = false;
+            // Decrease temperature to 0°C over 5 seconds
+            const freezeInterval = setInterval(() => {
+                temperature -= 0.5;
+                if (temperature <= 0) {
+                    temperature = 0;
+                    clearInterval(freezeInterval);
+                }
+                updateTemperature();
+            }, 100);
+        }
+
+        function resetSimulation() {
+            if (countdownTimer) clearInterval(countdownTimer);
+            countdownDiv.style.display = 'none';
+            freezing = false;
+            unfreezing = false;
+            temperature = 25;
+            cycleCount = 0;
+            updateTemperature();
+            molecules.forEach(m => {
+                m.position.set(
+                    (Math.random() - 0.5) * 10,
+                    (Math.random() - 0.5) * 10,
+                    (Math.random() - 0.5) * 10
+                );
+                m.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.05,
+                    (Math.random() - 0.5) * 0.05,
+                    (Math.random() - 0.5) * 0.05
+                );
+            });
+        }
+
+        // Camera fly-around
+        let time = 0;
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Camera orbit
+            time += 0.01;
+            camera.position.x = Math.sin(time) * 15;
+            camera.position.z = Math.cos(time) * 15;
+            camera.position.y = Math.sin(time * 0.5) * 5;
+            camera.lookAt(0, 0, 0);
+
+            if (!freezing && !unfreezing) {
+                // Liquid state: molecules move randomly
+                molecules.forEach(m => {
+                    m.position.add(m.velocity);
+                    if (m.position.length() > 10) {
+                        m.velocity.multiplyScalar(-1);
+                    }
+                    m.rotation.x += 0.01;
+                    m.rotation.y += 0.01;
+                });
+            } else if (freezing && !unfreezing) {
+                // Freezing: molecules move to lattice positions
+                molecules.forEach((m, i) => {
+                    if (i < latticePositions.length) {
+                        const target = latticePositions[i];
+                        const delta = target.clone().sub(m.position);
+                        m.position.add(delta.multiplyScalar(0.02));
+                        m.velocity.lerp(new THREE.Vector3(0, 0, 0), 0.05);
+                        m.rotation.set(0, 0, 0);
+                    }
+                });
+            } else if (unfreezing) {
+                // Unfreezing: molecules return to random motion
+                molecules.forEach(m => {
+                    m.velocity.lerp(
+                        new THREE.Vector3(
+                            (Math.random() - 0.5) * 0.05,
+                            (Math.random() - 0.5) * 0.05,
+                            (Math.random() - 0.5) * 0.05
+                        ),
+                        0.02
+                    );
+                    m.position.add(m.velocity);
+                    m.rotation.x += 0.01;
+                    m.rotation.y += 0.01;
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
