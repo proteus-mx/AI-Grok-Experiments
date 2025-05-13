@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>BlastarX - V0.5</title>
+  <title>BlastarX - V0.6</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
   <style>
     body { margin: 0; display: flex; flex-direction: column; align-items: center; background: #000; color: #fff; font-family: Arial; }
@@ -49,6 +49,12 @@ function toggleAutoFire() {
   autoFire = !autoFire;
   fireButton.html(`Auto-Fire: ${autoFire ? 'ON' : 'OFF'}`);
 }
+
+function vibrateDevice() {
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.blastarXHandler) {
+        window.webkit.messageHandlers.blastarXHandler.postMessage("vibrate");
+    }
+}  
 
 function resetGame() {
   for (let i = 0; i < 100; i++) starfield.push({x: random(width), y: random(height), size: random(1, 4)});
@@ -190,6 +196,7 @@ function draw() {
           bullet.destroyed = true;
           shakeTime = millis();
           shakeIntensity = 15;
+          vibrateDevice();
           for (let k = 0; k < 50; k++) particles.push(new Particle(bomb.x, bomb.y, true));
         }
       }
@@ -199,6 +206,7 @@ function draw() {
         if (bullet.hits(beam)) {
           beam.destroyed = true;
           bullet.destroyed = true;
+          vibrateDevice();
           slowTime = millis();
           lightningTime = millis();
         }
@@ -279,23 +287,23 @@ function draw() {
     fill(255, 255, 255, 220);
     text(`Level: `, 20, 30);
     fill(255, 255, 0, 220);
-    text(`${stats.level}`, 80, 30);
+    text(`${stats.level}`, 100, 30);
     fill(255, 255, 255, 220);
-    text(`Points: `, 20, 50);
+    text(`Points: `, 20, 55);
     fill(0, 255, 255, 220);
-    text(`${stats.points}`, 90, 50);
+    text(`${stats.points}`, 100, 50);
     fill(255, 255, 255, 220);
-    text(`Freighters Destroyed: `, 20, 70);
+    text(`Ships Destroyed: `, 20, 80);
     fill(255, 0, 0, 220);
-    text(`${stats.freightersDestroyed}`, 190, 70);
+    text(`${stats.freightersDestroyed}`, 210, 70);
     fill(255, 255, 255, 220);
-    text(`Shots: `, 20, 90);
+    text(`Shots Fired: `, 20, 105);
     fill(255, 165, 0, 220);
     text(`${stats.shotsFired}`, 110, 90);
     fill(255, 255, 255, 220);
-    text(`Games: `, 20, 110);
+    text(`Games: `, 20, 130);
     fill(0, 200, 0, 220);
-    text(`${stats.gamesPlayed}`, 130, 110);
+    text(`${stats.gamesPlayed}`, 100, 110);
     pop();
     
     if (millis() - stats.levelFlash < 2000) {
@@ -342,6 +350,7 @@ function draw() {
   }
   
   if (gameOver) {
+    vibrateDevice();
     textSize(60);
     fill(255, 0, 0, 220);
     textAlign(CENTER);
@@ -356,7 +365,7 @@ function draw() {
     fill(0, 255, 255, 220);
     text(`${stats.points}`, width / 2 + 30, height / 2 + 30);
     fill(255, 255, 255, 220);
-    text(`Freighters Destroyed: `, width / 2 - 90, height / 2 + 60);
+    text(`Ships Destroyed: `, width / 2 - 90, height / 2 + 60);
     fill(255, 0, 0, 220);
     text(`${stats.freightersDestroyed}`, width / 2 + 60, height / 2 + 60);
     fill(255, 255, 255, 220);
