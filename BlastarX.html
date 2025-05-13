@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>BlastarX - V0.94</title>
+  <title>BlastarX - V0.95</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
   <style>
     body { margin: 0; display: flex; flex-direction: column; align-items: center; background: #000; color: #fff; font-family: Arial; }
@@ -358,7 +358,7 @@ function draw() {
   }
   
   if (gameOver) {
-    vibrateDevice();
+    //vibrateDevice();
 
     toggleButton.style.display = 'none';
     
@@ -374,9 +374,9 @@ function draw() {
     text(`${stats.level}`, width / 2 + 10, height / 2);
     
     fill(255, 255, 255, 220);
-    text(`Points: `, width / 2 - 20, height / 2 + 30);
+    text(`Points: `, width / 2 - 50, height / 2 + 30);
     fill(0, 255, 255, 220);
-    text(`${stats.points}`, width / 2 + 10, height / 2 + 30);
+    text(`${stats.points}`, width / 2 + 20, height / 2 + 30);
     
     fill(255, 255, 255, 220);
     text(`Ships Destroyed: `, width / 2 - 85, height / 2 + 60);
