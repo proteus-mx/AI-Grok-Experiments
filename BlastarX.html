@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>BlastarX - V0.92</title>
+  <title>BlastarX - V0.93</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
   <style>
     body { margin: 0; display: flex; flex-direction: column; align-items: center; background: #000; color: #fff; font-family: Arial; }
@@ -304,14 +304,14 @@ function draw() {
     text(`${stats.freightersDestroyed}`, 215, 80);
     
     fill(255, 255, 255, 220);
-    text(`Shots Fired: `, 20, 110);
+    text(`Shots Fired: `, 20, 115);
     fill(255, 165, 0, 220);
-    text(`${stats.shotsFired}`, 160, 110);
+    text(`${stats.shotsFired}`, 160, 115);
     
     fill(255, 255, 255, 220);
-    text(`Game: `, 20, 130);
+    text(`Game: `, 20, 140);
     fill(0, 200, 0, 220);
-    text(`${stats.gamesPlayed}`, 100, 130);
+    text(`${stats.gamesPlayed}`, 100, 140);
     pop();
     
     if (millis() - stats.levelFlash < 2000) {
