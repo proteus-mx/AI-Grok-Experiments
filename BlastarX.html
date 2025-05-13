@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>BlastarX - V0.7</title>
+  <title>BlastarX - V0.8</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
   <style>
     body { margin: 0; display: flex; flex-direction: column; align-items: center; background: #000; color: #fff; font-family: Arial; }
@@ -34,7 +34,7 @@ function setup() {
   toggleButton.position(30, 280);
   toggleButton.mousePressed(toggleAutoPlay);
   toggleButton.touchStarted(toggleAutoPlay);
-  toggleButton.display('inline');
+  toggleButton.style.display = 'inline';
   
   fireButton = createButton('Auto-Fire: OFF');
   fireButton.position(30, 320);
@@ -359,8 +359,7 @@ function draw() {
   if (gameOver) {
     vibrateDevice();
 
-    toggleButton.display('none');
-
+    toggleButton.style.display = 'none';
     
     textSize(60);
     fill(255, 0, 0, 220);
