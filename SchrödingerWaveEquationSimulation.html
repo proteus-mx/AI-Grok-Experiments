@@ -1,0 +1,289 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html>
+<head>
+    <title>Schrödinger Wave Equation Visualization</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+        #title {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 22px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            max-width: 800px;
+            white-space: nowrap;
+        }
+        #description {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            max-width: 600px;
+            text-align: center;
+        }
+        #hud {
+            position: absolute;
+            top: 120px;
+            left: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+        }
+        #controls {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-family: Arial, sans-serif;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            text-align: center;
+        }
+        #speedButton {
+            position: absolute;
+            bottom: 10px;
+            left: calc(50% - 120px); /* Increased spacing */
+            padding: 15px 30px;
+            background: rgba(50, 150, 50, 0.8);
+            color: white;
+            border: 2px solid white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #cameraButton {
+            position: absolute;
+            bottom: 10px;
+            left: calc(50% + 30px); /* Increased spacing */
+            padding: 15px 30px;
+            background: rgba(50, 50, 150, 0.8);
+            color: white;
+            border: 2px solid white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div id="title">Schrödinger Wave Equation Simulation</div>
+    <div id="description">
+        This 3D visualization simulates a 2D Gaussian wave packet in a harmonic oscillator, 
+        governed by the Schrödinger equation. Adjust omega and sigma to explore wavefunction dynamics, 
+        toggle camera views, and speed up the animation to observe quantum behavior.
+    </div>
+    <div id="hud">
+        <div>Time: <span id="time">0</span></div>
+        <div>Energy: <span id="energy">0</span></div>
+        <div>Speed: <span id="speed">3.0</span>x</div>
+    </div>
+    <div id="controls">
+        <label for="omega">Omega: <span id="omegaValue">0.1</span></label><br>
+        <input type="range" id="omega" min="0.05" max="0.5" step="0.01" value="0.1"><br>
+        <label for="sigma">Sigma: <span id="sigmaValue">2</span></label><br>
+        <input type="range" id="sigma" min="1" max="5" step="0.1" value="2">
+    </div>
+    <button id="speedButton">Speed Up</button>
+    <button id="cameraButton">Toggle Camera</button>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Set up scene, camera, and renderer
+        const scene = new THREE.Scene();
+        const cameraRotating = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const cameraBirdsEye = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const cameraSide = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Add lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+        pointLight.position.set(10, 10, 20);
+        scene.add(pointLight);
+
+        // Create grid for wavefunction visualization
+        const gridSize = 20;
+        const gridStep = 0.5;
+        const particles = [];
+        const geometry = new THREE.SphereGeometry(0.2, 16, 16);
+        const material = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+
+        for (let x = -gridSize / 2; x <= gridSize / 2; x += gridStep) {
+            for (let y = -gridSize / 2; y <= gridSize / 2; y += gridStep) {
+                const particle = new THREE.Mesh(geometry, material.clone());
+                particle.position.set(x, y, 0);
+                scene.add(particle);
+                particles.push(particle);
+            }
+        }
+
+        // Camera setup
+        const radius = 30;
+        let angle = 0;
+        cameraRotating.position.set(radius, 0, 10);
+        cameraRotating.lookAt(0, 0, 0);
+        cameraBirdsEye.position.set(0, 0, 40);
+        cameraBirdsEye.lookAt(0, 0, 0);
+        cameraSide.position.set(30, 0, 0);
+        cameraSide.lookAt(0, 0, 0);
+
+        let currentCamera = cameraRotating;
+        const cameras = [cameraRotating, cameraBirdsEye, cameraSide];
+        let cameraIndex = 0;
+
+        // Wave equation parameters
+        let t = 0;
+        const hbar = 1;
+        const m = 1;
+        let omega = 0.1;
+        let sigma = 2;
+        let timeStep = 0.9; // Start at 3x speed
+
+        // Get DOM elements
+        const timeDisplay = document.getElementById('time');
+        const energyDisplay = document.getElementById('energy');
+        const speedDisplay = document.getElementById('speed');
+        const omegaSlider = document.getElementById('omega');
+        const omegaValue = document.getElementById('omegaValue');
+        const sigmaSlider = document.getElementById('sigma');
+        const sigmaValue = document.getElementById('sigmaValue');
+        const speedButton = document.getElementById('speedButton');
+        const cameraButton = document.getElementById('cameraButton');
+
+        // Update parameters from sliders
+        omegaSlider.addEventListener('input', () => {
+            omega = parseFloat(omegaSlider.value);
+            omegaValue.textContent = omega.toFixed(2);
+        });
+        sigmaSlider.addEventListener('input', () => {
+            sigma = parseFloat(sigmaSlider.value);
+            sigmaValue.textContent = sigma.toFixed(1);
+        });
+
+        // Speed up animation
+        speedButton.addEventListener('click', () => {
+            timeStep *= 1.5;
+            speedButton.textContent = `Speed Up (x${(timeStep / 0.3).toFixed(1)})`;
+            speedDisplay.textContent = (timeStep / 0.3).toFixed(1) + 'x';
+        });
+
+        // Toggle camera
+        cameraButton.addEventListener('click', () => {
+            cameraIndex = (cameraIndex + 1) % cameras.length;
+            currentCamera = cameras[cameraIndex];
+            cameraButton.textContent = `Camera: ${['Rotating', 'Bird\'s Eye', 'Side'][cameraIndex]}`;
+        });
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Update particle positions and colors
+            let totalEnergy = 0;
+            particles.forEach(particle => {
+                const x = particle.position.x;
+                const y = particle.position.y;
+                
+                // 2D Gaussian wave packet in harmonic oscillator
+                const psi = Math.exp(-(x*x + y*y) / (2 * sigma * sigma)) * 
+                           Math.cos(Math.sqrt(m * omega / hbar) * (x*x + y*y) + omega * t);
+                const amplitude = psi * 5;
+                particle.position.z = amplitude;
+                
+                // Color based on position
+                const hue = (amplitude + 5) / 10;
+                const saturation = (x + gridSize / 2) / gridSize;
+                const lightness = (y + gridSize / 2) / gridSize;
+                particle.material.color.setHSL(hue, saturation, lightness);
+                
+                // Approximate energy
+                totalEnergy += psi * psi * omega * (x*x + y*y);
+            });
+
+            // Update stats
+            timeDisplay.textContent = t.toFixed(1);
+            energyDisplay.textContent = totalEnergy.toFixed(2);
+            speedDisplay.textContent = (timeStep / 0.3).toFixed(1) + 'x';
+
+            // Rotate camera (only for rotating camera)
+            if (currentCamera === cameraRotating) {
+                angle += 0.01;
+                cameraRotating.position.x = radius * Math.cos(angle);
+                cameraRotating.position.z = radius * Math.sin(angle);
+                cameraRotating.position.y = 10 * Math.sin(angle * 0.5);
+                cameraRotating.lookAt(0, 0, 0);
+            }
+
+            t += timeStep;
+            renderer.render(scene, currentCamera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            cameras.forEach(camera => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Initialize speed display
+        speedButton.textContent = `Speed Up (x${(timeStep / 0.3).toFixed(1)})`;
+        speedDisplay.textContent = (timeStep / 0.3).toFixed(1) + 'x';
+
+        // Start simulation
+        animate();
+    </script>
+</body>
+</html>
