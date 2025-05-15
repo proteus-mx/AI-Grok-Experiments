@@ -1,0 +1,486 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Earth Flight Simulation</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #stats {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            font-family: Arial, sans-serif;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            font-family: Arial, sans-serif;
+        }
+        #clock {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            font-family: Arial, sans-serif;
+        }
+        #timeSlider {
+            position: absolute;
+            bottom: 50px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div id="stats">
+        <p>Flight Count: <span id="flightCount">0</span></p>
+        <p>Total Distance: <span id="totalDistance">0</span> km</p>
+        <p>Active Flights: <span id="activeFlights">0</span></p>
+    </div>
+    <div id="controls">
+        <button onclick="setCamera('orbit')">Orbit Camera</button>
+        <button onclick="setCamera('fly')">Fly Camera</button>
+        <button onclick="setCamera('sun')">Sun Camera</button>
+        <button onclick="setCamera('plane')">Plane Camera</button>
+    </div>
+    <div id="clock">Time: <span id="time">00:00:00</span></div>
+    <div id="timeSlider">
+        <label for="timeControl">Time Speed: </label>
+        <input type="range" id="timeControl" min="0" max="200" value="100">
+        <span id="timeSpeed">1x</span>
+    </div>
+    <script>
+        let scene, camera, renderer, earth, atmosphere, controls, flyCamera, sunCamera, planeCamera, activeCamera;
+        let flights = [];
+        let currentCamera = 'orbit';
+        let timeSpeed = 1;
+        let currentPlaneIndex = 0;
+
+        function init() {
+            try {
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+                flyCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+                sunCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+                planeCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+                activeCamera = camera;
+
+                renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                document.body.appendChild(renderer.domElement);
+
+                // Earth
+                const earthRadius = 5;
+                const geometry = new THREE.SphereGeometry(earthRadius, 128, 128);
+                const textureLoader = new THREE.TextureLoader();
+                textureLoader.crossOrigin = 'anonymous';
+                const material = new THREE.MeshStandardMaterial({
+                    map: loadTexture('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg', 'Earth map', true),
+                    normalMap: loadTexture('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_normal_2048.jpg', 'Earth normal'),
+                    normalScale: new THREE.Vector2(1, 1),
+                    roughnessMap: loadTexture('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_specular_2048.jpg', 'Earth roughness'),
+                    roughness: 0.8,
+                    metalness: 0.1
+                });
+                earth = new THREE.Mesh(geometry, material);
+                scene.add(earth);
+
+                // Atmosphere
+                const atmosphereGeometry = new THREE.SphereGeometry(earthRadius + 0.1, 128, 128);
+                const atmosphereMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x88ccff,
+                    transparent: true,
+                    opacity: 0.3,
+                    side: THREE.BackSide,
+                    blending: THREE.AdditiveBlending
+                });
+                atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+                scene.add(atmosphere);
+
+                // Moon
+                const moonRadius = earthRadius * 0.27;
+                const moonGeometry = new THREE.SphereGeometry(moonRadius, 64, 64);
+                const moonMaterial = new THREE.MeshStandardMaterial({
+                    map: loadTexture('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1024.jpg', 'Moon map', false),
+                    roughness: 0.9,
+                    metalness: 0.1
+                });
+                const moon = new THREE.Mesh(moonGeometry, moonMaterial);
+                moon.position.set(earthRadius * 3, 0, 0);
+                scene.add(moon);
+
+                // Sun
+                const sunRadius = earthRadius * 109;
+                const sunDistance = 149.6 * 10;
+                const sunGeometry = new THREE.SphereGeometry(sunRadius, 64, 64);
+                const sunMaterial = new THREE.ShaderMaterial({
+                    uniforms: {
+                        time: { value: 0.0 },
+                        glowColor: { value: new THREE.Color(0xffee88) },
+                        flareColor: { value: new THREE.Color(0xffaa33) },
+                        intensity: { value: 1.8 }
+                    },
+                    vertexShader: `
+                        varying vec3 vNormal;
+                        varying vec3 vPosition;
+                        void main() {
+                            vNormal = normalize(normalMatrix * normal);
+                            vPosition = position;
+                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                        }
+                    `,
+                    fragmentShader: `
+                        uniform float time;
+                        uniform vec3 glowColor;
+                        uniform vec3 flareColor;
+                        uniform float intensity;
+                        varying vec3 vNormal;
+                        varying vec3 vPosition;
+                        void main() {
+                            float glow = pow(0.85 - dot(vNormal, vec3(0, 0, 1.0)), 3.5);
+                            float flare = 0.3 * sin(time * 2.0 + length(vPosition) * 0.05);
+                            vec3 color = mix(glowColor, flareColor, flare);
+                            gl_FragColor = vec4(color, 1.0) * glow * intensity + vec4(glowColor * 0.4, 0.8);
+                        }
+                    `,
+                    side: THREE.FrontSide,
+                    blending: THREE.AdditiveBlending,
+                    transparent: true
+                });
+                const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+                sun.position.set(sunDistance, 0, 0);
+                scene.add(sun);
+
+                // Sun light
+                const sunLight = new THREE.PointLight(0xffffff, 2, sunDistance * 2, 2);
+                sunLight.position.copy(sun.position);
+                scene.add(sunLight);
+
+                // Star field
+                const starGeometry = new THREE.BufferGeometry();
+                const starCount = 10000;
+                const positions = new Float32Array(starCount * 3);
+                const sizes = new Float32Array(starCount);
+                for (let i = 0; i < starCount; i++) {
+                    positions[i * 3] = (Math.random() - 0.5) * 4000;
+                    positions[i * 3 + 1] = (Math.random() - 0.5) * 4000;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 4000;
+                    sizes[i] = Math.random() * 2 + 0.5;
+                }
+                starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                starGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+                const starMaterial = new THREE.ShaderMaterial({
+                    uniforms: {
+                        time: { value: 0.0 }
+                    },
+                    vertexShader: `
+                        attribute float size;
+                        varying float vSize;
+                        void main() {
+                            vSize = size;
+                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                            gl_PointSize = size;
+                        }
+                    `,
+                    fragmentShader: `
+                        uniform float time;
+                        varying float vSize;
+                        void main() {
+                            float twinkle = sin(time * 2.0 + vSize * 10.0) * 0.5 + 0.5;
+                            gl_FragColor = vec4(1.0, 1.0, 1.0, twinkle * 0.8);
+                        }
+                    `,
+                    transparent: true
+                });
+                const stars = new THREE.Points(starGeometry, starMaterial);
+                scene.add(stars);
+
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+                scene.add(ambientLight);
+
+                // Camera positions
+                camera.position.z = 15;
+                flyCamera.position.set(10, 5, 10);
+                flyCamera.lookAt(0, 0, 0);
+
+                // Orbit controls
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+
+                // Add flights
+                addFlights();
+
+                // Clock
+                updateClock();
+                setInterval(updateClock, 1000);
+
+                // Time slider
+                document.getElementById('timeControl').addEventListener('input', (e) => {
+                    timeSpeed = e.target.value / 100;
+                    document.getElementById('timeSpeed').textContent = `${timeSpeed.toFixed(2)}x`;
+                });
+
+                // Event listeners
+                window.addEventListener('resize', onWindowResize);
+                animate();
+            } catch (error) {
+                console.error('Initialization error:', error);
+            }
+        }
+
+        function loadTexture(url, name, required = false) {
+            try {
+                const textureLoader = new THREE.TextureLoader();
+                const texture = textureLoader.load(
+                    url,
+                    () => console.log(`${name} loaded`),
+                    undefined,
+                    (err) => console.error(`Error loading ${name}:`, err)
+                );
+                return texture || new THREE.Texture();
+            } catch (error) {
+                console.error(`Error loading ${name} texture:`, error);
+                return new THREE.Texture();
+            }
+        }
+
+        function addFlights() {
+            const flightData = [
+                { start: { lat: 40.7128, lon: -74.0060 }, end: { lat: 51.5074, lon: -0.1278 }, speed: 0.01 },
+                { start: { lat: 35.6762, lon: 139.6503 }, end: { lat: -33.8688, lon: 151.2093 }, speed: 0.008 },
+                { start: { lat: -23.5505, lon: -46.6333 }, end: { lat: 48.8566, lon: 2.3522 }, speed: 0.009 },
+                { start: { lat: 55.7558, lon: 37.6173 }, end: { lat: 39.9042, lon: 116.4074 }, speed: 0.007 },
+                { start: { lat: 28.6139, lon: 77.2090 }, end: { lat: 1.3521, lon: 103.8198 }, speed: 0.008 },
+                { start: { lat: 52.5200, lon: 13.4050 }, end: { lat: -34.6037, lon: -58.3816 }, speed: 0.009 },
+                { start: { lat: 25.2048, lon: 55.2708 }, end: { lat: 22.3193, lon: 114.1694 }, speed: 0.01 },
+                { start: { lat: 41.9028, lon: 12.4964 }, end: { lat: 37.7749, lon: -122.4194 }, speed: 0.008 },
+                { start: { lat: -26.2041, lon: 28.0473 }, end: { lat: 31.2304, lon: 121.4737 }, speed: 0.009 },
+                { start: { lat: 19.4326, lon: -99.1332 }, end: { lat: 30.0444, lon: 31.2357 }, speed: 0.007 },
+                { start: { lat: 45.4215, lon: -75.6972 }, end: { lat: 60.1699, lon: 24.9384 }, speed: 0.008 },
+                { start: { lat: 13.7563, lon: 100.5018 }, end: { lat: 3.1390, lon: 101.6869 }, speed: 0.01 },
+                { start: { lat: 38.9072, lon: -77.0369 }, end: { lat: 53.3498, lon: -6.2603 }, speed: 0.009 },
+                { start: { lat: 33.8688, lon: 151.2093 }, end: { lat: 22.3193, lon: 114.1694 }, speed: 0.008 },
+                { start: { lat: 48.8566, lon: 2.3522 }, end: { lat: 40.7128, lon: -74.0060 }, speed: 0.01 },
+                { start: { lat: 1.3521, lon: 103.8198 }, end: { lat: 35.6762, lon: 139.6503 }, speed: 0.007 }
+            ];
+
+            flightData.forEach(data => {
+                const flight = createFlight(data.start, data.end, data.speed);
+                flights.push(flight);
+                scene.add(flight.mesh);
+                scene.add(flight.line);
+            });
+
+            updateStats();
+        }
+
+        function createFlight(start, end, speed) {
+            const startPos = latLonToVector3(start.lat, start.lon, 5.1);
+            const endPos = latLonToVector3(end.lat, end.lon, 5.1);
+            const control1 = startPos.clone().multiplyScalar(1.2);
+            const control2 = endPos.clone().multiplyScalar(1.2);
+            const curve = new THREE.CubicBezierCurve3(startPos, control1, control2, endPos);
+            const points = curve.getPoints(50);
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
+            const lineObject = new THREE.Line(geometry, material);
+
+            // Aeroplane model
+            const plane = new THREE.Group();
+            const bodyGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.3, 16);
+            const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.rotation.z = Math.PI / 2;
+            plane.add(body);
+            const wingGeometry = new THREE.BoxGeometry(0.4, 0.01, 0.1);
+            const wing = new THREE.Mesh(wingGeometry, bodyMaterial);
+            wing.position.y = -0.02;
+            plane.add(wing);
+            const tailGeometry = new THREE.BoxGeometry(0.1, 0.01, 0.08);
+            const tail = new THREE.Mesh(tailGeometry, bodyMaterial);
+            tail.position.z = -0.15;
+            tail.position.y = 0.02;
+            plane.add(tail);
+            plane.scale.set(0.5, 0.5, 0.5);
+
+            return { mesh: plane, curve, line: lineObject, curvePoints: points, progress: 0, speed, distance: curve.getLength() };
+        }
+
+        function latLonToVector3(lat, lon, radius) {
+            const phi = (90 - lat) * Math.PI / 180;
+            const theta = (lon + 180) * Math.PI / 180;
+            return new THREE.Vector3(
+                -radius * Math.sin(phi) * Math.cos(theta),
+                radius * Math.cos(phi),
+                radius * Math.sin(phi) * Math.sin(theta)
+            );
+        }
+
+        function updateStats() {
+            const activeFlights = flights.filter(f => f.progress < 1).length;
+            const totalDistance = flights.reduce((sum, f) => sum + f.distance, 0).toFixed(2);
+            document.getElementById('flightCount').textContent = flights.length;
+            document.getElementById('totalDistance').textContent = totalDistance;
+            document.getElementById('activeFlights').textContent = activeFlights;
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            document.getElementById('time').textContent = timeString;
+        }
+
+        function setCamera(type) {
+            currentCamera = type;
+            if (type === 'orbit') {
+                activeCamera = camera;
+                controls.enabled = true;
+            } else if (type === 'fly') {
+                activeCamera = flyCamera;
+                controls.enabled = false;
+            } else if (type === 'sun') {
+                activeCamera = sunCamera;
+                controls.enabled = false;
+            } else if (type === 'plane') {
+                activeCamera = planeCamera;
+                controls.enabled = false;
+                currentPlaneIndex = (currentPlaneIndex + 1) % flights.length;
+            }
+        }
+
+        function onWindowResize() {
+            activeCamera.aspect = window.innerWidth / window.innerHeight;
+            activeCamera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            try {
+                requestAnimationFrame(animate);
+
+                // Update flights (no Earth rotation)
+                flights.forEach(flight => {
+                    if (flight.progress < 1) {
+                        flight.progress += flight.speed * timeSpeed;
+                        if (flight.progress > 1) flight.progress = 1;
+                        const point = flight.curve.getPointAt(flight.progress);
+                        flight.mesh.position.copy(point);
+                        const tangent = flight.curve.getTangentAt(flight.progress);
+                        flight.mesh.lookAt(flight.mesh.position.clone().add(tangent));
+                        updateStats();
+                    }
+                });
+
+                // Moon orbit
+                const moon = scene.children.find(child => child.geometry.parameters.radius < 2);
+                if (moon) {
+                    const time = Date.now() * 0.0001 * timeSpeed;
+                    moon.position.set(
+                        Math.cos(time) * (earth.geometry.parameters.radius * 3),
+                        Math.sin(time) * 0.5,
+                        Math.sin(time) * (earth.geometry.parameters.radius * 3)
+                    );
+                }
+
+                // Fly camera animation
+                if (currentCamera === 'fly') {
+                    const time = Date.now() * 0.001 * timeSpeed;
+                    flyCamera.position.x = 10 * Math.cos(time * 0.1);
+                    flyCamera.position.z = 10 * Math.sin(time * 0.1);
+                    flyCamera.position.y = 5 + Math.sin(time * 0.2) * 2;
+                    flyCamera.lookAt(0, 0, 0);
+                }
+
+                // Plane camera animation
+                if (currentCamera === 'plane' && flights[currentPlaneIndex]) {
+                    const planePos = flights[currentPlaneIndex].mesh.position;
+                    planeCamera.position.copy(planePos).add(new THREE.Vector3(0.5, 0.5, 0.5));
+                    planeCamera.lookAt(planePos);
+                }
+
+                // Sun camera orbiting
+                if (currentCamera === 'sun') {
+                    const time = Date.now() * 0.0001 * timeSpeed;
+                    const sun = scene.children.find(child => child.material && child.material.uniforms);
+                    sunCamera.position.set(
+                        sun.position.x + Math.cos(time) * (sun.geometry.parameters.radius + 200),
+                        sun.position.y + Math.sin(time) * 100,
+                        sun.position.z + Math.sin(time) * 200
+                    );
+                    sunCamera.lookAt(sun.position);
+                }
+
+                // Update Sun and star field
+                const sunMesh = scene.children.find(child => child.material && child.material.uniforms);
+                const starMesh = scene.children.find(child => child.material && child.material.type === 'ShaderMaterial' && !child.material.uniforms.glowColor);
+                if (sunMesh) sunMesh.material.uniforms.time.value += 0.01 * timeSpeed;
+                if (starMesh) starMesh.material.uniforms.time.value += 0.01 * timeSpeed;
+
+                controls.update();
+                renderer.render(scene, activeCamera);
+            } catch (error) {
+                console.error('Animation error:', error);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
