@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ski Race - V0.2</title>
+    <title>Ski Race - V0.2.1</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -42,7 +42,7 @@
             border-radius: 5px;
             display: none;
         }
-        #bonus, #flagHit, #penalty, #correct, #finishMessage, #npcHit, #birdHit {
+        #bonus, #flagHit, #penalty, #correct, #finishMessage, #npcHit {
             position: absolute;
             color: yellow;
             font-size: 30px;
@@ -50,7 +50,7 @@
             text-shadow: 1px 1px 2px black;
             display: none;
         }
-        #bonus, #flagHit, #penalty, #npcHit, #birdHit {
+        #bonus, #flagHit, #penalty, #npcHit {
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
@@ -226,7 +226,6 @@
     <div id="penalty"></div>
     <div id="correct"></div>
     <div id="npcHit"></div>
-    <div id="birdHit"></div>
     <div id="finishMessage"></div>
     <div id="gameOver">
         <h1>Game Over</h1>
@@ -245,7 +244,7 @@
         - Joystick: Move left/right, pull up to slow down, push down to speed up.<br>
         - Auto-Play: Toggle for automatic skiing.<br>
         - Camera: Toggle between default, bird's-eye, full bird's-eye, fly-around views.<br>
-        - Fire Snowball: Shoot snowballs at skiers/birds (collect blue spheres for ammo).<br>
+        - Fire Snowball: Shoot snowballs at skiers (collect blue spheres for ammo).<br>
         - Auto-Throw: Toggle automatic snowball firing (default on).<br>
         - Toggle Snow: Enable/disable falling snow.<br>
         - Objective: Reach the finish line, passing flags for points, collecting speed-ups (yellow), extra lives (green), and snowballs (blue).<br>
@@ -261,7 +260,7 @@
     <div id="progressBar"><div id="progressFill"></div></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
-        let scene, camera, renderer, skier, flags = [], finishLine, terrain, trees = [], npcs = [], collectables = [], snowballs = [], birds = [], snowflakes = [], frontSnowflakes = [];
+        let scene, camera, renderer, skier, flags = [], finishLine, terrain, trees = [], npcs = [], collectables = [], snowballs = [], snowflakes = [], frontSnowflakes = [];
         let lives = 3, score = 0, time = 0, level = 1, gameOver = false, autoPlay = false, autoThrow = true, snowballAmmo = 0, snowActive = false;
         let clock = new THREE.Clock();
         let joystick = { x: 0, y: 0, active: false };
@@ -430,25 +429,6 @@
             snowball.position.set(x, y, z);
             snowball.userData = { direction, speed: 50 };
             return snowball;
-        }
-
-        function createBird(x, y, z) {
-            const birdGroup = new THREE.Group();
-            const bodyGeometry = new THREE.SphereGeometry(0.3, 16, 16);
-            const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x666666 });
-            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-            birdGroup.add(body);
-            const wingGeometry = new THREE.BoxGeometry(0.5, 0.05, 0.3);
-            const wingMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
-            const leftWing = new THREE.Mesh(wingGeometry, wingMaterial);
-            leftWing.position.set(-0.4, 0, 0);
-            birdGroup.add(leftWing);
-            const rightWing = new THREE.Mesh(wingGeometry, wingMaterial);
-            rightWing.position.set(0.4, 0, 0);
-            birdGroup.add(rightWing);
-            birdGroup.position.set(x, y, z);
-            birdGroup.userData = { baseX: x, baseZ: z, hit: false, hitTimer: 0, spinAngle: 0 };
-            return birdGroup;
         }
 
         function createSnowflake(x, y, z, isFront = false) {
@@ -634,13 +614,6 @@
             setTimeout(() => npcHitEl.style.display = 'none', 1000);
         }
 
-        function showBirdHitMessage() {
-            const birdHitEl = document.getElementById('birdHit');
-            birdHitEl.textContent = 'Bird Hit! +25';
-            birdHitEl.style.display = 'block';
-            setTimeout(() => birdHitEl.style.display = 'none', 1000);
-        }
-
         function updateProgressBar() {
             if (!skier) return;
             const totalDistance = 1850;
@@ -654,17 +627,6 @@
             const dist = skier.position.distanceTo(npc.position);
             if (dist > 30 || npc.position.z > skier.position.z) return false;
             const direction = npc.position.clone().sub(skier.position).normalize();
-            const raycaster = new THREE.Raycaster(skier.position, direction, 0, dist);
-            const intersects = raycaster.intersectObjects([terrain, ...trees, ...flags, ...collectables, finishLine], true);
-            if (intersects.length > 0 && intersects[0].distance < dist) return false;
-            return true;
-        }
-
-        function isBirdTargetable(bird) {
-            if (bird.userData.hit) return false;
-            const dist = skier.position.distanceTo(bird.position);
-            if (dist > 50 || bird.position.z > skier.position.z) return false;
-            const direction = bird.position.clone().sub(skier.position).normalize();
             const raycaster = new THREE.Raycaster(skier.position, direction, 0, dist);
             const intersects = raycaster.intersectObjects([terrain, ...trees, ...flags, ...collectables, finishLine], true);
             if (intersects.length > 0 && intersects[0].distance < dist) return false;
@@ -746,15 +708,7 @@
                 collectables.push(collectable);
                 scene.add(collectable);
             }
-            birds = [];
-            for (let i = 0; i < 30; i++) {
-                const x = (Math.random() - 0.5) * 80;
-                const y = 30 + Math.random() * 10;
-                const z = -Math.random() * 1800;
-                const bird = createBird(x, y, z);
-                birds.push(bird);
-                scene.add(bird);
-            }
+
             const finishGeometry = new THREE.BoxGeometry(30, 0.2, 2);
             const finishMaterial = new THREE.MeshStandardMaterial({ color: 0x00FF00 });
             finishLine = new THREE.Mesh(finishGeometry, finishMaterial);
@@ -866,15 +820,7 @@
                     }
                 }
             });
-            birds.forEach(bird => {
-                if (isBirdTargetable(bird)) {
-                    const dist = skier.position.distanceTo(bird.position);
-                    if (dist < minDist) {
-                        minDist = dist;
-                        target = bird;
-                    }
-                }
-            });
+
             if (target) {
                 direction = target.position.clone().sub(skier.position).normalize();
             }
@@ -963,15 +909,6 @@
             score += 50;
             showNPCHitMessage();
             showMiniScore('+50', npc.position.x, npc.position.z, false);
-        }
-
-        function hitBird(bird) {
-            bird.userData.hit = true;
-            bird.userData.hitTimer = 1;
-            bird.userData.spinAngle = 0;
-            score += 25;
-            showBirdHitMessage();
-            showMiniScore('+25', bird.position.x, bird.position.z, false);
         }
 
         function showFlagHit() {
@@ -1110,26 +1047,6 @@
             });
         }
 
-        function updateBirds(delta) {
-            birds.forEach((bird, index) => {
-                if (bird.userData.hit) {
-                    bird.userData.hitTimer -= delta;
-                    bird.userData.spinAngle += delta * 2 * Math.PI;
-                    bird.rotation.y = bird.userData.spinAngle;
-                    bird.position.y -= delta * 10;
-                    if (bird.userData.hitTimer <= 0) {
-                        scene.remove(bird);
-                        birds.splice(index, 1);
-                    }
-                } else {
-                    bird.position.x = bird.userData.baseX + Math.sin(time * 0.5) * 10;
-                    bird.position.z = bird.userData.baseZ + Math.cos(time * 0.3) * 10;
-                    bird.children[1].rotation.x = Math.sin(time * 5) * 0.5;
-                    bird.children[2].rotation.x = -Math.sin(time * 5) * 0.5;
-                }
-            });
-        }
-
         function updateSnowflakes(delta) {
             snowflakes.forEach(snowflake => {
                 snowflake.position.y -= snowflake.userData.speed * delta;
@@ -1166,15 +1083,7 @@
                         snowballs.splice(index, 1);
                     }
                 });
-                birds.forEach(bird => {
-                    if (bird.userData.hit) return;
-                    const dist = snowball.position.distanceTo(bird.position);
-                    if (dist < 0.5) {
-                        hitBird(bird);
-                        scene.remove(snowball);
-                        snowballs.splice(index, 1);
-                    }
-                });
+
             });
         }
 
@@ -1217,15 +1126,7 @@
                             }
                         }
                     });
-                    birds.forEach(bird => {
-                        if (isBirdTargetable(bird)) {
-                            const dist = skier.position.distanceTo(bird.position);
-                            if (dist < minDist) {
-                                minDist = dist;
-                                target = bird;
-                            }
-                        }
-                    });
+
                     if (target) {
                         fireSnowball();
                         snowballCooldown = 1;
@@ -1253,7 +1154,6 @@
                 animateSkier(delta);
                 updateNPCs(delta);
                 updateCollectables(delta);
-                updateBirds(delta);
                 updateSnowballs(delta);
                 updateSnowflakes(delta);
                 updateScreenShake(delta);
