@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ski Race - V0.2.1</title>
+    <title>Ski Race - V0.2.2</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -260,7 +260,7 @@
     <div id="progressBar"><div id="progressFill"></div></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
-        let scene, camera, renderer, skier, flags = [], finishLine, terrain, trees = [], npcs = [], collectables = [], snowballs = [], snowflakes = [], frontSnowflakes = [];
+        let scene, camera, renderer, skier, flags = [], finishLine, terrain, trees = [], npcs = [], collectables = [], snowballs = [];
         let lives = 3, score = 0, time = 0, level = 1, gameOver = false, autoPlay = false, autoThrow = true, snowballAmmo = 0, snowActive = false;
         let clock = new THREE.Clock();
         let joystick = { x: 0, y: 0, active: false };
@@ -429,15 +429,6 @@
             snowball.position.set(x, y, z);
             snowball.userData = { direction, speed: 50 };
             return snowball;
-        }
-
-        function createSnowflake(x, y, z, isFront = false) {
-            const geometry = new THREE.SphereGeometry(0.05, 8, 8);
-            const material = new THREE.MeshStandardMaterial({ color: 0xFFFFFF, emissive: 0xFFFFFF, emissiveIntensity: 0.5 });
-            const snowflake = new THREE.Mesh(geometry, material);
-            snowflake.position.set(x, y, z);
-            snowflake.userData = { speed: 2 + Math.random() * 2, isFront };
-            return snowflake;
         }
 
         function createTrailParticle(x, z, time) {
@@ -1047,25 +1038,6 @@
             });
         }
 
-        function updateSnowflakes(delta) {
-            snowflakes.forEach(snowflake => {
-                snowflake.position.y -= snowflake.userData.speed * delta;
-                if (snowflake.position.y < 0) {
-                    snowflake.position.y = 20;
-                    snowflake.position.x = skier.position.x + (Math.random() - 0.5) * 20;
-                    snowflake.position.z = skier.position.z + (Math.random() - 0.5) * 20;
-                }
-            });
-            frontSnowflakes.forEach(snowflake => {
-                snowflake.position.y -= snowflake.userData.speed * delta;
-                if (snowflake.position.y < 0) {
-                    snowflake.position.y = 20;
-                    snowflake.position.x = skier.position.x + (Math.random() - 0.5) * 20;
-                    snowflake.position.z = skier.position.z - 10 + (Math.random() - 0.5) * 10;
-                }
-            });
-        }
-
         function updateSnowballs(delta) {
             snowballs.forEach((snowball, index) => {
                 snowball.position.add(snowball.userData.direction.clone().multiplyScalar(snowball.userData.speed * delta));
@@ -1155,7 +1127,6 @@
                 updateNPCs(delta);
                 updateCollectables(delta);
                 updateSnowballs(delta);
-                updateSnowflakes(delta);
                 updateScreenShake(delta);
                 updateCamera(delta);
                 flags.forEach((flag, index) => {
@@ -1285,10 +1256,6 @@
             mainTrails.right.forEach(particle => scene.remove(particle));
             mainTrails = { left: [], right: [] };
             document.getElementById('autoPlay').textContent = 'Auto-Play: Off';
-            snowflakes.forEach(snowflake => scene.remove(snowflake));
-            frontSnowflakes.forEach(snowflake => scene.remove(snowflake));
-            snowflakes = [];
-            frontSnowflakes = [];
             snowActive = false;
             scene.clear();
             scene.background = new THREE.Color(0x87CEEB);
@@ -1330,10 +1297,6 @@
             mainTrails.right.forEach(particle => scene.remove(particle));
             mainTrails = { left: [], right: [] };
             document.getElementById('autoPlay').textContent = 'Auto-Play: Off';
-            snowflakes.forEach(snowflake => scene.remove(snowflake));
-            frontSnowflakes.forEach(snowflake => scene.remove(snowflake));
-            snowflakes = [];
-            frontSnowflakes = [];
             snowActive = false;
             scene.clear();
             scene.background = new THREE.Color(0x87CEEB);
