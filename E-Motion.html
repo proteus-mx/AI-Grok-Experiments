@@ -1,0 +1,1178 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-motion</title>
+    <style>
+        body { margin: 0; overflow: hidden; color: #fff; font-family: Arial, sans-serif; }
+        canvas { display: block; }
+        #key { position: absolute; bottom: 10px; right: 10px; background: rgba(0, 0, 0, 0.7); padding: 6px; border-radius: 4px; font-size: 10px; }
+        .key-item { display: flex; align-items: center; margin: 3px 0; }
+        .key-color { width: 12px; height: 12px; margin-right: 6px; border-radius: 50%; }
+        #controls { position: absolute; bottom: 10px; left: 10px; display: flex; flex-direction: column; align-items: flex-start; }
+        #autoplay-container { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); }
+        button { background: rgba(0, 0, 0, 0.7); color: #fff; border: none; padding: 5px; border-radius: 4px; cursor: pointer; margin-bottom: 6px; font-size: 10px; }
+        button:hover { background: rgba(255, 255, 255, 0.2); }
+        input[type="range"] { display: block; margin-bottom: 6px; width: 100px; }
+        label { font-size: 10px; margin-bottom: 2px; }
+        #camera-instructions { background: rgba(0, 0, 0, 0.7); padding: 6px; border-radius: 4px; margin-bottom: 6px; font-size: 10px; }
+        #game-variables { position: absolute; top: 10px; right: 10px; background: rgba(0, 0, 0, 0.7); padding: 6px; border-radius: 4px; font-size: 10px; }
+        #dominant-emotion { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.7); padding: 8px; border-radius: 4px; font-size: 12px; animation: flash 1s infinite; }
+        @keyframes flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        #emotion-window { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.9); padding: 15px; border-radius: 8px; max-height: 80vh; overflow-y: auto; width: 300px; font-size: 10px; }
+        #emotion-window h3 { margin: 5px 0; }
+        #emotion-window ul { margin: 0; padding-left: 20px; }
+        #emotion-window button { margin-top: 10px; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+</head>
+<body>
+    <div id="key"></div>
+    <div id="game-variables">
+        Total Balls: 100<br>
+        Popped Balls: 0
+    </div>
+    <div id="dominant-emotion">Dominant: None</div>
+    <div id="controls">
+        <div id="camera-instructions">Orbit Camera: Drag to rotate, Scroll to zoom</div>
+        <button id="camera-toggle">Toggle Camera</button>
+        <button id="glow-toggle">Toggle Glow</button>
+        <button id="morph-toggle">Disable Morph</button>
+        <button id="throb-toggle">Disable Throb</button>
+        <button id="blur-toggle">Toggle Blur</button>
+        <button id="trail-toggle">Toggle Trail</button>
+        <button id="line-toggle">Toggle Lines</button>
+        <button id="fade-toggle">Toggle Fade</button>
+        <button id="rise-toggle">Toggle Rise</button>
+        <button id="add-balls">Add 10 Balls</button>
+        <button id="emotion-list-toggle">Show Emotions</button>
+        <label for="swirl-slider">Swirl Strength</label>
+        <input type="range" id="swirl-slider" min="0" max="0.05" step="0.001" value="0.0005">
+        <label for="edge-transparency-slider">Edge Transparency</label>
+        <input type="range" id="edge-transparency-slider" min="0" max="1" step="0.01" value="0.7">
+        <label for="morph-exaggeration-slider">Morph Exaggeration</label>
+        <input type="range" id="morph-exaggeration-slider" min="0.1" max="1.0" step="0.01" value="0.5">
+        <label for="container-size-slider">Container Size</label>
+        <input type="range" id="container-size-slider" min="5" max="50" step="1" value="15">
+    </div>
+    <div id="autoplay-container">
+        <button id="autoplay-toggle">Start Auto-Play</button>
+    </div>
+    <div id="emotion-window">
+        <h2>Emotions</h2>
+        <div id="emotion-list"></div>
+        <button id="close-emotion-window">Close</button>
+    </div>
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const emotions = [
+            {
+                name: 'Joy', color: 0xffff00, count: 0, score: 0,
+                related: [
+                    { name: 'Happiness', color: 0xffee00, count: 0, score: 0 },
+                    { name: 'Excitement', color: 0xffff33, count: 0, score: 0 },
+                    { name: 'Amusement', color: 0xffdd00, count: 0, score: 0 }
+                ]
+            },
+            {
+                name: 'Sadness', color: 0x0000ff, count: 0, score: 0,
+                related: [
+                    { name: 'Sorrow', color: 0x0000cc, count: 0, score: 0 },
+                    { name: 'Grief', color: 0x000099, count: 0, score: 0 },
+                    { name: 'Melancholy', color: 0x3333ff, count: 0, score: 0 }
+                ]
+            },
+            {
+                name: 'Anger', color: 0xff0000, count: 0, score: 0,
+                related: [
+                    { name: 'Frustration', color: 0xff3333, count: 0, score: 0 },
+                    { name: 'Rage', color: 0xcc0000, count: 0, score: 0 },
+                    { name: 'Irritation', color: 0xff6666, count: 0, score: 0 }
+                ]
+            },
+            {
+                name: 'Fear', color: 0x800080, count: 0, score: 0,
+                related: [
+                    { name: 'Anxiety', color: 0x993399, count: 0, score: 0 },
+                    { name: 'Terror', color: 0x660066, count: 0, score: 0 },
+                    { name: 'Worry', color: 0x996699, count: 0, score: 0 }
+                ]
+            },
+            {
+                name: 'Love', color: 0xff69b4, count: 0, score: 0,
+                related: [
+                    { name: 'Affection', color: 0xff99cc, count: 0, score: 0 },
+                    { name: 'Passion', color: 0xff3399, count: 0, score: 0 },
+                    { name: 'Adoration', color: 0xff66b3, count: 0, score: 0 }
+                ]
+            },
+            {
+                name: 'Calm', color: 0x00ff00, count: 0, score: 0,
+                related: [
+                    { name: 'Serenity', color: 0x33ff33, count: 0, score: 0 },
+                    { name: 'Peace', color: 0x00cc00, count: 0, score: 0 },
+                    { name: 'Tranquility', color: 0x66ff66, count: 0, score: 0 }
+                ]
+            },
+            {
+                name: 'Surprise', color: 0xffa500, count: 0, score: 0,
+                related: [
+                    { name: 'Shock', color: 0xffb833, count: 0, score: 0 },
+                    { name: 'Astonishment', color: 0xff9900, count: 0, score: 0 },
+                    { name: 'Wonder', color: 0xffcc66, count: 0, score: 0 }
+                ]
+            },
+            {
+                name: 'Disgust', color: 0x008080, count: 0, score: 0,
+                related: [
+                    { name: 'Revulsion', color: 0x009999, count: 0, score: 0 },
+                    { name: 'Contempt', color: 0x006666, count: 0, score: 0 },
+                    { name: 'Nausea', color: 0x00b3b3, count: 0, score: 0 }
+                ]
+            }
+        ];
+
+        let containerSize = 15;
+        let balls = [];
+        let totalBalls = 100;
+        let poppedBalls = 0;
+        let isStaticCamera = true;
+        let isGlowOn = false;
+        let isMorphOn = true;
+        let isThrobOn = true;
+        let isBlurOn = false;
+        let isTrailOn = false;
+        let isLineOn = false;
+        let isFadeOn = false;
+        let isRiseOn = false;
+        let isAutoPlayOn = false;
+        let swirlStrength = 0.0005;
+        let edgeTransparency = 0.7;
+        let morphExaggeration = 0.5;
+        let time = 0;
+        let currentDominantColor = new THREE.Color(0x111111);
+        let lineGroup = new THREE.Group();
+        let particles = [];
+        scene.add(lineGroup);
+
+        // Shaded container
+        const containerGeometry = new THREE.BoxGeometry(15, 15, 15);
+        const containerMaterial = new THREE.MeshStandardMaterial({
+            color: currentDominantColor,
+            transparent: true,
+            opacity: 0.2,
+            roughness: 0.5,
+            metalness: 0.1,
+            side: THREE.BackSide
+        });
+        const container = new THREE.Mesh(containerGeometry, containerMaterial);
+        scene.add(container);
+
+        // Camera controls
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let theta = 0;
+        let phi = Math.PI / 2;
+        let radius = 20;
+        let baseFOV = 75;
+        let zoomFOV = baseFOV;
+
+        // Sky sphere with gradient shader
+        const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
+        const skyMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                topColor: { value: new THREE.Color(0x111111) },
+                bottomColor: { value: new THREE.Color(0x111111).multiplyScalar(0.3) }
+            },
+            vertexShader: `
+                varying vec3 vWorldPosition;
+                void main() {
+                    vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform vec3 topColor;
+                uniform vec3 bottomColor;
+                varying vec3 vWorldPosition;
+                void main() {
+                    float h = normalize(vWorldPosition).y;
+                    float t = (h + 1.0) / 2.0;
+                    vec3 color = mix(bottomColor, topColor, t);
+                    gl_FragColor = vec4(color, 0.5);
+                }
+            `,
+            side: THREE.BackSide
+        });
+        const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+        scene.add(sky);
+
+        // Function to create text sprite for emotion name
+        function createTextSprite(message, color) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 256;
+            const context = canvas.getContext('2d');
+            context.font = '96px Arial';
+            context.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(message, 512, 128);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({
+                map: texture,
+                transparent: true,
+                opacity: 0.8
+            });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(4, 1, 1);
+            return sprite;
+        }
+
+        // Function to create explode effect
+        function createExplodeEffect(position, color) {
+            const particleCount = 20;
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const velocities = [];
+            const sizes = [];
+            const colors = [];
+
+            for (let i = 0; i < particleCount; i++) {
+                positions.push(position.x, position.y, position.z);
+                const velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.5,
+                    (Math.random() - 0.5) * 0.5,
+                    (Math.random() - 0.5) * 0.5
+                );
+                velocities.push(velocity.x, velocity.y, velocity.z);
+                sizes.push(0.1 + Math.random() * 0.1);
+                colors.push(
+                    (color >> 16 & 255) / 255,
+                    (color >> 8 & 255) / 255,
+                    (color & 255) / 255,
+                    1.0
+                );
+            }
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('velocity', new THREE.Float32BufferAttribute(velocities, 3));
+            geometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 4));
+
+            const material = new THREE.ShaderMaterial({
+                uniforms: {
+                    time: { value: 0 }
+                },
+                vertexShader: `
+                    attribute vec3 velocity;
+                    attribute float size;
+                    attribute vec4 color;
+                    varying vec4 vColor;
+                    uniform float time;
+                    void main() {
+                        vColor = color;
+                        vec3 pos = position + velocity * time;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+                        gl_PointSize = size * (300.0 / -gl_Position.z);
+                    }
+                `,
+                fragmentShader: `
+                    varying vec4 vColor;
+                    void main() {
+                        float dist = length(gl_PointCoord - vec2(0.5));
+                        if (dist > 0.5) discard;
+                        gl_FragColor = vColor;
+                    }
+                `,
+                transparent: true
+            });
+
+            const particleSystem = new THREE.Points(geometry, material);
+            particleSystem.life = 0;
+            scene.add(particleSystem);
+            particles.push(particleSystem);
+        }
+
+        // Update particles
+        function updateParticles() {
+            particles = particles.filter(p => {
+                p.life += 0.05;
+                p.material.uniforms.time.value = p.life;
+                p.material.uniforms.time.needsUpdate = true;
+                if (p.life > 1) {
+                    scene.remove(p);
+                    p.geometry.dispose();
+                    p.material.dispose();
+                    return false;
+                }
+                return true;
+            });
+        }
+
+        // Initialize balls
+        function createBalls() {
+            balls.forEach(ball => scene.remove(ball));
+            balls = [];
+            emotions.forEach(e => {
+                e.count = 0;
+                e.related.forEach(r => r.count = 0);
+            });
+            totalBalls = 100;
+            poppedBalls = 0;
+
+            for (let i = 0; i < totalBalls; i++) {
+                const isRelated = Math.random() < 0.5;
+                let emotion, emotionName, emotionColor, size;
+
+                if (isRelated) {
+                    const topEmotion = emotions[Math.floor(Math.random() * emotions.length)];
+                    const relatedEmotion = topEmotion.related[Math.floor(Math.random() * topEmotion.related.length)];
+                    emotion = relatedEmotion;
+                    emotionName = relatedEmotion.name;
+                    emotionColor = relatedEmotion.color;
+                    size = 0.3 + Math.random() * 0.4;
+                    relatedEmotion.count++;
+                } else {
+                    emotion = emotions[Math.floor(Math.random() * emotions.length)];
+                    emotionName = emotion.name;
+                    emotionColor = emotion.color;
+                    size = 0.2 + Math.random() * 0.3;
+                    emotion.count++;
+                }
+
+                const geometry = new THREE.SphereGeometry(size, 64, 64);
+                const material = new THREE.MeshStandardMaterial({
+                    color: emotionColor,
+                    transparent: true,
+                    opacity: edgeTransparency,
+                    roughness: 0.1,
+                    metalness: 0.05,
+                    emissive: isGlowOn ? emotionColor : 0x000000,
+                    emissiveIntensity: isGlowOn ? 0.5 : 0,
+                    side: THREE.DoubleSide,
+                    alphaTest: 0.1
+                });
+                const ball = new THREE.Mesh(geometry, material);
+
+                ball.position.set(
+                    (Math.random() - 0.5) * (containerSize - size * 2),
+                    (Math.random() - 0.5) * (containerSize - size * 2),
+                    (Math.random() - 0.5) * (containerSize - size * 2)
+                );
+
+                ball.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.1,
+                    (Math.random() - 0.5) * 0.1,
+                    (Math.random() - 0.5) * 0.1
+                );
+
+                ball.emotion = emotionName;
+                ball.phase = Math.random() * Math.PI * 2;
+                ball.baseSize = size;
+                ball.trail = [];
+                ball.popping = false;
+                ball.popDelay = 0;
+                scene.add(ball);
+                balls.push(ball);
+            }
+            updateUI();
+        }
+
+        // Add single ball
+        function addSingleBall() {
+            const isRelated = Math.random() < 0.5;
+            let emotion, emotionName, emotionColor, size;
+
+            if (isRelated) {
+                const topEmotion = emotions[Math.floor(Math.random() * emotions.length)];
+                const relatedEmotion = topEmotion.related[Math.floor(Math.random() * topEmotion.related.length)];
+                emotion = relatedEmotion;
+                emotionName = relatedEmotion.name;
+                emotionColor = relatedEmotion.color;
+                size = 0.3 + Math.random() * 0.4;
+                relatedEmotion.count++;
+            } else {
+                emotion = emotions[Math.floor(Math.random() * emotions.length)];
+                emotionName = emotion.name;
+                emotionColor = emotion.color;
+                size = 0.2 + Math.random() * 0.3;
+                emotion.count++;
+            }
+
+            const geometry = new THREE.SphereGeometry(size, 64, 64);
+            const material = new THREE.MeshStandardMaterial({
+                color: emotionColor,
+                transparent: true,
+                opacity: edgeTransparency,
+                roughness: 0.1,
+                metalness: 0.05,
+                emissive: isGlowOn ? emotionColor : 0x000000,
+                emissiveIntensity: isGlowOn ? 0.5 : 0,
+                side: THREE.DoubleSide,
+                alphaTest: 0.1
+            });
+            const ball = new THREE.Mesh(geometry, material);
+
+            ball.position.set(
+                (Math.random() - 0.5) * (containerSize - size * 2),
+                (Math.random() - 0.5) * (containerSize - size * 2),
+                (Math.random() - 0.5) * (containerSize - size * 2)
+            );
+
+            ball.velocity = new THREE.Vector3(
+                (Math.random() - 0.5) * 0.1,
+                (Math.random() - 0.5) * 0.1,
+                (Math.random() - 0.5) * 0.1
+            );
+
+            ball.emotion = emotionName;
+            ball.phase = Math.random() * Math.PI * 2;
+            ball.baseSize = size;
+            ball.trail = [];
+            ball.popping = false;
+            ball.popDelay = 0;
+            scene.add(ball);
+            balls.push(ball);
+            totalBalls++;
+            updateUI();
+        }
+
+        // Add more balls
+        function addBalls() {
+            for (let i = 0; i < 10; i++) {
+                addSingleBall();
+            }
+        }
+
+        // Update ball positions and emotions
+        function updateBalls() {
+            const gravity = -0.002;
+            const minVelocity = 0.02;
+
+            // Calculate dominant emotion for rise effect
+            let maxEmotion = emotions[0];
+            let maxScore = maxEmotion.score;
+            emotions.forEach(e => {
+                if (e.score > maxScore) {
+                    maxEmotion = e;
+                    maxScore = e.score;
+                }
+                e.related.forEach(r => {
+                    if (r.score > maxScore) {
+                        maxEmotion = e;
+                        maxScore = r.score;
+                    }
+                });
+            });
+
+            balls.forEach(ball => {
+                // Skip if ball is popping
+                if (ball.popping) {
+                    ball.popTime = (ball.popTime || 0) + 0.05;
+                    const scale = 1 + Math.sin(ball.popTime * 5) * 0.5;
+                    ball.scale.set(scale, scale, scale);
+                    ball.material.opacity = edgeTransparency * (1 - ball.popTime);
+                    if (ball.popTime > 1) {
+                        // Create text sprite at pop location
+                        let emotion;
+                        emotions.forEach(e => {
+                            if (e.name === ball.emotion) emotion = e;
+                            e.related.forEach(r => {
+                                if (r.name === ball.emotion) emotion = r;
+                            });
+                        });
+                        const textSprite = createTextSprite(ball.emotion, emotion.color);
+                        textSprite.position.copy(ball.position);
+                        scene.add(textSprite);
+
+                        // Create explode effect
+                        createExplodeEffect(ball.position, emotion.color);
+
+                        // Remove text sprite after 2 seconds
+                        setTimeout(() => {
+                            scene.remove(textSprite);
+                            textSprite.material.map.dispose();
+                            textSprite.material.dispose();
+                        }, 2000);
+
+                        scene.remove(ball);
+                        balls = balls.filter(b => b !== ball);
+                        if (emotion) emotion.count--;
+                        totalBalls--;
+                        poppedBalls++;
+                        if (isRiseOn) {
+                            addSingleBall();
+                        }
+                    }
+                    return;
+                }
+
+                // Handle balls awaiting pop after exiting
+                if (ball.popDelay > 0) {
+                    ball.popDelay += 0.0167; // Approx 1/60 seconds per frame
+                    if (ball.popDelay >= 1) {
+                        ball.popping = true;
+                        ball.popTime = 0;
+                    }
+                }
+
+                // Randomly change emotion
+                if (Math.random() < 0.005) {
+                    let prevEmotion;
+                    emotions.forEach(e => {
+                        if (e.name === ball.emotion) prevEmotion = e;
+                        e.related.forEach(r => {
+                            if (r.name === ball.emotion) prevEmotion = r;
+                        });
+                    });
+                    prevEmotion.count--;
+
+                    const isRelated = Math.random() < 0.5;
+                    let newEmotion, emotionName, emotionColor;
+                    if (isRelated) {
+                        const topEmotion = emotions[Math.floor(Math.random() * emotions.length)];
+                        newEmotion = topEmotion.related[Math.floor(Math.random() * topEmotion.related.length)];
+                        emotionName = newEmotion.name;
+                        emotionColor = newEmotion.color;
+                        ball.baseSize = 0.3 + Math.random() * 0.4;
+                        newEmotion.count++;
+                    } else {
+                        newEmotion = emotions[Math.floor(Math.random() * emotions.length)];
+                        emotionName = newEmotion.name;
+                        emotionColor = newEmotion.color;
+                        ball.baseSize = 0.2 + Math.random() * 0.3;
+                        newEmotion.count++;
+                    }
+                    ball.emotion = emotionName;
+                    ball.material.color.setHex(emotionColor);
+                    ball.material.emissive.setHex(isGlowOn ? emotionColor : 0x000000);
+                    ball.geometry = new THREE.SphereGeometry(ball.baseSize, 64, 64);
+                }
+
+                ball.velocity.y += gravity;
+
+                const swirl = new THREE.Vector3(
+                    -ball.position.z,
+                    Math.sin(time + ball.phase) * 0.02,
+                    ball.position.x
+                ).multiplyScalar(swirlStrength);
+                ball.velocity.add(swirl);
+
+                ball.velocity.add(new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.005,
+                    (Math.random() - 0.5) * 0.005,
+                    (Math.random() - 0.5) * 0.005
+                ));
+
+                // Rise effect for dominant emotion, pull others down
+                if (isRiseOn) {
+                    if (ball.emotion === maxEmotion.name) {
+                        ball.velocity.y += 0.01;
+                    } else {
+                        ball.velocity.y -= 0.005;
+                    }
+                }
+
+                ball.position.add(ball.velocity);
+
+                const halfSize = containerSize / 2 - ball.baseSize;
+                if (Math.abs(ball.position.x) > halfSize) {
+                    ball.position.x = Math.sign(ball.position.x) * halfSize;
+                    ball.velocity.x *= -1.0;
+                    if (Math.abs(ball.velocity.x) < minVelocity) ball.velocity.x = Math.sign(ball.velocity.x) * minVelocity;
+                }
+                // Allow dominant balls to exit top freely, start 1-second delay when crossing boundary
+                if (isRiseOn && ball.emotion === maxEmotion.name) {
+                    if (ball.position.y >= halfSize && ball.popDelay === 0) {
+                        ball.popDelay = 0.0167; // Start delay timer
+                    }
+                } else {
+                    // Non-dominant balls are confined
+                    if (ball.position.y > halfSize) {
+                        ball.position.y = halfSize;
+                        ball.velocity.y *= -1.0;
+                        if (Math.abs(ball.velocity.y) < minVelocity) ball.velocity.y = -minVelocity;
+                    } else if (ball.position.y < -halfSize) {
+                        ball.position.y = -halfSize;
+                        ball.velocity.y *= -1.0;
+                        if (Math.abs(ball.velocity.y) < minVelocity) ball.velocity.y = minVelocity;
+                    }
+                }
+                if (Math.abs(ball.position.z) > halfSize) {
+                    ball.position.z = Math.sign(ball.position.z) * halfSize;
+                    ball.velocity.z *= -1.0;
+                    if (Math.abs(ball.velocity.z) < minVelocity) ball.velocity.z = Math.sign(ball.velocity.z) * minVelocity;
+                }
+
+                balls.forEach(other => {
+                    if (ball !== other && !ball.popping && !other.popping) {
+                        const distance = ball.position.distanceTo(other.position);
+                        if (distance < (ball.baseSize + other.baseSize) && distance > 0) {
+                            const push = new THREE.Vector3().subVectors(ball.position, other.position).normalize().multiplyScalar(0.05);
+                            ball.velocity.add(push);
+                            other.velocity.sub(push);
+                        }
+                    }
+                });
+
+                ball.velocity.multiplyScalar(0.95);
+
+                // Exaggerated morph with slider control
+                if (isMorphOn) {
+                    const scaleX = 1 + morphExaggeration * Math.sin(time * 2.5 + ball.phase + Math.random() * 0.8);
+                    const scaleY = 1 + morphExaggeration * 0.8 * Math.cos(time * 2.5 + ball.phase + Math.random() * 0.8);
+                    const scaleZ = 1 + morphExaggeration * 0.9 * Math.sin(time * 2.5 + ball.phase + Math.random() * 0.8);
+                    ball.scale.set(scaleX, scaleY, scaleZ);
+                } else if (isThrobOn) {
+                    const scale = 1 + 0.15 * Math.sin(time * 3 + ball.phase + Math.random() * 0.5);
+                    ball.scale.set(scale, scale * 0.9, scale * 1.1);
+                } else {
+                    ball.scale.set(1, 1, 1);
+                }
+
+                ball.material.roughness = isBlurOn ? 0.8 : 0.1;
+
+                // Fade out balls further away
+                if (isFadeOn) {
+                    const distance = ball.position.distanceTo(camera.position);
+                    const maxDistance = 20;
+                    const opacity = edgeTransparency * Math.max(0, 1 - distance / maxDistance);
+                    ball.material.opacity = Math.max(0.1, opacity);
+                } else {
+                    ball.material.opacity = edgeTransparency;
+                }
+
+                if (isTrailOn) {
+                    const trailGeometry = new THREE.SphereGeometry(ball.baseSize * 0.3, 16, 16);
+                    const trailMaterial = new THREE.MeshBasicMaterial({
+                        color: ball.material.color.getHex(),
+                        transparent: true,
+                        opacity: 0.2
+                    });
+                    const trailMesh = new THREE.Mesh(trailGeometry, trailMaterial);
+                    trailMesh.position.copy(ball.position);
+                    scene.add(trailMesh);
+                    ball.trail.push(trailMesh);
+
+                    if (ball.trail.length > 10) {
+                        const oldTrail = ball.trail.shift();
+                        scene.remove(oldTrail);
+                    }
+
+                    ball.trail.forEach((trail, index) => {
+                        trail.material.opacity = 0.2 * (1 - index / ball.trail.length);
+                    });
+                } else {
+                    ball.trail.forEach(trail => scene.remove(trail));
+                    ball.trail = [];
+                }
+            });
+
+            // Update lines
+            if (isLineOn) {
+                lineGroup.children.forEach(line => scene.remove(line));
+                lineGroup.children = [];
+
+                emotions.forEach(emotion => {
+                    const sameEmotionBalls = balls.filter(ball => ball.emotion === emotion.name && !ball.popping);
+                    for (let i = 0; i < sameEmotionBalls.length; i++) {
+                        for (let j = i + 1; j < sameEmotionBalls.length; j++) {
+                            const ball1 = sameEmotionBalls[i];
+                            const ball2 = sameEmotionBalls[j];
+                            const distance = ball1.position.distanceTo(ball2.position);
+                            if (distance < 3) {
+                                const geometry = new THREE.BufferGeometry().setFromPoints([
+                                    ball1.position,
+                                    ball2.position
+                                ]);
+                                const material = new THREE.LineBasicMaterial({
+                                    color: emotion.color,
+                                    transparent: true,
+                                    opacity: 0.3
+                                });
+                                const line = new THREE.Line(geometry, material);
+                                lineGroup.add(line);
+                            }
+                        }
+                    }
+                    emotion.related.forEach(rel => {
+                        const sameRelatedBalls = balls.filter(ball => ball.emotion === rel.name && !ball.popping);
+                        for (let i = 0; i < sameRelatedBalls.length; i++) {
+                            for (let j = i + 1; j < sameRelatedBalls.length; j++) {
+                                const ball1 = sameRelatedBalls[i];
+                                const ball2 = sameRelatedBalls[j];
+                                const distance = ball1.position.distanceTo(ball2.position);
+                                if (distance < 3) {
+                                    const geometry = new THREE.BufferGeometry().setFromPoints([
+                                        ball1.position,
+                                        ball2.position
+                                    ]);
+                                    const material = new THREE.LineBasicMaterial({
+                                        color: rel.color,
+                                        transparent: true,
+                                        opacity: 0.3
+                                    });
+                                    const line = new THREE.Line(geometry, material);
+                                    lineGroup.add(line);
+                                }
+                            }
+                        }
+                    });
+                });
+            } else {
+                lineGroup.children.forEach(line => scene.remove(line));
+                lineGroup.children = [];
+            }
+        }
+
+        // Auto-Play function to vary settings
+        function autoPlayUpdate() {
+            if (!isAutoPlayOn) return;
+
+            // Randomly toggle settings (excluding Lines and Trails)
+            if (Math.random() < 0.1) {
+                isStaticCamera = !isStaticCamera;
+                document.getElementById('camera-toggle').textContent = isStaticCamera ? 'Switch to Fly Camera' : 'Switch to Static Camera';
+                document.getElementById('camera-instructions').style.display = isStaticCamera ? 'none' : 'block';
+            }
+            if (Math.random() < 0.1) {
+                isGlowOn = !isGlowOn;
+                balls.forEach(ball => {
+                    ball.material.emissive.setHex(isGlowOn ? ball.material.color.getHex() : 0x000000);
+                    ball.material.emissiveIntensity = isGlowOn ? 0.5 : 0;
+                });
+                document.getElementById('glow-toggle').textContent = isGlowOn ? 'Disable Glow' : 'Enable Glow';
+            }
+            if (Math.random() < 0.1) {
+                isMorphOn = !isMorphOn;
+                document.getElementById('morph-toggle').textContent = isMorphOn ? 'Disable Morph' : 'Enable Morph';
+            }
+            if (Math.random() < 0.1) {
+                isThrobOn = !isThrobOn;
+                document.getElementById('throb-toggle').textContent = isThrobOn ? 'Disable Throb' : 'Enable Throb';
+            }
+            if (Math.random() < 0.1) {
+                isBlurOn = !isBlurOn;
+                balls.forEach(ball => {
+                    ball.material.roughness = isBlurOn ? 0.8 : 0.1;
+                });
+                document.getElementById('blur-toggle').textContent = isBlurOn ? 'Disable Blur' : 'Enable Blur';
+            }
+            if (Math.random() < 0.1) {
+                isFadeOn = !isFadeOn;
+                balls.forEach(ball => {
+                    if (!isFadeOn) {
+                        ball.material.opacity = edgeTransparency;
+                    }
+                });
+                document.getElementById('fade-toggle').textContent = isFadeOn ? 'Disable Fade' : 'Enable Fade';
+            }
+            if (Math.random() < 0.1) {
+                isRiseOn = !isRiseOn;
+                document.getElementById('rise-toggle').textContent = isRiseOn ? 'Disable Rise' : 'Enable Rise';
+            }
+            if (Math.random() < 0.05) {
+                addBalls();
+            }
+            // Randomly adjust sliders
+            if (Math.random() < 0.1) {
+                swirlStrength = Math.random() * 0.05;
+                document.getElementById('swirl-slider').value = swirlStrength;
+            }
+            if (Math.random() < 0.1) {
+                edgeTransparency = Math.random();
+                balls.forEach(ball => {
+                    if (!isFadeOn) {
+                        ball.material.opacity = edgeTransparency;
+                    }
+                });
+                document.getElementById('edge-transparency-slider').value = edgeTransparency;
+            }
+            if (Math.random() < 0.1) {
+                morphExaggeration = 0.1 + Math.random() * 0.9;
+                document.getElementById('morph-exaggeration-slider').value = morphExaggeration;
+            }
+            if (Math.random() < 0.1) {
+                containerSize = 5 + Math.random() * 45;
+                document.getElementById('container-size-slider').value = containerSize;
+                radius = Math.max(5, Math.min(50, containerSize * 1.33));
+                container.geometry.dispose();
+                container.geometry = new THREE.BoxGeometry(containerSize, containerSize, containerSize);
+                balls.forEach(ball => {
+                    const size = ball.baseSize;
+                    ball.position.set(
+                        Math.max(-containerSize / 2 + size, Math.min(containerSize / 2 - size, ball.position.x)),
+                        Math.max(-containerSize / 2 + size, Math.min(containerSize / 2 - size, ball.position.y)),
+                        Math.max(-containerSize / 2 + size, Math.min(containerSize / 2 - size, ball.position.z))
+                    );
+                });
+            }
+        }
+
+        // Update UI and sky
+        function updateUI() {
+            emotions.forEach(e => {
+                e.score = 0;
+                e.related.forEach(r => r.score = 0);
+            });
+            balls.forEach(ball => {
+                if (!ball.popping) {
+                    const distance = ball.position.length();
+                    const score = 1 / (distance + 0.1);
+                    let emotion;
+                    emotions.forEach(e => {
+                        if (e.name === ball.emotion) emotion = e;
+                        e.related.forEach(r => {
+                            if (r.name === ball.emotion) emotion = r;
+                        });
+                    });
+                    emotion.score += score;
+                }
+            });
+
+            let maxEmotion = emotions[0];
+            let maxScore = maxEmotion.score;
+            emotions.forEach(e => {
+                if (e.score > maxScore) {
+                    maxEmotion = e;
+                    maxScore = e.score;
+                }
+                e.related.forEach(r => {
+                    if (r.score > maxScore) {
+                        maxEmotion = e;
+                        maxScore = r.score;
+                    }
+                });
+            });
+
+            document.getElementById('dominant-emotion').textContent = `Dominant: ${maxEmotion.name}`;
+
+            const targetColor = new THREE.Color(maxEmotion.color);
+            currentDominantColor.lerp(targetColor, 0.05);
+
+            skyMaterial.uniforms.topColor.value.copy(currentDominantColor);
+            skyMaterial.uniforms.bottomColor.value.copy(currentDominantColor).multiplyScalar(0.3);
+            skyMaterial.needsUpdate = true;
+
+            // Update container color
+            containerMaterial.color.copy(currentDominantColor);
+            containerMaterial.needsUpdate = true;
+
+            const key = document.getElementById('key');
+            key.innerHTML = '';
+            emotions.forEach(e => {
+                const div = document.createElement('div');
+                div.className = 'key-item';
+                const colorDiv = document.createElement('div');
+                colorDiv.className = 'key-color';
+                colorDiv.style.backgroundColor = `#${e.color.toString(16).padStart(6, '0')}`;
+                div.appendChild(colorDiv);
+                div.appendChild(document.createTextNode(`${e.name}: ${e.count}`));
+                key.appendChild(div);
+                e.related.forEach(r => {
+                    const relDiv = document.createElement('div');
+                    relDiv.className = 'key-item';
+                    const relColorDiv = document.createElement('div');
+                    relColorDiv.className = 'key-color';
+                    relColorDiv.style.backgroundColor = `#${r.color.toString(16).padStart(6, '0')}`;
+                    relDiv.appendChild(relColorDiv);
+                    relDiv.appendChild(document.createTextNode(`  ${r.name}: ${r.count}`));
+                    key.appendChild(relDiv);
+                });
+            });
+
+            document.getElementById('game-variables').innerHTML = `Total Balls: ${totalBalls}<br>Popped Balls: ${poppedBalls}`;
+        }
+
+        // Populate emotion list
+        function populateEmotionList() {
+            const list = document.getElementById('emotion-list');
+            list.innerHTML = '';
+            emotions.forEach(emotion => {
+                const div = document.createElement('div');
+                div.innerHTML = `<h3>${emotion.name}</h3><ul>${emotion.related.map(rel => `<li>${rel.name}</li>`).join('')}</ul>`;
+                list.appendChild(div);
+            });
+        }
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+        pointLight.position.set(10, 10, 10);
+        scene.add(pointLight);
+
+        // Camera setup
+        camera.position.z = 20;
+
+        // Pointer controls for orbit camera
+        function onPointerDown(event) {
+            if (!isStaticCamera) {
+                isDragging = true;
+                previousMousePosition = { x: event.clientX, y: event.clientY };
+            }
+        }
+
+        function onPointerMove(event) {
+            if (isDragging && !isStaticCamera) {
+                const deltaMove = {
+                    x: event.clientX - previousMousePosition.x,
+                    y: event.clientY - previousMousePosition.y
+                };
+
+                theta -= deltaMove.x * 0.005;
+                phi += deltaMove.y * 0.005;
+                phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi));
+
+                previousMousePosition = { x: event.clientX, y: event.clientY };
+            }
+        }
+
+        function onPointerUp() {
+            isDragging = false;
+        }
+
+        function onWheel(event) {
+            if (!isStaticCamera) {
+                // Adjust FOV for zoom
+                zoomFOV += event.deltaY * 0.05;
+                zoomFOV = Math.max(20, Math.min(120, zoomFOV));
+                camera.fov = zoomFOV;
+                camera.updateProjectionMatrix();
+                // Adjust radius for orbit
+                radius += event.deltaY * 0.01;
+                radius = Math.max(5, Math.min(50, radius));
+            }
+        }
+
+        renderer.domElement.addEventListener('pointerdown', onPointerDown);
+        renderer.domElement.addEventListener('pointermove', onPointerMove);
+        renderer.domElement.addEventListener('pointerup', onPointerUp);
+        renderer.domElement.addEventListener('wheel', onWheel);
+
+        // Button and slider event listeners
+        document.getElementById('camera-toggle').addEventListener('click', () => {
+            isStaticCamera = !isStaticCamera;
+            document.getElementById('camera-toggle').textContent = isStaticCamera ? 'Switch to Fly Camera' : 'Switch to Static Camera';
+            document.getElementById('camera-instructions').style.display = isStaticCamera ? 'none' : 'block';
+        });
+
+        document.getElementById('glow-toggle').addEventListener('click', () => {
+            isGlowOn = !isGlowOn;
+            balls.forEach(ball => {
+                ball.material.emissive.setHex(isGlowOn ? ball.material.color.getHex() : 0x000000);
+                ball.material.emissiveIntensity = isGlowOn ? 0.5 : 0;
+            });
+            document.getElementById('glow-toggle').textContent = isGlowOn ? 'Disable Glow' : 'Enable Glow';
+        });
+
+        document.getElementById('morph-toggle').addEventListener('click', () => {
+            isMorphOn = !isMorphOn;
+            document.getElementById('morph-toggle').textContent = isMorphOn ? 'Disable Morph' : 'Enable Morph';
+        });
+
+        document.getElementById('throb-toggle').addEventListener('click', () => {
+            isThrobOn = !isThrobOn;
+            document.getElementById('throb-toggle').textContent = isThrobOn ? 'Disable Throb' : 'Enable Throb';
+        });
+
+        document.getElementById('blur-toggle').addEventListener('click', () => {
+            isBlurOn = !isBlurOn;
+            balls.forEach(ball => {
+                ball.material.roughness = isBlurOn ? 0.8 : 0.1;
+            });
+            document.getElementById('blur-toggle').textContent = isBlurOn ? 'Disable Blur' : 'Enable Blur';
+        });
+
+        document.getElementById('trail-toggle').addEventListener('click', () => {
+            isTrailOn = !isTrailOn;
+            if (!isTrailOn) {
+                balls.forEach(ball => {
+                    ball.trail.forEach(trail => scene.remove(trail));
+                    ball.trail = [];
+                });
+            }
+            document.getElementById('trail-toggle').textContent = isTrailOn ? 'Disable Trail' : 'Enable Trail';
+        });
+
+        document.getElementById('line-toggle').addEventListener('click', () => {
+            isLineOn = !isLineOn;
+            document.getElementById('line-toggle').textContent = isLineOn ? 'Disable Lines' : 'Enable Lines';
+        });
+
+        document.getElementById('fade-toggle').addEventListener('click', () => {
+            isFadeOn = !isFadeOn;
+            balls.forEach(ball => {
+                if (!isFadeOn) {
+                    ball.material.opacity = edgeTransparency;
+                }
+            });
+            document.getElementById('fade-toggle').textContent = isFadeOn ? 'Disable Fade' : 'Enable Fade';
+        });
+
+        document.getElementById('rise-toggle').addEventListener('click', () => {
+            isRiseOn = !isRiseOn;
+            document.getElementById('rise-toggle').textContent = isRiseOn ? 'Disable Rise' : 'Enable Rise';
+        });
+
+        document.getElementById('add-balls').addEventListener('click', () => {
+            addBalls();
+        });
+
+        document.getElementById('emotion-list-toggle').addEventListener('click', () => {
+            const window = document.getElementById('emotion-window');
+            window.style.display = 'block';
+            populateEmotionList();
+        });
+
+        document.getElementById('close-emotion-window').addEventListener('click', () => {
+            document.getElementById('emotion-window').style.display = 'none';
+        });
+
+        document.getElementById('autoplay-toggle').addEventListener('click', () => {
+            isAutoPlayOn = !isAutoPlayOn;
+            document.getElementById('autoplay-toggle').textContent = isAutoPlayOn ? 'Stop Auto-Play' : 'Start Auto-Play';
+        });
+
+        document.getElementById('swirl-slider').addEventListener('input', (e) => {
+            swirlStrength = parseFloat(e.target.value);
+        });
+
+        document.getElementById('edge-transparency-slider').addEventListener('input', (e) => {
+            edgeTransparency = parseFloat(e.target.value);
+            balls.forEach(ball => {
+                if (!isFadeOn) {
+                    ball.material.opacity = edgeTransparency;
+                }
+            });
+        });
+
+        document.getElementById('morph-exaggeration-slider').addEventListener('input', (e) => {
+            morphExaggeration = parseFloat(e.target.value);
+        });
+
+        document.getElementById('container-size-slider').addEventListener('input', (e) => {
+            containerSize = parseFloat(e.target.value);
+            // Adjust container geometry
+            container.geometry.dispose();
+            container.geometry = new THREE.BoxGeometry(containerSize, containerSize, containerSize);
+            // Reposition balls within new container size
+            balls.forEach(ball => {
+                const size = ball.baseSize;
+                ball.position.set(
+                    Math.max(-containerSize / 2 + size, Math.min(containerSize / 2 - size, ball.position.x)),
+                    Math.max(-containerSize / 2 + size, Math.min(containerSize / 2 - size, ball.position.y)),
+                    Math.max(-containerSize / 2 + size, Math.min(containerSize / 2 - size, ball.position.z))
+                );
+            });
+        });
+
+        // Animation
+        let lastAutoPlayTime = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.01;
+
+            // Update auto-play every 5 seconds
+            if (isAutoPlayOn && (time - lastAutoPlayTime) > 5) {
+                autoPlayUpdate();
+                lastAutoPlayTime = time;
+            }
+
+            updateBalls();
+            updateParticles();
+
+            if (isStaticCamera) {
+                // Static camera
+                camera.position.set(0, 0, 20);
+                camera.fov = baseFOV;
+                camera.updateProjectionMatrix();
+                camera.lookAt(0, 0, 0);
+            } else {
+                // Fly-around camera
+                // Orbital motion
+                theta += 0.01; // Orbit speed
+                // Zoom in and out
+                radius = (containerSize * 1.33) + 5 * Math.sin(time * 0.3); // Varies between containerSize*1.33 - 5 and +5
+                // Vertical motion to see top and bottom
+                const verticalOffset = (containerSize / 2) * Math.sin(time * 0.2); // Varies between -containerSize/2 and +containerSize/2
+                phi = Math.PI / 2 - 0.5 * Math.sin(time * 0.2); // Tilt to view top/bottom, between ~30° and ~150°
+                phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi)); // Clamp to avoid flipping
+                // Update camera position
+                camera.position.x = radius * Math.sin(phi) * Math.cos(theta);
+                camera.position.y = radius * Math.cos(phi) + verticalOffset;
+                camera.position.z = radius * Math.sin(phi) * Math.sin(theta);
+                // Zoom effect via FOV
+                zoomFOV = baseFOV - 10 * Math.sin(time * 0.3); // Varies between 65 and 85
+                zoomFOV = Math.max(20, Math.min(120, zoomFOV));
+                camera.fov = zoomFOV;
+                camera.updateProjectionMatrix();
+                camera.lookAt(0, 0, 0);
+            }
+
+            updateUI();
+            renderer.render(scene, camera);
+        }
+
+        createBalls();
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
