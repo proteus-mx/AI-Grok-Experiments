@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ski Race - V0.2.2</title>
+    <title>Ski Race - V0.2.3</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -120,18 +120,7 @@
             font-family: Arial, sans-serif;
             max-width: 500px;
         }
-        #autoPlay {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            padding: 10px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-family: Arial, sans-serif;
-            display: none;
-        }
+
         #toggleCamera {
             position: absolute;
             bottom: 20px;
@@ -242,7 +231,6 @@
         <p>Ski down steep slopes, weaving through flags, avoiding skiers, and collecting items to score points. Avoid hitting flags to keep your lives!</p>
         <p><strong>Controls:</strong><br>
         - Joystick: Move left/right, pull up to slow down, push down to speed up.<br>
-        - Auto-Play: Toggle for automatic skiing.<br>
         - Camera: Toggle between default, bird's-eye, full bird's-eye, fly-around views.<br>
         - Fire Snowball: Shoot snowballs at skiers (collect blue spheres for ammo).<br>
         - Auto-Throw: Toggle automatic snowball firing (default on).<br>
@@ -252,7 +240,6 @@
         - Scoring: +100 for correct side, -50 for wrong side, +50 for NPC snowball hit, +25 for bird hit.</p>
         <button onclick="startGame()">Start Game</button>
     </div>
-    <button id="autoPlay" onclick="toggleAutoPlay()">Auto-Play: Off</button>
     <button id="toggleCamera" onclick="toggleCamera()">Camera: Default</button>
     <button id="fireSnowball" onclick="fireSnowball()">Fire Snowball</button>
     <button id="autoThrow" onclick="toggleAutoThrow()">Auto-Throw: On</button>
@@ -723,7 +710,6 @@
             document.getElementById('welcome').style.display = 'none';
             document.getElementById('stats').style.display = 'block';
             document.getElementById('joystick').style.display = 'block';
-            document.getElementById('autoPlay').style.display = 'block';
             document.getElementById('toggleCamera').style.display = 'block';
             document.getElementById('fireSnowball').style.display = 'block';
             document.getElementById('autoThrow').style.display = 'block';
@@ -766,12 +752,6 @@
                 joystick.y = 0;
                 document.getElementById('knob').style.transform = 'translate(0px, 0px)';
             }
-        }
-
-        function toggleAutoPlay() {
-            autoPlay = !autoPlay;
-            document.getElementById('autoPlay').textContent = `Auto-Play: ${autoPlay ? 'On' : 'Off'}`;
-            if (!autoPlay) resetJoystick();
         }
 
         function toggleCamera() {
@@ -1255,7 +1235,6 @@
             mainTrails.left.forEach(particle => scene.remove(particle));
             mainTrails.right.forEach(particle => scene.remove(particle));
             mainTrails = { left: [], right: [] };
-            document.getElementById('autoPlay').textContent = 'Auto-Play: Off';
             snowActive = false;
             scene.clear();
             scene.background = new THREE.Color(0x87CEEB);
@@ -1296,7 +1275,6 @@
             mainTrails.left.forEach(particle => scene.remove(particle));
             mainTrails.right.forEach(particle => scene.remove(particle));
             mainTrails = { left: [], right: [] };
-            document.getElementById('autoPlay').textContent = 'Auto-Play: Off';
             snowActive = false;
             scene.clear();
             scene.background = new THREE.Color(0x87CEEB);
