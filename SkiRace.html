@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ski Race - V0.2</title>
+    <title>Ski Race - V0.3</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -120,18 +120,6 @@
             font-family: Arial, sans-serif;
             max-width: 500px;
         }
-        #autoPlay {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            padding: 10px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-family: Arial, sans-serif;
-            display: none;
-        }
         #toggleCamera {
             position: absolute;
             bottom: 20px;
@@ -191,7 +179,7 @@
         }
         #progressFill {
             width: 100%;
-            background: white;
+            background: yellow;
             border-radius: 3px;
             transition: height 0.2s;
             position: absolute;
@@ -241,19 +229,19 @@
     <div id="welcome">
         <h1>Downhill Ski Challenge</h1>
         <p>Ski down steep slopes, weaving through flags, avoiding skiers, and collecting items to score points. Avoid hitting flags to keep your lives!</p>
-        <p><strong>Controls:</strong><br>
-        - Joystick: Move left/right, pull up to slow down, push down to speed up.<br>
-        - Auto-Play: Toggle for automatic skiing.<br>
-        - Camera: Toggle between default, bird's-eye, full bird's-eye, fly-around views.<br>
-        - Fire Snowball: Shoot snowballs at skiers/birds (collect blue spheres for ammo).<br>
-        - Auto-Throw: Toggle automatic snowball firing (default on).<br>
-        - Toggle Snow: Enable/disable falling snow.<br>
-        - Objective: Reach the finish line, passing flags for points, collecting speed-ups (yellow), extra lives (green), and snowballs (blue).<br>
-        - Lives: Start with 3, lose 1 per flag hit, game over at 0.<br>
-        - Scoring: +100 for correct side, -50 for wrong side, +50 for NPC snowball hit, +25 for bird hit.</p>
+        <p><strong>Controls:</strong>
+            <br>       
+            - Joystick: Move left/right, pull up to slow down, push down to speed up.<br>
+            - Camera: Toggle between default, bird's-eye, full bird's-eye, fly-around views.<br>
+            - Fire Snowball: Shoot snowballs at skiers/birds (collect blue spheres for ammo).<br>
+            - Auto-Throw: Toggle automatic snowball firing (default on).<br>
+            - Toggle Snow: Enable/disable falling snow.<br>
+            - Objective: Reach the finish line, passing flags for points, collecting speed-ups (yellow), extra lives (green), and snowballs (blue).<br>
+            - Lives: Start with 3, lose 1 per flag hit, game over at 0.<br>
+            - Scoring: +100 for correct side, -50 for wrong side, +50 for NPC snowball hit, +25 for bird hit.
+        </p>
         <button onclick="startGame()">Start Game</button>
     </div>
-    <button id="autoPlay" onclick="toggleAutoPlay()">Auto-Play: Off</button>
     <button id="toggleCamera" onclick="toggleCamera()">Camera: Default</button>
     <button id="fireSnowball" onclick="fireSnowball()">Fire Snowball</button>
     <button id="autoThrow" onclick="toggleAutoThrow()">Auto-Throw: On</button>
@@ -262,7 +250,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
         let scene, camera, renderer, skier, flags = [], finishLine, terrain, trees = [], npcs = [], collectables = [], snowballs = [], birds = [], snowflakes = [], frontSnowflakes = [];
-        let lives = 3, score = 0, time = 0, level = 1, gameOver = false, autoPlay = false, autoThrow = true, snowballAmmo = 0, snowActive = false;
+        let lives = 3, score = 0, time = 0, level = 1, gameOver = false, autoThrow = true, snowballAmmo = 0, snowActive = false;
         let clock = new THREE.Clock();
         let joystick = { x: 0, y: 0, active: false };
         let currentSpeed = 0, speedBoostTimer = 0, skidTimer = 0;
@@ -778,7 +766,6 @@
             document.getElementById('welcome').style.display = 'none';
             document.getElementById('stats').style.display = 'block';
             document.getElementById('joystick').style.display = 'block';
-            document.getElementById('autoPlay').style.display = 'block';
             document.getElementById('toggleCamera').style.display = 'block';
             document.getElementById('fireSnowball').style.display = 'block';
             document.getElementById('autoThrow').style.display = 'block';
@@ -788,14 +775,12 @@
         }
 
         function startJoystick(e) {
-            if (!autoPlay) {
-                joystick.active = true;
-                updateJoystick(e);
-            }
+            joystick.active = true;
+            updateJoystick(e);
         }
 
         function updateJoystick(e) {
-            if (!joystick.active || autoPlay) return;
+            if (!joystick.active) return;
             const rect = document.getElementById('joystick').getBoundingClientRect();
             const x = e.clientX - rect.left - 50;
             const y = e.clientY - rect.top - 50;
@@ -815,18 +800,10 @@
         }
 
         function resetJoystick() {
-            if (!autoPlay) {
-                joystick.active = false;
-                joystick.x = 0;
-                joystick.y = 0;
-                document.getElementById('knob').style.transform = 'translate(0px, 0px)';
-            }
-        }
-
-        function toggleAutoPlay() {
-            autoPlay = !autoPlay;
-            document.getElementById('autoPlay').textContent = `Auto-Play: ${autoPlay ? 'On' : 'Off'}`;
-            if (!autoPlay) resetJoystick();
+            joystick.active = false;
+            joystick.x = 0;
+            joystick.y = 0;
+            document.getElementById('knob').style.transform = 'translate(0px, 0px)';
         }
 
         function toggleCamera() {
@@ -1184,7 +1161,7 @@
             const delta = clock.getDelta();
             time += delta;
             snowballCooldown = Math.max(0, snowballCooldown - delta);
-            if (autoPlay && skier && skidTimer <= 0) {
+            if (skier && skidTimer <= 0) {
                 let targetX = 0;
                 let targetSpeed = -0.5;
                 const nextFlag = flags.find(f => f.position.z > skier.position.z && Math.abs(f.position.z - skier.position.z) < 50);
@@ -1370,7 +1347,6 @@
             currentSpeed = 0;
             snowballAmmo = 0;
             speedBoostTimer = 0;
-            autoPlay = false;
             autoThrow = true;
             snowballCooldown = 0;
             stumbleTimer = 0;
@@ -1384,7 +1360,6 @@
             mainTrails.left.forEach(particle => scene.remove(particle));
             mainTrails.right.forEach(particle => scene.remove(particle));
             mainTrails = { left: [], right: [] };
-            document.getElementById('autoPlay').textContent = 'Auto-Play: Off';
             snowflakes.forEach(snowflake => scene.remove(snowflake));
             frontSnowflakes.forEach(snowflake => scene.remove(snowflake));
             snowflakes = [];
@@ -1415,7 +1390,6 @@
             currentSpeed = 0;
             snowballAmmo = 0;
             speedBoostTimer = 0;
-            autoPlay = false;
             autoThrow = true;
             snowballCooldown = 0;
             stumbleTimer = 0;
@@ -1429,7 +1403,6 @@
             mainTrails.left.forEach(particle => scene.remove(particle));
             mainTrails.right.forEach(particle => scene.remove(particle));
             mainTrails = { left: [], right: [] };
-            document.getElementById('autoPlay').textContent = 'Auto-Play: Off';
             snowflakes.forEach(snowflake => scene.remove(snowflake));
             frontSnowflakes.forEach(snowflake => scene.remove(snowflake));
             snowflakes = [];
