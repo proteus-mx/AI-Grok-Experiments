@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ski Race - V0.1</title>
+    <title>Ski Race - V0.2</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -169,18 +169,7 @@
             font-family: Arial, sans-serif;
             display: none;
         }
-        #toggleSnow {
-            position: absolute;
-            bottom: 20px;
-            right: 180px;
-            padding: 10px;
-            background: #2196F3;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-family: Arial, sans-serif;
-            display: none;
-        }
+        
         #miniMap {
             position: absolute;
             top: 10px;
@@ -220,7 +209,8 @@
         button:hover {
             background: #45a049;
         }
-        #fireSnowball:hover, #toggleSnow:hover {
+            
+        #fireSnowball:hover {
             background: #1976D2;
         }
         #autoThrow:hover {
@@ -267,7 +257,6 @@
     <button id="toggleCamera" onclick="toggleCamera()">Camera: Default</button>
     <button id="fireSnowball" onclick="fireSnowball()">Fire Snowball</button>
     <button id="autoThrow" onclick="toggleAutoThrow()">Auto-Throw: On</button>
-    <button id="toggleSnow" onclick="toggleSnow()">Snow: Off</button>
     <canvas id="miniMap"></canvas>
     <div id="progressBar"><div id="progressFill"></div></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
@@ -793,7 +782,6 @@
             document.getElementById('toggleCamera').style.display = 'block';
             document.getElementById('fireSnowball').style.display = 'block';
             document.getElementById('autoThrow').style.display = 'block';
-            document.getElementById('toggleSnow').style.display = 'block';
             document.getElementById('miniMap').style.display = 'block';
             document.getElementById('progressBar').style.display = 'block';
             setupGame();
@@ -862,36 +850,7 @@
             document.getElementById('autoThrow').textContent = `Auto-Throw: ${autoThrow ? 'On' : 'Off'}`;
         }
 
-        function toggleSnow() {
-            snowActive = !snowActive;
-            document.getElementById('toggleSnow').textContent = `Snow: ${snowActive ? 'On' : 'Off'}`;
-            if (snowActive) {
-                snowflakes = [];
-                frontSnowflakes = [];
-                for (let i = 0; i < 100; i++) {
-                    const x = skier.position.x + (Math.random() - 0.5) * 20;
-                    const y = 20;
-                    const z = skier.position.z + (Math.random() - 0.5) * 20;
-                    const snowflake = createSnowflake(x, y, z, false);
-                    snowflakes.push(snowflake);
-                    scene.add(snowflake);
-                }
-                for (let i = 0; i < 50; i++) {
-                    const x = skier.position.x + (Math.random() - 0.5) * 20;
-                    const y = 20;
-                    const z = skier.position.z - 10 + (Math.random() - 0.5) * 10;
-                    const snowflake = createSnowflake(x, y, z, true);
-                    frontSnowflakes.push(snowflake);
-                    scene.add(snowflake);
-                }
-            } else {
-                snowflakes.forEach(snowflake => scene.remove(snowflake));
-                frontSnowflakes.forEach(snowflake => scene.remove(snowflake));
-                snowflakes = [];
-                frontSnowflakes = [];
-            }
-        }
-
+       
         function fireSnowball() {
             if (snowballAmmo <= 0 || !skier) return;
             snowballAmmo--;
@@ -1384,7 +1343,6 @@
             document.getElementById('toggleCamera').style.display = 'none';
             document.getElementById('fireSnowball').style.display = 'none';
             document.getElementById('autoThrow').style.display = 'none';
-            document.getElementById('toggleSnow').style.display = 'none';
         }
 
         function endGame() {
@@ -1401,7 +1359,6 @@
             document.getElementById('toggleCamera').style.display = 'none';
             document.getElementById('fireSnowball').style.display = 'none';
             document.getElementById('autoThrow').style.display = 'none';
-            document.getElementById('toggleSnow').style.display = 'none';
         }
 
         function nextLevel() {
@@ -1433,7 +1390,6 @@
             snowflakes = [];
             frontSnowflakes = [];
             snowActive = false;
-            document.getElementById('toggleSnow').textContent = 'Snow: Off';
             scene.clear();
             scene.background = new THREE.Color(0x87CEEB);
             scene.fog = new THREE.Fog(0x87CEEB, 20, 150);
@@ -1445,7 +1401,6 @@
             document.getElementById('toggleCamera').style.display = 'block';
             document.getElementById('fireSnowball').style.display = 'block';
             document.getElementById('autoThrow').style.display = 'block';
-            document.getElementById('toggleSnow').style.display = 'block';
             resetJoystick();
             clock = new THREE.Clock();
             animate();
@@ -1480,7 +1435,6 @@
             snowflakes = [];
             frontSnowflakes = [];
             snowActive = false;
-            document.getElementById('toggleSnow').textContent = 'Snow: Off';
             scene.clear();
             scene.background = new THREE.Color(0x87CEEB);
             scene.fog = new THREE.Fog(0x87CEEB, 20, 150);
