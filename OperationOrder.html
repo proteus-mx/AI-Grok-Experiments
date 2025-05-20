@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order of Operations - V0.4</title>
+    <title>Order of Operations - V0.5</title>
     <style>
         body { 
             margin: 0; 
@@ -11,7 +11,7 @@
             transition: background-color 0.3s, color 0.3s;
         }
         body.dark-mode {
-            background: black;
+            background: darkslategray;
             color: white;
         }
         body.light-mode {
@@ -175,8 +175,8 @@
             position: absolute;
             top: 70px;
             left: 180px;
-            color: white;
-            font-size: 24px;
+            color: green;
+            font-size: 18px;
             display: hidden;
         }
         body.light-mode #score {
@@ -226,12 +226,13 @@
         #checkAnswer {
             padding: 8px 16px;
             font-size: 16px;
-            background: #333;
+            background: green;
             color: white;
             border: none;
             cursor: pointer;
             margin-left: 10px;
             vertical-align: middle;
+            border-radiud: 8px;    
         }
         body.light-mode #checkAnswer {
             background: #4caf50;
@@ -244,8 +245,8 @@
             background: #45a049;
         }
         #feedback {
-            font-size: 24px;
-            color: lime;
+            font-size: 18px;
+            color: white;
             margin-left: 10px;
             display: inline;
             vertical-align: middle;
@@ -319,7 +320,7 @@
         #bedmas .s { color: #ffa500; }
         #acronymTable {
             margin-top: 20px;
-            width: 500px;
+            width: 100%;
             border-collapse: collapse;
             font-size: 16px;
             color: white;
@@ -388,9 +389,6 @@
             background: #4caf50;
             color: white;
         }
-        #nextLevelButton:hover {
-            background: #555;
-        }
         body.light-mode #nextLevelButton:hover {
             background: #45a049;
         }
@@ -424,10 +422,12 @@
             right: 20px;
             padding: 10px 20px;
             font-size: 20px;
-            background: green;
+            background: blue;
             color: white;
             border: none;
             cursor: pointer;
+            border-radius: 8px;
+
         }
         body.light-mode #nextSum {
             background: #4caf50;
@@ -1002,10 +1002,10 @@
             if (userAnswer === correctAnswer) {
                 score++;
                 correctCount++;
-                feedbackDisplay.innerHTML = 'Correct!';
+                feedbackDisplay.innerHTML = '✅ Correct!';
             } else {
                 incorrectCount++;
-                feedbackDisplay.innerHTML = `Incorrect. Correct answer is ${correctAnswer}.`;
+                feedbackDisplay.innerHTML = `❌ Incorrect. Correct answer is ${correctAnswer}.`;
             }
             updateScoreDisplay();
             checkAnswerButton.style.display = 'none';
@@ -1017,8 +1017,8 @@
         function showLevelSummary() {
             const percent = (correctCount / questionsPerLevel) * 100;
             levelNumber.innerHTML = `Level ${level}`;
-            correctAnswers.innerHTML = `Correct Answers: ${correctCount}`;
-            incorrectAnswers.innerHTML = `Incorrect Answers: ${incorrectCount}`;
+            correctAnswers.innerHTML = `Correct Answers: ${correctCount} ✅`;
+            incorrectAnswers.innerHTML = `Incorrect Answers: ${incorrectCount} ❌`;
             percentage.innerHTML = `Percentage: ${percent.toFixed(2)}%`;
             levelSummary.style.display = 'flex';
             titleDisplay.classList.add('hidden');
