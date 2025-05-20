@@ -1,0 +1,491 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Interactive Periodic Table</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            background: linear-gradient(135deg, #e0e7ff, #d4d4d4); 
+            font-family: Arial, sans-serif;
+        }
+        canvas { 
+            border: 3px solid #2a2a2a; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3); 
+            border-radius: 10px; 
+        }
+        #controls { 
+            position: absolute; 
+            top: 20px; 
+            left: 20px; 
+            background: rgba(255,255,255,0.9); 
+            padding: 15px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        button { 
+            margin: 5px; 
+            padding: 8px 12px; 
+            border: none; 
+            background: #4a6cff; 
+            color: white; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            transition: background 0.2s; 
+        }
+        button:hover { 
+            background: #3a5cdd; 
+        }
+        h1 { 
+            font-size: 24px; 
+            margin: 0 0 10px; 
+            color: #333; 
+        }
+        p { 
+            font-size: 14px; 
+            margin: 0 0 10px; 
+            color: #555; 
+        }
+        #infoPopup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.95);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            display: none;
+            max-width: 300px;
+            z-index: 10;
+        }
+        #infoPopup h2 {
+            margin: 0 0 10px;
+            font-size: 18px;
+            color: #333;
+        }
+        #infoPopup p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #555;
+        }
+        #closePopup {
+            background: #ff4444;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            float: right;
+        }
+        #closePopup:hover {
+            background: #cc3333;
+        }
+    </style>
+</head>
+<body>
+<div id="controls">
+    <h1>Interactive Periodic Table</h1>
+    <p>Explore element states by adjusting temperature. Zoom with pinch or scroll, pan with drag. Tap an element for details.</p>
+    <input type="range" id="tempSlider" min="-273.15" max="10000" value="-273.15" step="0.1">
+    <div>
+        <button onclick="setTemperature(-273.15)">Absolute Zero</button>
+        <button onclick="setTemperature(0)">0°C</button>
+        <button onclick="setTemperature(25)">Room Temp</button>
+        <button onclick="setTemperature(100)">100°C</button>
+    </div>
+</div>
+<div id="infoPopup">
+    <button id="closePopup" onclick="closePopup()">Close</button>
+    <h2 id="elementName"></h2>
+    <p id="elementSymbol"></p>
+    <p id="elementState"></p>
+    <p id="elementMelting"></p>
+    <p id="elementBoiling"></p>
+</div>
+<script>
+const elements = [
+    { symbol: "H", name: "Hydrogen", state: "gas", melting: -259.16, boiling: -252.87 },
+    { symbol: "He", name: "Helium", state: "gas", melting: -272.2, boiling: -268.93 },
+    { symbol: "Li", name: "Lithium", state: "solid", melting: 180.54, boiling: 1342 },
+    { symbol: "Be", name: "Beryllium", state: "solid", melting: 1287, boiling: 2471 },
+    { symbol: "B", name: "Boron", state: "solid", melting: 2076, boiling: 3927 },
+    { symbol: "C", name: "Carbon", state: "solid", melting: 3550, boiling: 4827 },
+    { symbol: "N", name: "Nitrogen", state: "gas", melting: -195.8, boiling: -195.8 },
+    { symbol: "O", name: "Oxygen", state: "gas", melting: -218.79, boiling: -182.95 },
+    { symbol: "F", name: "Fluorine", state: "gas", melting: -219.67, boiling: -188.12 },
+    { symbol: "Ne", name: "Neon", state: "gas", melting: -248.59, boiling: -246.08 },
+    { symbol: "Na", name: "Sodium", state: "solid", melting: 97.72, boiling: 883 },
+    { symbol: "Mg", name: "Magnesium", state: "solid", melting: 650, boiling: 1090 },
+    { symbol: "Al", name: "Aluminum", state: "solid", melting: 660.32, boiling: 2470 },
+    { symbol: "Si", name: "Silicon", state: "solid", melting: 1414, boiling: 3265 },
+    { symbol: "P", name: "Phosphorus", state: "solid", melting: 44.15, boiling: 280.5 },
+    { symbol: "S", name: "Sulfur", state: "solid", melting: 115.21, boiling: 444.6 },
+    { symbol: "Cl", name: "Chlorine", state: "gas", melting: -101.5, boiling: -34.04 },
+    { symbol: "Ar", name: "Argon", state: "gas", melting: -189.34, boiling: -185.85 },
+    { symbol: "K", name: "Potassium", state: "solid", melting: 63.5, boiling: 759 },
+    { symbol: "Ca", name: "Calcium", state: "solid", melting: 842, boiling: 1484 },
+    { symbol: "Sc", name: "Scandium", state: "solid", melting: 1541, boiling: 2836 },
+    { symbol: "Ti", name: "Titanium", state: "solid", melting: 1668, boiling: 3287 },
+    { symbol: "V", name: "Vanadium", state: "solid", melting: 1910, boiling: 3407 },
+    { symbol: "Cr", name: "Chromium", state: "solid", melting: 1907, boiling: 2671 },
+    { symbol: "Mn", name: "Manganese", state: "solid", melting: 1246, boiling: 2061 },
+    { symbol: "Fe", name: "Iron", state: "solid", melting: 1538, boiling: 2862 },
+    { symbol: "Co", name: "Cobalt", state: "solid", melting: 1495, boiling: 2927 },
+    { symbol: "Ni", name: "Nickel", state: "solid", melting: 1455, boiling: 2913 },
+    { symbol: "Cu", name: "Copper", state: "solid", melting: 1084.62, boiling: 2562 },
+    { symbol: "Zn", name: "Zinc", state: "solid", melting: 419.53, boiling: 907 },
+    { symbol: "Ga", name: "Gallium", state: "solid", melting: 29.76, boiling: 2204 },
+    { symbol: "Ge", name: "Germanium", state: "solid", melting: 938.25, boiling: 2833 },
+    { symbol: "As", name: "Arsenic", state: "solid", melting: 817, boiling: 614 },
+    { symbol: "Se", name: "Selenium", state: "solid", melting: 221, boiling: 685 },
+    { symbol: "Br", name: "Bromine", state: "liquid", melting: -7.2, boiling: 58.8 },
+    { symbol: "Kr", name: "Krypton", state: "gas", melting: -157.36, boiling: -153.22 },
+    { symbol: "Rb", name: "Rubidium", state: "solid", melting: 39.31, boiling: 688 },
+    { symbol: "Sr", name: "Strontium", state: "solid", melting: 777, boiling: 1382 },
+    { symbol: "Y", name: "Yttrium", state: "solid", melting: 1522, boiling: 3345 },
+    { symbol: "Zr", name: "Zirconium", state: "solid", melting: 1855, boiling: 4409 },
+    { symbol: "Nb", name: "Niobium", state: "solid", melting: 2477, boiling: 4744 },
+    { symbol: "Mo", name: "Molybdenum", state: "solid", melting: 2623, boiling: 4639 },
+    { symbol: "Tc", name: "Technetium", state: "solid", melting: 2157, boiling: 4265 },
+    { symbol: "Ru", name: "Ruthenium", state: "solid", melting: 2334, boiling: 4150 },
+    { symbol: "Rh", name: "Rhodium", state: "solid", melting: 1964, boiling: 3695 },
+    { symbol: "Pd", name: "Palladium", state: "solid", melting: 1554.9, boiling: 2963 },
+    { symbol: "Ag", name: "Silver", state: "solid", melting: 961.78, boiling: 2162 },
+    { symbol: "Cd", name: "Cadmium", state: "solid", melting: 321.07, boiling: 767 },
+    { symbol: "In", name: "Indium", state: "solid", melting: 156.6, boiling: 2072 },
+    { symbol: "Sn", name: "Tin", state: "solid", melting: 231.93, boiling: 2602 },
+    { symbol: "Sb", name: "Antimony", state: "solid", melting: 630.63, boiling: 1587 },
+    { symbol: "Te", name: "Tellurium", state: "solid", melting: 449.51, boiling: 988 },
+    { symbol: "I", name: "Iodine", state: "solid", melting: 113.7, boiling: 184.3 },
+    { symbol: "Xe", name: "Xenon", state: "gas", melting: -111.7, boiling: -108.0 },
+    { symbol: "Cs", name: "Cesium", state: "solid", melting: 28.44, boiling: 671 },
+    { symbol: "Ba", name: "Barium", state: "solid", melting: 727, boiling: 1870 },
+    { symbol: "La", name: "Lanthanum", state: "solid", melting: 918, boiling: 3464 },
+    { symbol: "Ce", name: "Cerium", state: "solid", melting: 798, boiling: 3443 },
+    { symbol: "Pr", name: "Praseodymium", state: "solid", melting: 931, boiling: 3520 },
+    { symbol: "Nd", name: "Neodymium", state: "solid", melting: 1021, boiling: 3074 },
+    { symbol: "Pm", name: "Promethium", state: "solid", melting: 1042, boiling: 3000 },
+    { symbol: "Sm", name: "Samarium", state: "solid", melting: 1072, boiling: 1794 },
+    { symbol: "Eu", name: "Europium", state: "solid", melting: 822, boiling: 1529 },
+    { symbol: "Gd", name: "Gadolinium", state: "solid", melting: 1313, boiling: 3273 },
+    { symbol: "Tb", name: "Terbium", state: "solid", melting: 1356, boiling: 3230 },
+    { symbol: "Dy", name: "Dysprosium", state: "solid", melting: 1412, boiling: 2567 },
+    { symbol: "Ho", name: "Holmium", state: "solid", melting: 1474, boiling: 2700 },
+    { symbol: "Er", name: "Erbium", state: "solid", melting: 1497, boiling: 2868 },
+    { symbol: "Tm", name: "Thulium", state: "solid", melting: 1545, boiling: 1950 },
+    { symbol: "Yb", name: "Ytterbium", state: "solid", melting: 819, boiling: 1196 },
+    { symbol: "Lu", name: "Lutetium", state: "solid", melting: 1663, boiling: 3402 },
+    { symbol: "Hf", name: "Hafnium", state: "solid", melting: 2233, boiling: 4603 },
+    { symbol: "Ta", name: "Tantalum", state: "solid", melting: 3017, boiling: 5458 },
+    { symbol: "W", name: "Tungsten", state: "solid", melting: 3422, boiling: 5555 },
+    { symbol: "Re", name: "Rhenium", state: "solid", melting: 3186, boiling: 5596 },
+    { symbol: "Os", name: "Osmium", state: "solid", melting: 3033, boiling: 5012 },
+    { symbol: "Ir", name: "Iridium", state: "solid", melting: 2446, boiling: 4428 },
+    { symbol: "Pt", name: "Platinum", state: "solid", melting: 1768.3, boiling: 3825 },
+    { symbol: "Au", name: "Gold", state: "solid", melting: 1064.18, boiling: 2856 },
+    { symbol: "Hg", name: "Mercury", state: "liquid", melting: -38.83, boiling: 356.73 },
+    { symbol: "Tl", name: "Thallium", state: "solid", melting: 304, boiling: 1473 },
+    { symbol: "Pb", name: "Lead", state: "solid", melting: 327.46, boiling: 1749 },
+    { symbol: "Bi", name: "Bismuth", state: "solid", melting: 271.4, boiling: 1564 },
+    { symbol: "Po", name: "Polonium", state: "solid", melting: 254, boiling: 962 },
+    { symbol: "At", name: "Astatine", state: "solid", melting: 302, boiling: 337 },
+    { symbol: "Rn", name: "Radon", state: "gas", melting: -71, boiling: -61.7 },
+    { symbol: "Fr", name: "Francium", state: "solid", melting: 27, boiling: 677 },
+    { symbol: "Ra", name: "Radium", state: "solid", melting: 700, boiling: 1737 },
+    { symbol: "Ac", name: "Actinium", state: "solid", melting: 1050, boiling: 3200 },
+    { symbol: "Th", name: "Thorium", state: "solid", melting: 1750, boiling: 4788 },
+    { symbol: "Pa", name: "Protactinium", state: "solid", melting: 1572, boiling: 4000 },
+    { symbol: "U", name: "Uranium", state: "solid", melting: 1132.2, boiling: 4131 },
+    { symbol: "Np", name: "Neptunium", state: "solid", melting: 644, boiling: 4000 },
+    { symbol: "Pu", name: "Plutonium", state: "solid", melting: 639.4, boiling: 3228 },
+    { symbol: "Am", name: "Americium", state: "solid", melting: 1176, boiling: 2607 },
+    { symbol: "Cm", name: "Curium", state: "solid", melting: 1345, boiling: 3110 },
+    { symbol: "Bk", name: "Berkelium", state: "solid", melting: 1050, boiling: 2900 },
+    { symbol: "Cf", name: "Californium", state: "solid", melting: 900, boiling: 1470 },
+    { symbol: "Es", name: "Einsteinium", state: "solid", melting: 860, boiling: 996 },
+    { symbol: "Fm", name: "Fermium", state: "solid", melting: 1527, boiling: null },
+    { symbol: "Md", name: "Mendelevium", state: "solid", melting: 827, boiling: null },
+    { symbol: "No", name: "Nobelium", state: "solid", melting: 827, boiling: null },
+    { symbol: "Lr", name: "Lawrencium", state: "solid", melting: 1627, boiling: null },
+    { symbol: "Rf", name: "Rutherfordium", state: "solid", melting: 2100, boiling: 5500 },
+    { symbol: "Db", name: "Dubnium", state: "solid", melting: null, boiling: null },
+    { symbol: "Sg", name: "Seaborgium", state: "solid", melting: null, boiling: null },
+    { symbol: "Bh", name: "Bohrium", state: "solid", melting: null, boiling: null },
+    { symbol: "Hs", name: "Hassium", state: "solid", melting: null, boiling: null },
+    { symbol: "Mt", name: "Meitnerium", state: "solid", melting: null, boiling: null },
+    { symbol: "Ds", name: "Darmstadtium", state: "solid", melting: null, boiling: null },
+    { symbol: "Rg", name: "Roentgenium", state: "solid", melting: null, boiling: null },
+    { symbol: "Cn", name: "Copernicium", state: "liquid", melting: null, boiling: 67 },
+    { symbol: "Nh", name: "Nihonium", state: "solid", melting: 430, boiling: 1100 },
+    { symbol: "Fl", name: "Flerovium", state: "solid", melting: -60, boiling: 150 },
+    { symbol: "Mc", name: "Moscovium", state: "solid", melting: 400, boiling: 1100 },
+    { symbol: "Lv", name: "Livermorium", state: "solid", melting: 435, boiling: 800 },
+    { symbol: "Ts", name: "Tennessine", state: "solid", melting: 400, boiling: 610 },
+    { symbol: "Og", name: "Oganesson", state: "gas", melting: -30, boiling: 350 },
+];
+
+let temperature = -273.15;
+let scaleFactor = 1;
+let offsetX = 10;
+let offsetY = 10;
+let liquidOffset = 0;
+let gasOpacity = 0;
+
+const grid = [
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+    [3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 6, 7, 8, 9, 10],
+    [11, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 14, 15, 16, 17, 18],
+    [19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36],
+    [37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54],
+    [55, 56, 57, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86],
+    [87, 88, 89, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 0, 0],
+    [0, 0, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 0, 0],
+];
+
+function setup() {
+    createCanvas(720, 480);
+    textAlign(CENTER, CENTER);
+    textSize(10);
+    document.getElementById('tempSlider').addEventListener('input', (e) => {
+        temperature = parseFloat(e.target.value);
+    });
+}
+
+function setTemperature(temp) {
+    temperature = temp;
+    document.getElementById('tempSlider').value = temp;
+}
+
+function draw() {
+    background(240);
+    liquidOffset = sin(frameCount * 0.05) * 3;
+    gasOpacity = (sin(frameCount * 0.1) + 1) * 60 + 80;
+    drawPeriodicTable();
+    drawTemperature();
+    drawKey();
+}
+
+function drawPeriodicTable() {
+    const cellWidth = 36 * scaleFactor;
+    const cellHeight = 36 * scaleFactor;
+    for (let row = 0; row < grid.length; row++) {
+        for (let col = 0; col < grid[0].length; col++) {
+            const elementIndex = grid[row][col] - 1;
+            if (elementIndex >= 0 && elementIndex < elements.length) {
+                const element = elements[elementIndex];
+                const state = getElementState(element, temperature);
+                const x = offsetX + col * cellWidth;
+                const y = offsetY + row * cellHeight;
+
+                push();
+                if (state === "liquid") {
+                    translate(0, liquidOffset);
+                }
+                fill(getStateColor(state, gasOpacity));
+                stroke(40);
+                strokeWeight(1.5);
+                rect(x, y, cellWidth, cellHeight, 8);
+                if (state === "gas") {
+                    drawingContext.shadowBlur = 10;
+                    drawingContext.shadowColor = 'rgba(120, 255, 120, 0.5)';
+                }
+                fill(0);
+                noStroke();
+                textSize(10 * scaleFactor);
+                textStyle(BOLD);
+                text(element.symbol, x + cellWidth / 2, y + cellHeight / 2);
+                drawingContext.shadowBlur = 0;
+                pop();
+            }
+        }
+    }
+}
+
+function getElementState(element, temp) {
+    if (element.melting === null || element.boiling === null) return element.state;
+    if (temp < element.melting) return "solid";
+    if (temp < element.boiling) return "liquid";
+    return "gas";
+}
+
+function getStateColor(state, gasOpacity) {
+    if (state === "solid") return color(100, 100, 255);
+    if (state === "liquid") return color(255, 100, 100);
+    return color(100, 255, 100, gasOpacity);
+}
+
+function drawTemperature() {
+    fill(0);
+    textSize(12);
+    textAlign(CENTER, TOP);
+    const celsius = temperature.toFixed(1);
+    const fahrenheit = (temperature * 9/5 + 32).toFixed(1);
+    const kelvin = (temperature + 273.15).toFixed(1);
+    text(`Temperature: ${celsius}°C / ${fahrenheit}°F / ${kelvin}K`, width / 2, height - 20);
+}
+
+function drawKey() {
+    const keyX = width - 120;
+    const keyY = 20;
+    textSize(12);
+    textAlign(LEFT, CENTER);
+
+    fill(100, 100, 255);
+    stroke(40);
+    strokeWeight(1);
+    rect(keyX, keyY, 20, 20, 5);
+    noStroke();
+    fill(0);
+    text("Solid", keyX + 25, keyY + 10);
+
+    fill(255, 100, 100);
+    stroke(40);
+    strokeWeight(1);
+    rect(keyX, keyY + 30, 20, 20, 5);
+    noStroke();
+    fill(0);
+    text("Liquid", keyX + 25, keyY + 40);
+
+    fill(100, 255, 100, gasOpacity);
+    stroke(40);
+    strokeWeight(1);
+    rect(keyX, keyY + 60, 20, 20, 5);
+    noStroke();
+    fill(0);
+    text("Gas", keyX + 25, keyY + 70);
+}
+
+function touchStarted() {
+    if (touches.length === 1) {
+        const cellWidth = 36 * scaleFactor;
+        const cellHeight = 36 * scaleFactor;
+        const touchX = touches[0].x;
+        const touchY = touches[0].y;
+        for (let row = 0; row < grid.length; row++) {
+            for (let col = 0; col < grid[0].length; col++) {
+                const elementIndex = grid[row][col] - 1;
+                if (elementIndex >= 0 && elementIndex < elements.length) {
+                    const x = offsetX + col * cellWidth;
+                    const y = offsetY + row * cellHeight;
+                    if (touchX >= x && touchX <= x + cellWidth && touchY >= y && touchY <= y + cellHeight) {
+                        showPopup(elements[elementIndex]);
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+
+function showPopup(element) {
+    const popup = document.getElementById('infoPopup');
+    document.getElementById('elementName').textContent = element.name;
+    document.getElementById('elementSymbol').textContent = `Symbol: ${element.symbol}`;
+    document.getElementById('elementState').textContent = `State at 25°C: ${element.state}`;
+    document.getElementById('elementMelting').textContent = `Melting Point: ${element.melting !== null ? element.melting.toFixed(2) + '°C' : 'Unknown'}`;
+    document.getElementById('elementBoiling').textContent = `Boiling Point: ${element.boiling !== null ? element.boiling.toFixed(2) + '°C' : 'Unknown'}`;
+    popup.style.display = 'block';
+}
+
+function closePopup() {
+    document.getElementById('infoPopup').style.display = 'none';
+}
+
+function touchMoved() {
+    if (touches.length === 2) {
+        let d = dist(touches[0].x, touches[0].y, touches[1].x, touches[1].y);
+        if (!this.prevDist) this.prevDist = d;
+        scaleFactor *= d / this.prevDist;
+        scaleFactor = constrain(scaleFactor, 0.5, 3);
+        this.prevDist = d;
+    } else if (touches.length === 1) {
+        offsetX += touches[0].x - (this.prevTouchX || touches[0].x);
+        offsetY += touches[0].y - (this.prevTouchY || touches[0].y);
+        this.prevTouchX = touches[0].x;
+        this.prevTouchY = touches[0].y;
+    }
+    return false;
+}
+
+function touchEnded() {
+    delete this.prevDist;
+    delete this.prevTouchX;
+    delete this.prevTouchY;
+}
+
+function mouseWheel(event) {
+    scaleFactor += event.delta * -0.001;
+    scaleFactor = constrain(scaleFactor, 0.5, 3);
+    return false;
+}
+
+function mousePressed() {
+    const cellWidth = 36 * scaleFactor;
+    const cellHeight = 36 * scaleFactor;
+    for (let row = 0; row < grid.length; row++) {
+        for (let col = 0; col < grid[0].length; col++) {
+            const elementIndex = grid[row][col] - 1;
+            if (elementIndex >= 0 && elementIndex < elements.length) {
+                const x = offsetX + col * cellWidth;
+                const y = offsetY + row * cellHeight;
+                if (mouseX >= x && mouseX <= x + cellWidth && mouseY >= y && mouseY <= y + cellHeight) {
+                    showPopup(elements[elementIndex]);
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+</script>
+</body>
+</html>
