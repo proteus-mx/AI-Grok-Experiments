@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Operations - V0.9.2</title>
+    <title>Operations - V0.9.4</title>
     <style>
         body { 
             margin: 0; 
@@ -14,13 +14,9 @@
             background: darkslategray;
             color: white;
         }
-        body.light-mode {
-            background: #f0f0f0;
-            color: black;
-        }
         #welcome {
             position: absolute;
-            top: 0;
+            top: 20px;
             left: 0;
             width: 100%;
             height: 100%;
@@ -33,18 +29,13 @@
             text-align: center;
             z-index: 10;
         }
-        body.light-mode #welcome {
-            background: rgba(255, 255, 255, 0.9);
-            color: black;
-        }
+
         #welcome h1 {
             font-size: 48px;
             color: yellow;
             margin-bottom: 10px;
         }
-        body.light-mode #welcome h1 {
-            color: #ffcc00;
-        }
+
         #welcome p {
             font-size: 18px;
             max-width: 600px;
@@ -66,11 +57,7 @@
             color: white;
             border: none;
         }
-        body.light-mode #problemInput {
-            background: #fff;
-            color: black;
-            border: 1px solid #ccc;
-        }
+
         #toggles {
             position: absolute;
             bottom: 20px;
@@ -105,12 +92,7 @@
         .toggle.on::before {
             transform: translateX(20px);
         }
-        body.light-mode .toggle {
-            background: #ccc;
-        }
-        body.light-mode .toggle.on {
-            background: #4caf50;
-        }
+
         body.dark-mode .toggle.on {
             background: #4caf50;
         }
@@ -126,16 +108,11 @@
             margin-top: 10px;
             animation: throb 1.2s infinite;
         }
-        body.light-mode #learnButton {
-            background: #4caf50;
-            color: white;
-        }
+
         #learnButton:hover {
             background: #555;
         }
-        body.light-mode #learnButton:hover {
-            background: #45a049;
-        }
+
         @keyframes throb {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.15); }
@@ -147,9 +124,7 @@
             font-size: 36px;
             text-align: center;
         }
-        body.light-mode #title {
-            color: #ffcc00;
-        }
+
         #progressBar {
             position: absolute;
             top: 70px;
@@ -161,9 +136,7 @@
             overflow: hidden;
             display: none;
         }
-        body.light-mode #progressBar {
-            background: #ccc;
-        }
+
         #progress {
             height: 100%;
             background: #4caf50;
@@ -178,9 +151,7 @@
             font-size: 18px;
             display: hidden;
         }
-        body.light-mode #score {
-            color: black;
-        }
+
         #problem {
             position: absolute;
             top: 100px;
@@ -188,9 +159,7 @@
             color: white;
             font-size: 28px;
         }
-        body.light-mode #problem {
-            color: #ffcc00;
-        }
+
         #problem .grey { color: #666; }
         #problem .b { color: #ff0000; font-weight: bold; padding: 10px; }
         #problem .e { color: #00ff00; font-weight: bold; padding: 10px; }
@@ -204,9 +173,7 @@
             font-size: 24px;
             display: none;
         }
-        body.light-mode #gameMode {
-            color: black;
-        }
+
         #gameMode input {
             margin: 10px 0;
             padding: 8px;
@@ -217,11 +184,7 @@
             border: none;
             vertical-align: middle;
         }
-        body.light-mode #gameMode input {
-            background: #fff;
-            color: black;
-            border: 1px solid #ccc;
-        }
+
         #checkAnswer {
             padding: 8px 16px;
             font-size: 16px;
@@ -233,16 +196,11 @@
             vertical-align: middle;
             border-radiud: 8px;    
         }
-        body.light-mode #checkAnswer {
-            background: #4caf50;
-            color: white;
-        }
+
         #checkAnswer:hover {
             background: #555;
         }
-        body.light-mode #checkAnswer:hover {
-            background: #45a049;
-        }
+
         #feedback {
             font-size: 18px;
             color: white;
@@ -250,9 +208,7 @@
             display: inline;
             vertical-align: middle;
         }
-        body.light-mode #feedback {
-            color: #4caf50;
-        }
+
         #steps {
             position: absolute;
             top: 150px;
@@ -262,9 +218,7 @@
             color: white;
             margin-top: 5px;
         }
-        body.light-mode #steps {
-            color: white;
-        }
+
         #steps .b { color: #ff0000; }
         #steps .e { color: #00ff00; }
         #steps .m { color: #ff00ff; }
@@ -278,9 +232,7 @@
             color: white;
             margin-top: 5px;
         }
-        body.light-mode #stepsNonGame {
-            color: white;
-        }
+ 
         #stepsNonGame .b { color: #ff0000; }
         #stepsNonGame .e { color: #00ff00; }
         #stepsNonGame .m { color: #ff00ff; }
@@ -292,9 +244,7 @@
             color: white;
             font-size: 26px;
         }
-        body.light-mode #updatedSum {
-            color: black;
-        }
+
         #updatedSum .b { color: #ff0000; font-weight: bold; }
         #updatedSum .e { color: #00ff00; font-weight: bold; }
         #updatedSum .m { color: #ff00ff; font-weight: bold; }
@@ -308,9 +258,7 @@
             line-height: 1.5;
             text-align: left;
         }
-        body.light-mode #bedmas {
-            color: black;
-        }
+
         #bedmas .b { color: #ff0000; }
         #bedmas .e { color: #00ff00; }
         #bedmas .d { color: #0000ff; }
@@ -324,23 +272,17 @@
             font-size: 16px;
             color: white;
         }
-        body.light-mode #acronymTable {
-            color: black;
-        }
+ 
         #acronymTable th, #acronymTable td {
             border: 1px solid #666;
             padding: 8px;
             text-align: left;
         }
-        body.light-mode #acronymTable th, body.light-mode #acronymTable td {
-            border: 1px solid #ccc;
-        }
+
         #acronymTable th {
             background: #333;
         }
-        body.light-mode #acronymTable th {
-            background: #ddd;
-        }
+
         #acronymTable .b, #acronymTable .p { color: #ff0000; }
         #acronymTable .e, #acronymTable .o { color: #00ff00; }
         #acronymTable .d, #acronymTable .m1 { color: #0000ff; }
@@ -363,10 +305,7 @@
             padding: 20px;
             z-index: 10;
         }
-        body.light-mode #levelSummary {
-            background: rgba(255, 255, 255, 0.9);
-            color: black;
-        }
+
         #levelSummary h2 {
             font-size: 36px;
             margin-bottom: 20px;
@@ -384,13 +323,7 @@
             cursor: pointer;
             margin-top: 20px;
         }
-        body.light-mode #nextLevelButton {
-            background: #4caf50;
-            color: white;
-        }
-        body.light-mode #nextLevelButton:hover {
-            background: #45a049;
-        }
+
         #nextStep {
             position: absolute;
             bottom: 20px;
@@ -405,14 +338,7 @@
             cursor: pointer;
             animation: throb 1.5s infinite;
         }
-        body.light-mode #nextStep {
-            background: #4caf50;
-            color: white;
-        }
 
-        body.light-mode #nextStep:hover {
-            background: #45a049;
-        }
         #nextSum {
             position: absolute;
             bottom: 20px;
@@ -426,13 +352,7 @@
             border-radius: 8px;
 
         }
-        body.light-mode #nextSum {
-            background: #4caf50;
-            color: white;
-        }
-        body.light-mode #nextSum:hover {
-            background: #45a049;
-        }
+
         #acronymSelection {
             margin: 10px 0;
             font-size: 16px;
@@ -455,6 +375,16 @@
         <p>Enter a sum (e.g., (2 + 3) * 4^2 + 7) or leave blank for a random one:</p>
         <input type="text" id="problemInput" placeholder="(a + b) * c^d + e">
         <button id="learnButton">Learn</button>
+        <div id="toggles">
+            <label class="toggle-label">
+                <span>Complex Sums</span>
+                <div id="complexToggle" class="toggle"></div>
+            </label>
+            <label class="toggle-label">
+                <span>Game Mode</span>
+                <div id="gameModeToggle" class="toggle"></div>
+            </label>
+        </div>
         <div id="acronymSelection">
             <p>Select Acronym:</p>
             <label><input type="radio" name="acronym" value="BEDMAS" checked> BEDMAS</label>
@@ -489,20 +419,6 @@
                 <td>United States</td>
             </tr>
         </table>
-        <div id="toggles">
-            <label class="toggle-label">
-                <span>Light Mode</span>
-                <div id="themeToggle" class="toggle"></div>
-            </label>
-            <label class="toggle-label">
-                <span>Complex Sums</span>
-                <div id="complexToggle" class="toggle"></div>
-            </label>
-            <label class="toggle-label">
-                <span>Game Mode</span>
-                <div id="gameModeToggle" class="toggle"></div>
-            </label>
-        </div>
     </div>
     <div id="title" class="hidden">Operations</div>
     <div id="progressBar" class="hidden"><div id="progress"></div></div>
@@ -572,7 +488,6 @@
         const nextSumButton = document.getElementById('nextSum');
         const learnButton = document.getElementById('learnButton');
         const problemInput = document.getElementById('problemInput');
-        const themeToggle = document.getElementById('themeToggle');
         const complexToggle = document.getElementById('complexToggle');
         const gameModeToggle = document.getElementById('gameModeToggle');
         const acronymRadios = document.querySelectorAll('input[name="acronym"]');
@@ -612,13 +527,6 @@
                 { letter: 'S', meaning: 'Subtraction', class: 's' }
             ]
         };
-
-        // Theme toggle
-        themeToggle.addEventListener('click', () => {
-            document.body.classList.toggle('dark-mode');
-            document.body.classList.toggle('light-mode');
-            themeToggle.classList.toggle('on');
-        });
 
         // Complex mode toggle
         complexToggle.addEventListener('click', () => {
