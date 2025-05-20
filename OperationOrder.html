@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Operations - V0.9.8</title>
+    <title>Operations - V0.9.9</title>
     <style>
         body { 
             margin: 0; 
@@ -199,10 +199,6 @@
             border-radiud: 8px;    
         }
 
-        #checkAnswer:hover {
-            background: #555;
-        }
-
         #feedback {
             font-size: 16px;
             color: white;
@@ -297,7 +293,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.9);
+            background: darkslategray;
             color: white;
             display: none;
             flex-direction: column;
@@ -424,10 +420,8 @@
         </table>
     </div>
     <div id="title" class="hidden">Operations</div>
-    <div align="center">
-        <div id="progressBar" class="hidden"><div id="progress"></div></div>
-        <div id="score" class="hidden">Score: 0 | Level: 1</div>
-    </div>
+    <div id="progressBar" class="hidden"><div id="progress"></div></div>
+    <div id="score" class="hidden">Score: 0 | Level: 1</div>
     <div id="problem" class="hidden"></div>
     <div id="gameMode" class="hidden">
         <input type="text" id="answerInput" placeholder="Enter answer">
