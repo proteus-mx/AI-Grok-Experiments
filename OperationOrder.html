@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order of Operations - V0.5</title>
+    <title>Order of Operations - V0.6</title>
     <style>
         body { 
             margin: 0; 
@@ -24,7 +24,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.9);
+            background: darkslategray;
             color: white;
             display: flex;
             flex-direction: column;
@@ -410,9 +410,7 @@
             background: #4caf50;
             color: white;
         }
-        #nextStep:hover {
-            background: #555;
-        }
+
         body.light-mode #nextStep:hover {
             background: #45a049;
         }
@@ -432,9 +430,6 @@
         body.light-mode #nextSum {
             background: #4caf50;
             color: white;
-        }
-        #nextSum:hover {
-            background: #555;
         }
         body.light-mode #nextSum:hover {
             background: #45a049;
@@ -456,7 +451,7 @@
 <body class="dark-mode">
     <div id="welcome">
         <h1>Order of Operations</h1>
-        <p>Learn the order of operations through step-by-step visualizations of mathematical expressions.</p>
+        <p>Learn the order of operations through step-by-step visualisations of mathematical expressions.</p>
         <p class="small-text">The order of operations is crucial for solving mathematical expressions correctly, ensuring consistent results.</p>
         <p>Enter a sum (e.g., (2 + 3) * 4^2 + 7) or leave blank for a random one:</p>
         <input type="text" id="problemInput" placeholder="(a + b) * c^d + e">
@@ -950,11 +945,13 @@
                         `<span class="${step.class}">${highlightText}</span>`
                     );
                 }
-                updatedSumDisplay.innerHTML = `Current Sum: ${sumText}`;
-                if (isGameMode)
+                if (isGameMode) {
                     updatedSumDisplay.top = `280px`; // TODO check
-                else
+                } else {
                     updatedSumDisplay.top = `170px`; // TODO check
+                }
+                
+                updatedSumDisplay.innerHTML = `Current Sum: ${sumText}`;
             } else {
                 updatedSumDisplay.innerHTML = '';
             }
