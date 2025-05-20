@@ -1,0 +1,1169 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order of Operations</title>
+    <style>
+        body { 
+            margin: 0; 
+            font-family: Arial, sans-serif; 
+            transition: background-color 0.3s, color 0.3s;
+        }
+        body.dark-mode {
+            background: black;
+            color: white;
+        }
+        body.light-mode {
+            background: #f0f0f0;
+            color: black;
+        }
+        #welcome {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            z-index: 10;
+        }
+        body.light-mode #welcome {
+            background: rgba(255, 255, 255, 0.9);
+            color: black;
+        }
+        #welcome h1 {
+            font-size: 48px;
+            color: yellow;
+            margin-bottom: 10px;
+        }
+        body.light-mode #welcome h1 {
+            color: #ffcc00;
+        }
+        #welcome p {
+            font-size: 18px;
+            max-width: 600px;
+            line-height: 1.5;
+            margin: 10px 0;
+        }
+        #welcome .small-text {
+            font-size: 14px;
+            max-width: 600px;
+            line-height: 1.5;
+            margin: 10px 0;
+        }
+        #problemInput {
+            margin: 10px 0;
+            padding: 8px;
+            font-size: 16px;
+            width: 300px;
+            background: #333;
+            color: white;
+            border: none;
+        }
+        body.light-mode #problemInput {
+            background: #fff;
+            color: black;
+            border: 1px solid #ccc;
+        }
+        #toggles {
+            position: absolute;
+            bottom: 20px;
+            display: flex;
+            gap: 20px;
+        }
+        .toggle-label {
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .toggle {
+            width: 40px;
+            height: 20px;
+            background: #666;
+            border-radius: 20px;
+            position: relative;
+            cursor: pointer;
+        }
+        .toggle::before {
+            content: '';
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s;
+        }
+        .toggle.on::before {
+            transform: translateX(20px);
+        }
+        body.light-mode .toggle {
+            background: #ccc;
+        }
+        body.light-mode .toggle.on {
+            background: #4caf50;
+        }
+        body.dark-mode .toggle.on {
+            background: #4caf50;
+        }
+        #learnButton {
+            padding: 15px 30px;
+            font-size: 20px;
+            font-weight: bold;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+            animation: throb 1.2s infinite;
+        }
+        body.light-mode #learnButton {
+            background: #4caf50;
+            color: white;
+        }
+        #learnButton:hover {
+            background: #555;
+        }
+        body.light-mode #learnButton:hover {
+            background: #45a049;
+        }
+        @keyframes throb {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+        #title {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: yellow;
+            font-size: 48px;
+        }
+        body.light-mode #title {
+            color: #ffcc00;
+        }
+        #progressBar {
+            position: absolute;
+            top: 70px;
+            left: 20px;
+            width: 150px;
+            height: 20px;
+            background: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            display: none;
+        }
+        body.light-mode #progressBar {
+            background: #ccc;
+        }
+        #progress {
+            height: 100%;
+            background: #4caf50;
+            width: 0;
+            transition: width 0.3s;
+        }
+        #score {
+            position: absolute;
+            top: 70px;
+            left: 180px;
+            color: white;
+            font-size: 24px;
+            display: inline-block;
+        }
+        body.light-mode #score {
+            color: black;
+        }
+        #problem {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            color: yellow;
+            font-size: 40px;
+        }
+        body.light-mode #problem {
+            color: #ffcc00;
+        }
+        #problem .grey { color: #666; }
+        #problem .b { color: #ff0000; font-weight: bold; }
+        #problem .e { color: #00ff00; font-weight: bold; }
+        #problem .m { color: #ff00ff; font-weight: bold; }
+        #problem .a { color: #00ffff; font-weight: bold; }
+        #gameMode {
+            position: absolute;
+            top: 180px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            display: none;
+        }
+        body.light-mode #gameMode {
+            color: black;
+        }
+        #gameMode input {
+            margin: 10px 0;
+            padding: 8px;
+            font-size: 16px;
+            width: 100px;
+            background: #333;
+            color: white;
+            border: none;
+            vertical-align: middle;
+        }
+        body.light-mode #gameMode input {
+            background: #fff;
+            color: black;
+            border: 1px solid #ccc;
+        }
+        #checkAnswer {
+            padding: 8px 16px;
+            font-size: 16px;
+            background: #333;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        body.light-mode #checkAnswer {
+            background: #4caf50;
+            color: white;
+        }
+        #checkAnswer:hover {
+            background: #555;
+        }
+        body.light-mode #checkAnswer:hover {
+            background: #45a049;
+        }
+        #feedback {
+            font-size: 24px;
+            color: lime;
+            margin-left: 10px;
+            display: inline;
+            vertical-align: middle;
+        }
+        body.light-mode #feedback {
+            color: #4caf50;
+        }
+        #steps {
+            position: absolute;
+            top: 150px;
+            left: 20px;
+            font-size: 24px;
+            max-width: 500px;
+            color: white;
+            margin-top: 5px;
+        }
+        body.light-mode #steps {
+            color: white;
+        }
+        #steps .b { color: #ff0000; }
+        #steps .e { color: #00ff00; }
+        #steps .m { color: #ff00ff; }
+        #steps .a { color: #00ffff; }
+        #stepsNonGame {
+            position: absolute;
+            top: 220px;
+            left: 20px;
+            font-size: 24px;
+            max-width: 500px;
+            color: white;
+            margin-top: 5px;
+        }
+        body.light-mode #stepsNonGame {
+            color: white;
+        }
+        #stepsNonGame .b { color: #ff0000; }
+        #stepsNonGame .e { color: #00ff00; }
+        #stepsNonGame .m { color: #ff00ff; }
+        #stepsNonGame .a { color: #00ffff; }
+        #updatedSum {
+            position: absolute;
+            top: 190px;
+            left: 20px;
+            color: white;
+            font-size: 30px;
+        }
+        body.light-mode #updatedSum {
+            color: black;
+        }
+        #updatedSum .b { color: #ff0000; font-weight: bold; }
+        #updatedSum .e { color: #00ff00; font-weight: bold; }
+        #updatedSum .m { color: #ff00ff; font-weight: bold; }
+        #updatedSum .a { color: #00ffff; font-weight: bold; }
+        #bedmas {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            line-height: 1.5;
+            text-align: left;
+        }
+        body.light-mode #bedmas {
+            color: black;
+        }
+        #bedmas .b { color: #ff0000; }
+        #bedmas .e { color: #00ff00; }
+        #bedmas .d { color: #0000ff; }
+        #bedmas .m { color: #ff00ff; }
+        #bedmas .a { color: #00ffff; }
+        #bedmas .s { color: #ffa500; }
+        #acronymTable {
+            margin-top: 20px;
+            width: 500px;
+            border-collapse: collapse;
+            font-size: 16px;
+            color: white;
+        }
+        body.light-mode #acronymTable {
+            color: black;
+        }
+        #acronymTable th, #acronymTable td {
+            border: 1px solid #666;
+            padding: 8px;
+            text-align: left;
+        }
+        body.light-mode #acronymTable th, body.light-mode #acronymTable td {
+            border: 1px solid #ccc;
+        }
+        #acronymTable th {
+            background: #333;
+        }
+        body.light-mode #acronymTable th {
+            background: #ddd;
+        }
+        #acronymTable .b, #acronymTable .p { color: #ff0000; }
+        #acronymTable .e, #acronymTable .o { color: #00ff00; }
+        #acronymTable .d, #acronymTable .m1 { color: #0000ff; }
+        #acronymTable .m2 { color: #ff00ff; }
+        #acronymTable .a { color: #00ffff; }
+        #acronymTable .s { color: #ffa500; }
+        #levelSummary {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            z-index: 10;
+        }
+        body.light-mode #levelSummary {
+            background: rgba(255, 255, 255, 0.9);
+            color: black;
+        }
+        #levelSummary h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        #levelSummary p {
+            font-size: 24px;
+            margin: 10px 0;
+        }
+        #nextLevelButton {
+            padding: 12px 24px;
+            font-size: 18px;
+            background: #333;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        body.light-mode #nextLevelButton {
+            background: #4caf50;
+            color: white;
+        }
+        #nextLevelButton:hover {
+            background: #555;
+        }
+        body.light-mode #nextLevelButton:hover {
+            background: #45a049;
+        }
+        #nextStep {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            font-size: 20px;
+            font-weight: bold;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            animation: throb 1.5s infinite;
+        }
+        body.light-mode #nextStep {
+            background: #4caf50;
+            color: white;
+        }
+        #nextStep:hover {
+            background: #555;
+        }
+        body.light-mode #nextStep:hover {
+            background: #45a049;
+        }
+        #nextSum {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            font-size: 20px;
+            background: #333;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        body.light-mode #nextSum {
+            background: #4caf50;
+            color: white;
+        }
+        #nextSum:hover {
+            background: #555;
+        }
+        body.light-mode #nextSum:hover {
+            background: #45a049;
+        }
+        #acronymSelection {
+            margin: 10px 0;
+            font-size: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        #acronymSelection label {
+            margin: 0 10px;
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body class="dark-mode">
+    <div id="welcome">
+        <h1>Order of Operations</h1>
+        <p>Learn the order of operations through step-by-step visualizations of mathematical expressions.</p>
+        <p class="small-text">The order of operations is crucial for solving mathematical expressions correctly, ensuring consistent results.</p>
+        <p>Enter a sum (e.g., (2 + 3) * 4^2 + 7) or leave blank for a random one:</p>
+        <input type="text" id="problemInput" placeholder="(a + b) * c^d + e">
+        <button id="learnButton">Learn</button>
+        <div id="acronymSelection">
+            <p>Select Acronym:</p>
+            <label><input type="radio" name="acronym" value="BEDMAS" checked> BEDMAS</label>
+            <label><input type="radio" name="acronym" value="BODMAS"> BODMAS</label>
+            <label><input type="radio" name="acronym" value="PEDMAS"> PEDMAS</label>
+            <label><input type="radio" name="acronym" value="PEMDAS"> PEMDAS</label>
+        </div>
+        <table id="acronymTable">
+            <tr>
+                <th>Acronym</th>
+                <th>Meaning</th>
+                <th>Popular in</th>
+            </tr>
+            <tr>
+                <td><span class="b">B</span><span class="e">E</span><span class="d">D</span><span class="m2">M</span><span class="a">A</span><span class="s">S</span></td>
+                <td>Brackets, Exponents, Division, Multiplication, Addition, Subtraction</td>
+                <td>Canada, Australia</td>
+            </tr>
+            <tr>
+                <td><span class="b">B</span><span class="o">O</span><span class="d">D</span><span class="m2">M</span><span class="a">A</span><span class="s">S</span></td>
+                <td>Brackets, Orders, Division, Multiplication, Addition, Subtraction</td>
+                <td>UK, India</td>
+            </tr>
+            <tr>
+                <td><span class="p">P</span><span class="e">E</span><span class="d">D</span><span class="m2">M</span><span class="a">A</span><span class="s">S</span></td>
+                <td>Parentheses, Exponents, Division, Multiplication, Addition, Subtraction</td>
+                <td>United States (less common)</td>
+            </tr>
+            <tr>
+                <td><span class="p">P</span><span class="e">E</span><span class="m1">M</span><span class="d">D</span><span class="a">A</span><span class="s">S</span></td>
+                <td>Parentheses, Exponents, Multiplication, Division, Addition, Subtraction</td>
+                <td>United States</td>
+            </tr>
+        </table>
+        <div id="toggles">
+            <label class="toggle-label">
+                <span>Light Mode</span>
+                <div id="themeToggle" class="toggle"></div>
+            </label>
+            <label class="toggle-label">
+                <span>Complex Sums</span>
+                <div id="complexToggle" class="toggle"></div>
+            </label>
+            <label class="toggle-label">
+                <span>Game Mode</span>
+                <div id="gameModeToggle" class="toggle"></div>
+            </label>
+        </div>
+    </div>
+    <div id="title" class="hidden">Order of Operations</div>
+    <div id="progressBar" class="hidden"><div id="progress"></div></div>
+    <div id="score" class="hidden">Score: 0 | Level: 1</div>
+    <div id="problem" class="hidden"></div>
+    <div id="gameMode" class="hidden">
+        <input type="text" id="answerInput" placeholder="Enter answer">
+        <button id="checkAnswer">Check</button>
+        <span id="feedback"></span>
+        <div id="steps"></div>
+    </div>
+    <div id="updatedSum" class="hidden"></div>
+    <div id="stepsNonGame" class="hidden"></div>
+    <div id="bedmas" class="hidden"></div>
+    <div id="levelSummary" class="hidden">
+        <h2>Level Completed!</h2>
+        <p id="levelNumber"></p>
+        <p id="correctAnswers"></p>
+        <p id="incorrectAnswers"></p>
+        <p id="percentage"></p>
+        <button id="nextLevelButton">Next Level</button>
+    </div>
+    <button id="nextStep" class="hidden">Next Step</button>
+    <button id="nextSum" class="hidden">Next Sum</button>
+
+    <script>
+        // Game state
+        let currentProblem = null;
+        let currentStep = 0;
+        let steps = [];
+        let stepHistory = [];
+        let updatedSums = [];
+        let evaluatedParts = [];
+        let isComplexMode = false;
+        let isGameMode = false;
+        let score = 0;
+        let answerChecked = false;
+        let level = 1;
+        let questionCount = 0;
+        let correctCount = 0;
+        let incorrectCount = 0;
+        let selectedAcronym = 'BEDMAS';
+        const questionsPerLevel = 10;
+
+        // UI elements
+        const welcomeScreen = document.getElementById('welcome');
+        const titleDisplay = document.getElementById('title');
+        const progressBar = document.getElementById('progressBar');
+        const progress = document.getElementById('progress');
+        const scoreDisplay = document.getElementById('score');
+        const problemDisplay = document.getElementById('problem');
+        const gameModeDisplay = document.getElementById('gameMode');
+        const answerInput = document.getElementById('answerInput');
+        const checkAnswerButton = document.getElementById('checkAnswer');
+        const feedbackDisplay = document.getElementById('feedback');
+        const stepsDisplay = document.getElementById('steps');
+        const stepsNonGameDisplay = document.getElementById('stepsNonGame');
+        const updatedSumDisplay = document.getElementById('updatedSum');
+        const bedmasDisplay = document.getElementById('bedmas');
+        const levelSummary = document.getElementById('levelSummary');
+        const levelNumber = document.getElementById('levelNumber');
+        const correctAnswers = document.getElementById('correctAnswers');
+        const incorrectAnswers = document.getElementById('incorrectAnswers');
+        const percentage = document.getElementById('percentage');
+        const nextLevelButton = document.getElementById('nextLevelButton');
+        const nextStepButton = document.getElementById('nextStep');
+        const nextSumButton = document.getElementById('nextSum');
+        const learnButton = document.getElementById('learnButton');
+        const problemInput = document.getElementById('problemInput');
+        const themeToggle = document.getElementById('themeToggle');
+        const complexToggle = document.getElementById('complexToggle');
+        const gameModeToggle = document.getElementById('gameModeToggle');
+        const acronymRadios = document.querySelectorAll('input[name="acronym"]');
+
+        // Acronym data
+        const acronyms = {
+            BEDMAS: [
+                { letter: 'B', meaning: 'Brackets', class: 'b' },
+                { letter: 'E', meaning: 'Exponents', class: 'e' },
+                { letter: 'D', meaning: 'Division', class: 'd' },
+                { letter: 'M', meaning: 'Multiplication', class: 'm' },
+                { letter: 'A', meaning: 'Addition', class: 'a' },
+                { letter: 'S', meaning: 'Subtraction', class: 's' }
+            ],
+            BODMAS: [
+                { letter: 'B', meaning: 'Brackets', class: 'b' },
+                { letter: 'O', meaning: 'Orders', class: 'e' },
+                { letter: 'D', meaning: 'Division', class: 'd' },
+                { letter: 'M', meaning: 'Multiplication', class: 'm' },
+                { letter: 'A', meaning: 'Addition', class: 'a' },
+                { letter: 'S', meaning: 'Subtraction', class: 's' }
+            ],
+            PEDMAS: [
+                { letter: 'P', meaning: 'Parentheses', class: 'b' },
+                { letter: 'E', meaning: 'Exponents', class: 'e' },
+                { letter: 'D', meaning: 'Division', class: 'd' },
+                { letter: 'M', meaning: 'Multiplication', class: 'm' },
+                { letter: 'A', meaning: 'Addition', class: 'a' },
+                { letter: 'S', meaning: 'Subtraction', class: 's' }
+            ],
+            PEMDAS: [
+                { letter: 'P', meaning: 'Parentheses', class: 'b' },
+                { letter: 'E', meaning: 'Exponents', class: 'e' },
+                { letter: 'M', meaning: 'Multiplication', class: 'm' },
+                { letter: 'D', meaning: 'Division', class: 'd' },
+                { letter: 'A', meaning: 'Addition', class: 'a' },
+                { letter: 'S', meaning: 'Subtraction', class: 's' }
+            ]
+        };
+
+        // Theme toggle
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            document.body.classList.toggle('light-mode');
+            themeToggle.classList.toggle('on');
+        });
+
+        // Complex mode toggle
+        complexToggle.addEventListener('click', () => {
+            isComplexMode = !isComplexMode;
+            complexToggle.classList.toggle('on');
+        });
+
+        // Game mode toggle
+        gameModeToggle.addEventListener('click', () => {
+            isGameMode = !isGameMode;
+            gameModeToggle.classList.toggle('on');
+        });
+
+        // Acronym selection
+        acronymRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                selectedAcronym = radio.value;
+            });
+        });
+
+        // Update BEDMAS display
+        function updateBedmasDisplay(activeStep) {
+            let html = '';
+            const currentAcronym = acronyms[selectedAcronym];
+            currentAcronym.forEach((step, index) => {
+                const isActive = index === activeStep;
+                const className = isActive ? step.class : '';
+                html += `<div class="${className}"><span class="${step.class}">${step.letter}</span>: ${step.meaning}</div>`;
+            });
+            bedmasDisplay.innerHTML = html;
+        }
+
+        // Typewriter effect for steps
+        function typeWriter(text, element, className, callback) {
+            element.innerHTML = '';
+            let i = 0;
+            function type() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    i++;
+                    setTimeout(type, 50);
+                } else if (callback) {
+                    callback();
+                }
+            }
+            element.className = className;
+            type();
+        }
+
+        // Validate and parse custom problem
+        function parseCustomProblem(input) {
+            let regex = isComplexMode 
+                ? /^\(\d+\s*\+\s*\d+\)\s*\*\s*\d+\^\d+\s*\+\s*\d+\s*\*\s*\(\d+\s*\+\s*\d+\)$/ 
+                : /^\(\d+\s*\+\s*\d+\)\s*\*\s*\d+\^\d+\s*\+\s*\d+$/;
+            if (!regex.test(input)) return null;
+
+            if (isComplexMode) {
+                const parts = input.match(/\((\d+)\s*\+\s*(\d+)\)\s*\*\s*(\d+)\^(\d+)\s*\+\s*(\d+)\s*\*\s*\((\d+)\s*\+\s*(\d+)\)/);
+                if (!parts) return null;
+
+                const a = parseInt(parts[1]);
+                const b = parseInt(parts[2]);
+                const mul = parseInt(parts[3]);
+                const exp = parseInt(parts[4]);
+                const e = parseInt(parts[5]);
+                const f = parseInt(parts[6]);
+                const g = parseInt(parts[7]);
+
+                const problem = `(${a} + ${b}) * ${mul}^${exp} + ${e} * (${f} + ${g})`;
+                updatedSums = [
+                    `${a + b} * ${mul}^${exp} + ${e} * (${f} + ${g})`, // After first brackets
+                    `${a + b} * ${mul}^${exp} + ${e} * ${f + g}`, // After second brackets
+                    `${a + b} * ${Math.pow(mul, exp)} + ${e} * ${f + g}`, // After exponents
+                    `${(a + b) * Math.pow(mul, exp)} + ${e} * ${f + g}`, // After first multiplication
+                    `${(a + b) * Math.pow(mul, exp)} + ${e * (f + g)}`, // After second multiplication
+                    `${(a + b) * Math.pow(mul, exp) + e * (f + g)}` // After addition
+                ];
+                steps = [
+                    { 
+                        description: `Solve first ${selectedAcronym[0] === 'P' ? 'parentheses' : 'brackets'}: (${a} + ${b}) = ${a + b}`, 
+                        answer: a + b, 
+                        bedmasIndex: 0, 
+                        highlight: `(${a} + ${b})`, 
+                        class: 'b'
+                    },
+                    { 
+                        description: `Solve second ${selectedAcronym[0] === 'P' ? 'parentheses' : 'brackets'}: (${f} + ${g}) = ${f + g}`, 
+                        answer: f + g, 
+                        bedmasIndex: 0, 
+                        highlight: `(${f} + ${g})`, 
+                        class: 'b'
+                    },
+                    { 
+                        description: `Solve ${selectedAcronym[1] === 'O' ? 'orders' : 'exponent'}: ${mul}^${exp} = ${Math.pow(mul, exp)}`, 
+                        answer: Math.pow(mul, exp), 
+                        bedmasIndex: 1, 
+                        highlight: `${mul}^${exp}`, 
+                        class: 'e'
+                    },
+                    { 
+                        description: `Multiply: ${a + b} * ${Math.pow(mul, exp)} = ${(a + b) * Math.pow(mul, exp)}`, 
+                        answer: (a + b) * Math.pow(mul, exp), 
+                        bedmasIndex: selectedAcronym === 'PEMDAS' ? 2 : 3, 
+                        highlight: `*`, 
+                        class: 'm'
+                    },
+                    { 
+                        description: `Multiply: ${e} * ${f + g} = ${e * (f + g)}`, 
+                        answer: e * (f + g), 
+                        bedmasIndex: selectedAcronym === 'PEMDAS' ? 2 : 3, 
+                        highlight: ` * `, 
+                        class: 'm'
+                    },
+                    { 
+                        description: `Add: ${(a + b) * Math.pow(mul, exp)} + ${e * (f + g)} = ${(a + b) * Math.pow(mul, exp) + e * (f + g)}`, 
+                        answer: (a + b) * Math.pow(mul, exp) + e * (f + g), 
+                        bedmasIndex: 4, 
+                        highlight: ` + ${e} * ${f + g}`, 
+                        class: 'a'
+                    }
+                ];
+                return { problem, finalAnswer: (a + b) * Math.pow(mul, exp) + e * (f + g) };
+            } else {
+                const parts = input.match(/\((\d+)\s*\+\s*(\d+)\)\s*\*\s*(\d+)\^(\d+)\s*\+\s*(\d+)/);
+                if (!parts) return null;
+
+                const a = parseInt(parts[1]);
+                const b = parseInt(parts[2]);
+                const mul = parseInt(parts[3]);
+                const exp = parseInt(parts[4]);
+                const add = parseInt(parts[5]);
+
+                const problem = `(${a} + ${b}) * ${mul}^${exp} + ${add}`;
+                updatedSums = [
+                    `${a + b} * ${mul}^${exp} + ${add}`, // After brackets
+                    `${a + b} * ${Math.pow(mul, exp)} + ${add}`, // After exponents
+                    `${(a + b) * Math.pow(mul, exp)} + ${add}`, // After multiplication
+                    `${(a + b) * Math.pow(mul, exp) + add}` // After addition
+                ];
+                steps = [
+                    { 
+                        description: `Solve ${selectedAcronym[0] === 'P' ? 'parentheses' : 'brackets'}: (${a} + ${b}) = ${a + b}`, 
+                        answer: a + b, 
+                        bedmasIndex: 0, 
+                        highlight: `(${a} + ${b})`, 
+                        class: 'b'
+                    },
+                    { 
+                        description: `Solve ${selectedAcronym[1] === 'O' ? 'orders' : 'exponent'}: ${mul}^${exp} = ${Math.pow(mul, exp)}`, 
+                        answer: Math.pow(mul, exp), 
+                        bedmasIndex: 1, 
+                        highlight: `${mul}^${exp}`, 
+                        class: 'e'
+                    },
+                    { 
+                        description: `Multiply: ${a + b} * ${Math.pow(mul, exp)} = ${(a + b) * Math.pow(mul, exp)}`, 
+                        answer: (a + b) * Math.pow(mul, exp), 
+                        bedmasIndex: selectedAcronym === 'PEMDAS' ? 2 : 3, 
+                        highlight: `*`, 
+                        class: 'm'
+                    },
+                    { 
+                        description: `Add: ${(a + b) * Math.pow(mul, exp)} + ${add} = ${(a + b) * Math.pow(mul, exp) + add}`, 
+                        answer: (a + b) * Math.pow(mul, exp) + add, 
+                        bedmasIndex: 4, 
+                        highlight: ` + ${add}`, 
+                        class: 'a'
+                    }
+                ];
+                return { problem, finalAnswer: (a + b) * Math.pow(mul, exp) + add };
+            }
+        }
+
+        // Generate random BEDMAS problem
+        function generateRandomProblem() {
+            if (isComplexMode) {
+                const a = Math.floor(Math.random() * 5) + 1;
+                const b = Math.floor(Math.random() * 5) + 1;
+                const mul = Math.floor(Math.random() * 5) + 1;
+                const exp = Math.floor(Math.random() * 2) + 2;
+                const e = Math.floor(Math.random() * 5) + 1;
+                const f = Math.floor(Math.random() * 5) + 1;
+                const g = Math.floor(Math.random() * 5) + 1;
+
+                const problem = `(${a} + ${b}) * ${mul}^${exp} + ${e} * (${f} + ${g})`;
+                updatedSums = [
+                    `${a + b} * ${mul}^${exp} + ${e} * (${f} + ${g})`, // After first brackets
+                    `${a + b} * ${mul}^${exp} + ${e} * ${f + g}`, // After second brackets
+                    `${a + b} * ${Math.pow(mul, exp)} + ${e} * ${f + g}`, // After exponents
+                    `${(a + b) * Math.pow(mul, exp)} + ${e} * ${f + g}`, // After first multiplication
+                    `${(a + b) * Math.pow(mul, exp)} + ${e * (f + g)}`, // After second multiplication
+                    `${(a + b) * Math.pow(mul, exp) + e * (f + g)}` // After addition
+                ];
+                steps = [
+                    { 
+                        description: `Solve first ${selectedAcronym[0] === 'P' ? 'parentheses' : 'brackets'}: (${a} + ${b}) = ${a + b}`, 
+                        answer: a + b, 
+                        bedmasIndex: 0, 
+                        highlight: `(${a} + ${b})`, 
+                        class: 'b'
+                    },
+                    { 
+                        description: `Solve second ${selectedAcronym[0] === 'P' ? 'parentheses' : 'brackets'}: (${f} + ${g}) = ${f + g}`, 
+                        answer: f + g, 
+                        bedmasIndex: 0, 
+                        highlight: `(${f} + ${g})`, 
+                        class: 'b'
+                    },
+                    { 
+                        description: `Solve ${selectedAcronym[1] === 'O' ? 'orders' : 'exponent'}: ${mul}^${exp} = ${Math.pow(mul, exp)}`, 
+                        answer: Math.pow(mul, exp), 
+                        bedmasIndex: 1, 
+                        highlight: `${mul}^${exp}`, 
+                        class: 'e'
+                    },
+                    { 
+                        description: `Multiply: ${a + b} * ${Math.pow(mul, exp)} = ${(a + b) * Math.pow(mul, exp)}`, 
+                        answer: (a + b) * Math.pow(mul, exp), 
+                        bedmasIndex: selectedAcronym === 'PEMDAS' ? 2 : 3, 
+                        highlight: `*`, 
+                        class: 'm'
+                    },
+                    { 
+                        description: `Multiply: ${e} * ${f + g} = ${e * (f + g)}`, 
+                        answer: e * (f + g), 
+                        bedmasIndex: selectedAcronym === 'PEMDAS' ? 2 : 3, 
+                        highlight: ` * `, 
+                        class: 'm'
+                    },
+                    { 
+                        description: `Add: ${(a + b) * Math.pow(mul, exp)} + ${e * (f + g)} = ${(a + b) * Math.pow(mul, exp) + e * (f + g)}`, 
+                        answer: (a + b) * Math.pow(mul, exp) + e * (f + g), 
+                        bedmasIndex: 4, 
+                        highlight: ` + ${e} * ${f + g}`, 
+                        class: 'a'
+                    }
+                ];
+                return { problem, finalAnswer: (a + b) * Math.pow(mul, exp) + e * (f + g) };
+            } else {
+                const a = Math.floor(Math.random() * 5) + 1;
+                const b = Math.floor(Math.random() * 5) + 1;
+                const exp = Math.floor(Math.random() * 2) + 2;
+                const mul = Math.floor(Math.random() * 5) + 1;
+                const add = Math.floor(Math.random() * 10) + 1;
+
+                const problem = `(${a} + ${b}) * ${mul}^${exp} + ${add}`;
+                updatedSums = [
+                    `${a + b} * ${mul}^${exp} + ${add}`, // After brackets
+                    `${a + b} * ${Math.pow(mul, exp)} + ${add}`, // After exponents
+                    `${(a + b) * Math.pow(mul, exp)} + ${add}`, // After multiplication
+                    `${(a + b) * Math.pow(mul, exp) + add}` // After addition
+                ];
+                steps = [
+                    { 
+                        description: `Solve ${selectedAcronym[0] === 'P' ? 'parentheses' : 'brackets'}: (${a} + ${b}) = ${a + b}`, 
+                        answer: a + b, 
+                        bedmasIndex: 0, 
+                        highlight: `(${a} + ${b})`, 
+                        class: 'b'
+                    },
+                    { 
+                        description: `Solve ${selectedAcronym[1] === 'O' ? 'orders' : 'exponent'}: ${mul}^${exp} = ${Math.pow(mul, exp)}`, 
+                        answer: Math.pow(mul, exp), 
+                        bedmasIndex: 1, 
+                        highlight: `${mul}^${exp}`, 
+                        class: 'e'
+                    },
+                    { 
+                        description: `Multiply: ${a + b} * ${Math.pow(mul, exp)} = ${(a + b) * Math.pow(mul, exp)}`, 
+                        answer: (a + b) * Math.pow(mul, exp), 
+                        bedmasIndex: selectedAcronym === 'PEMDAS' ? 2 : 3, 
+                        highlight: `*`, 
+                        class: 'm'
+                    },
+                    { 
+                        description: `Add: ${(a + b) * Math.pow(mul, exp)} + ${add} = ${(a + b) * Math.pow(mul, exp) + add}`, 
+                        answer: (a + b) * Math.pow(mul, exp) + add, 
+                        bedmasIndex: 4, 
+                        highlight: ` + ${add}`, 
+                        class: 'a'
+                    }
+                ];
+                return { problem, finalAnswer: (a + b) * Math.pow(mul, exp) + add };
+            }
+        }
+
+        // Update problem display
+        function updateProblemDisplay() {
+            let problemText = currentProblem.problem;
+            evaluatedParts.forEach(part => {
+                problemText = problemText.replace(
+                    part,
+                    `<span class="grey">${part}</span>`
+                );
+            });
+            if (currentStep < steps.length) {
+                const step = steps[currentStep];
+                const highlightText = step.highlight;
+                if (!evaluatedParts.includes(highlightText)) {
+                    problemText = problemText.replace(
+                        highlightText,
+                        `<span class="${step.class}">${highlightText}</span>`
+                    );
+                }
+            }
+            problemDisplay.innerHTML = `Problem: ${problemText}`;
+        }
+
+        // Update simplified sum display
+        function updateSumDisplay() {
+            if (currentStep > 0 && currentStep <= updatedSums.length) {
+                let sumText = updatedSums[currentStep - 1];
+                if (currentStep < steps.length) {
+                    const step = steps[currentStep];
+                    let highlightText = step.highlight;
+                    if (step.bedmasIndex === 4) {
+                        highlightText = isComplexMode 
+                            ? ` + ${sumText.split(' + ')[1]}` 
+                            : ` + ${sumText.split(' + ')[1]}`;
+                    }
+                    sumText = sumText.replace(
+                        highlightText,
+                        `<span class="${step.class}">${highlightText}</span>`
+                    );
+                }
+                updatedSumDisplay.innerHTML = `Current Sum: ${sumText}`;
+            } else {
+                updatedSumDisplay.innerHTML = '';
+            }
+        }
+
+        // Update steps display with history
+        function updateStepsDisplay() {
+            const targetDisplay = isGameMode ? stepsDisplay : stepsNonGameDisplay;
+            targetDisplay.innerHTML = ''; // Clear previous content
+            let historyHtml = '';
+            stepHistory.forEach((step, index) => {
+                historyHtml += `<div class="${step.class}">Step ${index + 1}: ${step.description}</div>`;
+            });
+            targetDisplay.innerHTML = historyHtml;
+            
+            if (currentStep < steps.length) {
+                const stepText = `Step ${currentStep + 1}: ${steps[currentStep].description}`;
+                const stepDiv = document.createElement('div');
+                targetDisplay.appendChild(stepDiv);
+                typeWriter(stepText, stepDiv, steps[currentStep].class);
+            } else {
+                const stepDiv = document.createElement('div');
+                targetDisplay.appendChild(stepDiv);
+                typeWriter('Problem solved!', stepDiv, 'feedback');
+            }
+        }
+
+        // Update score and level display
+        function updateScoreDisplay() {
+            scoreDisplay.innerHTML = `Score: ${score} | Level: ${level}`;
+        }
+
+        // Update progress bar
+        function updateProgressBar() {
+            const progressPercentage = (questionCount / questionsPerLevel) * 100;
+            progress.style.width = `${progressPercentage}%`;
+        }
+
+        // Check answer in game mode
+        function checkAnswer() {
+            const userAnswer = parseInt(answerInput.value.trim());
+            const correctAnswer = currentProblem.finalAnswer;
+            answerChecked = true;
+            if (userAnswer === correctAnswer) {
+                score++;
+                correctCount++;
+                feedbackDisplay.innerHTML = 'Correct!';
+            } else {
+                incorrectCount++;
+                feedbackDisplay.innerHTML = `Incorrect. Correct answer is ${correctAnswer}.`;
+            }
+            updateScoreDisplay();
+            checkAnswerButton.style.display = 'none';
+            nextStepButton.style.display = 'block';
+            updateStepsDisplay();
+        }
+
+        // Show level summary
+        function showLevelSummary() {
+            const percent = (correctCount / questionsPerLevel) * 100;
+            levelNumber.innerHTML = `Level ${level}`;
+            correctAnswers.innerHTML = `Correct Answers: ${correctCount}`;
+            incorrectAnswers.innerHTML = `Incorrect Answers: ${incorrectCount}`;
+            percentage.innerHTML = `Percentage: ${percent.toFixed(2)}%`;
+            levelSummary.style.display = 'flex';
+            titleDisplay.classList.add('hidden');
+            progressBar.classList.add('hidden');
+            scoreDisplay.classList.add('hidden');
+            problemDisplay.classList.add('hidden');
+            gameModeDisplay.style.display = 'none';
+            updatedSumDisplay.classList.add('hidden');
+            bedmasDisplay.classList.add('hidden');
+            feedbackDisplay.innerHTML = '';
+            stepsDisplay.innerHTML = '';
+            stepsNonGameDisplay.innerHTML = '';
+            nextStepButton.style.display = 'none';
+            nextSumButton.style.display = 'none';
+        }
+
+        // Start new level
+        function startNewLevel() {
+            level++;
+            questionCount = 0;
+            correctCount = 0;
+            incorrectCount = 0;
+            score = 0; // Reset score for new level
+            levelSummary.style.display = 'none';
+            titleDisplay.classList.remove('hidden');
+            if (isGameMode) {
+                scoreDisplay.classList.remove('hidden');
+            }
+            problemDisplay.classList.remove('hidden');
+            updatedSumDisplay.classList.remove('hidden');
+            bedmasDisplay.classList.remove('hidden');
+            startProblem();
+        }
+
+        // Start new problem
+        function startProblem() {
+            if (isGameMode) {
+                questionCount++;
+                if (questionCount > questionsPerLevel) {
+                    showLevelSummary();
+                    return;
+                }
+                updateProgressBar();
+            }
+            const customInput = problemInput.value.trim();
+            currentProblem = parseCustomProblem(customInput) || generateRandomProblem();
+            currentStep = 0;
+            stepHistory = [];
+            evaluatedParts = [];
+            answerChecked = false;
+            updateProblemDisplay();
+            updateSumDisplay();
+            updateStepsDisplay();
+            updateBedmasDisplay(steps[currentStep].bedmasIndex);
+            if (isGameMode) {
+                scoreDisplay.classList.remove('hidden');
+                updateScoreDisplay();
+                gameModeDisplay.style.display = 'block';
+                checkAnswerButton.style.display = 'inline-block';
+                nextStepButton.style.display = 'none';
+                answerInput.value = '';
+                feedbackDisplay.innerHTML = '';
+                stepsDisplay.innerHTML = '';
+                progressBar.style.display = 'block';
+            } else {
+                scoreDisplay.classList.add('hidden');
+                gameModeDisplay.style.display = 'none';
+                checkAnswerButton.style.display = 'none';
+                nextStepButton.style.display = 'block';
+                stepsNonGameDisplay.classList.remove('hidden');
+                progressBar.style.display = 'none';
+            }
+            nextSumButton.style.display = 'none';
+        }
+
+        // Advance to next step
+        function nextStep() {
+            if (currentStep < steps.length) {
+                const step = steps[currentStep];
+                evaluatedParts.push(step.highlight);
+                stepHistory.push(step);
+                currentStep++;
+                updateProblemDisplay();
+                updateSumDisplay();
+                updateStepsDisplay();
+                if (currentStep < steps.length) {
+                    updateBedmasDisplay(steps[currentStep].bedmasIndex);
+                } else {
+                    updateBedmasDisplay(-1);
+                    nextStepButton.style.display = 'none';
+                    nextSumButton.style.display = 'block';
+                }
+            }
+        }
+
+        // Transition to main game
+        function startGame() {
+            welcomeScreen.style.display = 'none';
+            titleDisplay.classList.remove('hidden');
+            problemDisplay.classList.remove('hidden');
+            updatedSumDisplay.classList.remove('hidden');
+            bedmasDisplay.classList.remove('hidden');
+            startProblem();
+        }
+
+        // Button event listeners
+        learnButton.addEventListener('click', startGame);
+        nextStepButton.addEventListener('click', nextStep);
+        nextSumButton.addEventListener('click', startProblem);
+        checkAnswerButton.addEventListener('click', checkAnswer);
+        nextLevelButton.addEventListener('click', startNewLevel);
+    </script>
+</body>
+</html>
