@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ski Race - V0.2.4</title>
+    <title>Ski Race - V0.3</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -140,13 +140,23 @@
             border-radius: 5px;
             display: none;
         }
+        #miniMapZoom {
+            position: absolute;
+            top: 165px;
+            right: 10px;
+            width: 150px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            padding: 5px;
+            display: none;
+        }
         #progressBar {
             position: absolute;
             bottom: 100px;
             left: 50px;
             width: 20px;
             height: 200px;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.3);
             border: 2px solid white;
             border-radius: 5px;
             display: none;
@@ -198,22 +208,23 @@
         <p><strong>Controls:</strong><br>
         - Joystick: Move left/right, pull up to slow down, push down to speed up.<br>
         - Camera: Toggle between default, bird's-eye, full bird's-eye, fly-around views.<br>
-        - Snowballs: Automatically shoot at skiers (collect blue spheres for ammo).<br>
-        - Objective: Reach the finish line, passing flags for points, collecting speed-ups (yellow), extra lives (green), and snowballs (blue).<br>
+        - Snowballs: Automatically shoot at skiers (collect cyan spheres for ammo).<br>
+        - Objective: Reach the finish line, passing flags for points, collecting speed-ups (orange), extra lives (purple), and snowballs (cyan).<br>
         - Lives: Start with 3, lose 1 per flag hit, game over at 0.<br>
         - Scoring: +100 for correct side, -50 for wrong side, +50 for NPC snowball hit.</p>
         <button onclick="startGame()">Start Game</button>
     </div>
     <button id="toggleCamera" onclick="toggleCamera()">Camera: Default</button>
     <canvas id="miniMap"></canvas>
+    <input type="range" id="miniMapZoom" min="0" max="100" value="50" style="display: none;">
     <div id="progressBar"><div id="progressFill"></div></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
-        let scene, camera, renderer, skier, flags = [], finishLine, terrain, trees = [], npcs = [], collectables = [], snowballs = [];
-        let lives = 3, score = 0, time = 0, level = 1, gameOver = false, autoPlay = false, autoThrow = true, snowballAmmo = 0;
+        let scene, camera, renderer, skier, flags = [], finishLine, terrain, trees = [], npcs = [], collectables = [], snowballs = [], flagpoles = [];
+        let lives = 3, score = 0, time = 0, level = 1, gameOver = false, autoPlay = false, autoThrow = true, snowballAmmo = 0, snowballsUsed = 0, npcsHit = 0;
         let clock = new THREE.Clock();
         let joystick = { x: 0, y: 0, active: false };
-        let currentSpeed = 0, speedBoostTimer = 0, skidTimer = 0;
+        let currentSpeed = 0, speedBoostTimer = 0, skidTimer = 0, throwTimer = 0;
         let skierParts = {};
         let stumbleTimer = 0;
         let miniMap, miniMapCtx;
@@ -224,6 +235,7 @@
         let cameraMode = 'default';
         let flyAroundAngle = 0;
         let snowballCooldown = 0;
+        let miniMapZoom = 1.0;
 
         function createSkier(isNPC = false, colorIndex = 0) {
             const skierGroup = new THREE.Group();
@@ -256,12 +268,12 @@
             const poleGeometry = new THREE.CylinderGeometry(0.02, 0.02, 1.5, 16);
             const poleMaterial = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.5 });
             const leftPole = new THREE.Mesh(poleGeometry, poleMaterial);
-            leftPole.position.set(-0.7, 1.0, 0);
-            leftPole.rotation.z = Math.PI / 3;
+            leftPole.position.set(-0.65, 1.1, 0.1);
+            leftPole.rotation.set(0, 0, 0);
             skierGroup.add(leftPole);
             const rightPole = new THREE.Mesh(poleGeometry, poleMaterial);
-            rightPole.position.set(0.7, 1.0, 0);
-            rightPole.rotation.z = -Math.PI / 3;
+            rightPole.position.set(0.65, 1.1, 0.1);
+            rightPole.rotation.set(0, 0, 0);
             skierGroup.add(rightPole);
             const legGeometry = new THREE.CylinderGeometry(0.2, 0.2, 1, 32);
             const legMaterial = new THREE.MeshStandardMaterial({ color: isNPC ? 0x333333 : 0x3333FF, roughness: 0.5 });
@@ -361,9 +373,9 @@
         function createCollectable(type, x, z) {
             const geometry = new THREE.SphereGeometry(0.7, 32, 32);
             let color;
-            if (type === 'speed') color = 0xFFFF00;
-            else if (type === 'life') color = 0x00FF00;
-            else color = 0x0000FF;
+            if (type === 'speed') color = 0xFFA500;
+            else if (type === 'life') color = 0x800080;
+            else color = 0x00FFFF;
             const material = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.0, roughness: 0.2 });
             const collectable = new THREE.Mesh(geometry, material);
             collectable.position.set(x, 1.5, z);
@@ -371,12 +383,26 @@
             return collectable;
         }
 
-        function createSnowball(x, y, z, direction) {
+        function createSnowball(x, y, z, target, predictedPos) {
             const geometry = new THREE.SphereGeometry(0.2, 16, 16);
             const material = new THREE.MeshStandardMaterial({ color: 0xFFFFFF });
             const snowball = new THREE.Mesh(geometry, material);
             snowball.position.set(x, y, z);
-            snowball.userData = { direction, speed: 50 };
+            const dist = new THREE.Vector3(x, y, z).distanceTo(predictedPos);
+            snowball.userData = { 
+                target, 
+                startPos: new THREE.Vector3(x, y, z), 
+                endPos: predictedPos, 
+                controlPos: new THREE.Vector3(
+                    (x + predictedPos.x) / 2 + (Math.random() - 0.5) * dist * 0.5,
+                    y + dist * 0.3,
+                    (z + predictedPos.z) / 2
+                ), 
+                time: 0, 
+                duration: dist / 60, 
+                trail: [], 
+                lastTrailTime: 0 
+            };
             return snowball;
         }
 
@@ -387,6 +413,30 @@
             particle.position.set(x, terrain.geometry.attributes.position.array[Math.floor((z / -2000) * 50) * (50 + 1) * 3 + 2] + 0.05, z);
             particle.userData = { time: time };
             return particle;
+        }
+
+        function createSnowballTrailParticle(x, y, z, time) {
+            const geometry = new THREE.SphereGeometry(0.1, 16, 16);
+            const material = new THREE.MeshStandardMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.6 });
+            const particle = new THREE.Mesh(geometry, material);
+            particle.position.set(x, y, z);
+            particle.userData = { time: time };
+            return particle;
+        }
+
+        function createCheckeredTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            const size = 16;
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 8; j++) {
+                    ctx.fillStyle = (i + j) % 2 === 0 ? '#FFFFFF' : '#000000';
+                    ctx.fillRect(i * size, j * size, size, size);
+                }
+            }
+            return new THREE.CanvasTexture(canvas);
         }
 
         function updateMainTrails() {
@@ -415,13 +465,17 @@
             miniMapCtx = miniMap.getContext('2d');
             miniMap.width = 150;
             miniMap.height = 150;
+            const zoomSlider = document.getElementById('miniMapZoom');
+            zoomSlider.addEventListener('input', () => {
+                miniMapZoom = 0.5 + (zoomSlider.value / 100) * 1.5;
+            });
         }
 
         function updateMiniMap() {
             if (!skier) return;
             miniMapCtx.clearRect(0, 0, miniMap.width, miniMap.height);
-            const mapWidth = 100;
-            const mapHeight = 2000;
+            const mapWidth = 100 / miniMapZoom;
+            const mapHeight = 2000 / miniMapZoom;
             const scaleX = miniMap.width / mapWidth;
             const scaleY = miniMap.height / mapHeight;
             const centerX = miniMap.width / 2;
@@ -439,7 +493,7 @@
                 const z = centerY + (point.z - skier.position.z) * scaleY;
                 if (z > 0 && z < miniMap.height && x > 0 && x < miniMap.width) {
                     miniMapCtx.beginPath();
-                    miniMapCtx.arc(x, z, 1.5, 0, Math.PI * 2);
+                    miniMapCtx.arc(x, z, 0.75 * miniMapZoom, 0, Math.PI * 2);
                     miniMapCtx.fill();
                 }
             });
@@ -450,7 +504,7 @@
                 const z = centerY + (point.z - skier.position.z) * scaleY;
                 if (z > 0 && z < miniMap.height && x > 0 && x < miniMap.width) {
                     miniMapCtx.beginPath();
-                    miniMapCtx.arc(x, z, 1.5, 0, Math.PI * 2);
+                    miniMapCtx.arc(x, z, 0.75 * miniMapZoom, 0, Math.PI * 2);
                     miniMapCtx.fill();
                 }
             });
@@ -460,7 +514,7 @@
                 const z = centerY + (flag.position.z - skier.position.z) * scaleY;
                 if (z > 0 && z < miniMap.height && x > 0 && x < miniMap.width) {
                     miniMapCtx.beginPath();
-                    miniMapCtx.arc(x, z, 3, 0, Math.PI * 2);
+                    miniMapCtx.arc(x, z, 0.75 * miniMapZoom, 0, Math.PI * 2);
                     miniMapCtx.fill();
                 }
             });
@@ -470,18 +524,16 @@
                 const z = centerY + (tree.position.z - skier.position.z) * scaleY;
                 if (z > 0 && z < miniMap.height && x > 0 && x < miniMap.width) {
                     miniMapCtx.beginPath();
-                    miniMapCtx.arc(x, z, 2, 0, Math.PI * 2);
+                    miniMapCtx.arc(x, z, 1 * miniMapZoom, 0, Math.PI * 2);
                     miniMapCtx.fill();
                 }
             });
             npcs.forEach(npc => {
-                miniMapCtx.fillStyle = npc.children[2].material.color.getStyle();
+                miniMapCtx.fillStyle = '#808080';
                 const x = centerX + (npc.position.x - skier.position.x) * scaleX;
                 const z = centerY + (npc.position.z - skier.position.z) * scaleY;
                 if (z > 0 && z < miniMap.height && x > 0 && x < miniMap.width) {
-                    miniMapCtx.beginPath();
-                    miniMapCtx.arc(x, z, 2, 0, Math.PI * 2);
-                    miniMapCtx.fill();
+                    miniMapCtx.fillRect(x - 1 * miniMapZoom, z - 1 * miniMapZoom, 2 * miniMapZoom, 2 * miniMapZoom);
                 }
             });
             collectables.forEach(collectable => {
@@ -490,7 +542,7 @@
                 const z = centerY + (collectable.position.z - skier.position.z) * scaleY;
                 if (z > 0 && z < miniMap.height && x > 0 && x < miniMap.width) {
                     miniMapCtx.beginPath();
-                    miniMapCtx.arc(x, z, 2, 0, Math.PI * 2);
+                    miniMapCtx.arc(x, z, 1 * miniMapZoom, 0, Math.PI * 2);
                     miniMapCtx.fill();
                 }
             });
@@ -498,11 +550,11 @@
             const finishX = centerX + (0 - skier.position.x) * scaleX;
             const finishZ = centerY + (-1850 - skier.position.z) * scaleY;
             if (finishZ > 0 && finishZ < miniMap.height) {
-                miniMapCtx.fillRect(finishX - 15 * scaleX, finishZ - 1, 30 * scaleX, 2);
+                miniMapCtx.fillRect(finishX - 12.5 * scaleX, finishZ - 0.5, 25 * scaleX, 1);
             }
-            miniMapCtx.fillStyle = 'yellow';
+            miniMapCtx.fillStyle = `rgba(255, 255, 0, ${0.5 + 0.5 * Math.sin(time * (0.5 + 5 * currentSpeed / 50))})`;
             miniMapCtx.beginPath();
-            miniMapCtx.arc(centerX, centerY, 4, 0, Math.PI * 2);
+            miniMapCtx.arc(centerX, centerY, 2 * miniMapZoom, 0, Math.PI * 2);
             miniMapCtx.fill();
         }
 
@@ -567,8 +619,11 @@
             const dist = skier.position.distanceTo(npc.position);
             if (dist > 30 || npc.position.z > skier.position.z) return false;
             const direction = npc.position.clone().sub(skier.position).normalize();
+            const forward = new THREE.Vector3(0, 0, -1);
+            const angle = direction.angleTo(forward);
+            if (angle > Math.PI / 6) return false;
             const raycaster = new THREE.Raycaster(skier.position, direction, 0, dist);
-            const intersects = raycaster.intersectObjects([terrain, ...trees, ...flags, ...collectables, finishLine], true);
+            const intersects = raycaster.intersectObjects([terrain, ...trees, ...flags, ...collectables, finishLine, ...flagpoles], true);
             if (intersects.length > 0 && intersects[0].distance < dist) return false;
             return true;
         }
@@ -648,11 +703,38 @@
                 collectables.push(collectable);
                 scene.add(collectable);
             }
-            const finishGeometry = new THREE.BoxGeometry(30, 0.2, 2);
+            const finishGeometry = new THREE.BoxGeometry(50, 0.2, 2);
             const finishMaterial = new THREE.MeshStandardMaterial({ color: 0x00FF00 });
             finishLine = new THREE.Mesh(finishGeometry, finishMaterial);
             finishLine.position.set(0, 0.1, -1850);
             scene.add(finishLine);
+            const floorGeometry = new THREE.PlaneGeometry(50, 10);
+            const floorMaterial = new THREE.MeshStandardMaterial({ map: createCheckeredTexture(), roughness: 0.5 });
+            const finishFloor = new THREE.Mesh(floorGeometry, floorMaterial);
+            finishFloor.position.set(0, 0.05, -1855);
+            finishFloor.rotation.x = -Math.PI / 2;
+            scene.add(finishFloor);
+            flagpoles = [];
+            const poleGeometry = new THREE.CylinderGeometry(0.1, 0.1, 4, 16);
+            const poleMaterial = new THREE.MeshStandardMaterial({ color: 0x666666 });
+            const leftPole = new THREE.Mesh(poleGeometry, poleMaterial);
+            leftPole.position.set(-25, 2, -1850);
+            scene.add(leftPole);
+            flagpoles.push(leftPole);
+            const rightPole = new THREE.Mesh(poleGeometry, poleMaterial);
+            rightPole.position.set(25, 2, -1850);
+            scene.add(rightPole);
+            flagpoles.push(rightPole);
+            const flagGeometry = new THREE.PlaneGeometry(2, 1.5);
+            const flagMaterial = new THREE.MeshStandardMaterial({ map: createCheckeredTexture(), side: THREE.DoubleSide });
+            const leftFlag = new THREE.Mesh(flagGeometry, flagMaterial);
+            leftFlag.position.set(-24.5, 3, -1850);
+            leftFlag.rotation.y = Math.PI / 2;
+            scene.add(leftFlag);
+            const rightFlag = new THREE.Mesh(flagGeometry, flagMaterial);
+            rightFlag.position.set(24.5, 3, -1850);
+            rightFlag.rotation.y = -Math.PI / 2;
+            scene.add(rightFlag);
             const ambientLight = new THREE.AmbientLight(0x606060);
             scene.add(ambientLight);
             const directionalLight = new THREE.DirectionalLight(0xFFFFFF, 0.7);
@@ -663,7 +745,10 @@
             mainTrails = { left: [], right: [] };
             lastFlagPassed = null;
             score = 0;
-            snowballAmmo = 0;
+            snowballAmmo = 20;
+            snowballsUsed = 0;
+            npcsHit = 0;
+            throwTimer = 0;
             skidTimer = 0;
         }
 
@@ -673,6 +758,7 @@
             document.getElementById('joystick').style.display = 'block';
             document.getElementById('toggleCamera').style.display = 'block';
             document.getElementById('miniMap').style.display = 'block';
+            document.getElementById('miniMapZoom').style.display = 'block';
             document.getElementById('progressBar').style.display = 'block';
             setupGame();
         }
@@ -747,7 +833,7 @@
             }
             if (skidTimer > 0) {
                 skidTimer -= delta;
-                const progress = skidTimer / 2;
+                const progress = skidTimer / 4;
                 skier.rotation.y = Math.PI / 2 * (1 - progress);
                 currentSpeed = currentSpeed * progress;
                 skier.position.z -= currentSpeed * delta;
@@ -764,6 +850,10 @@
                     completeLevel();
                 }
             }
+            if (throwTimer > 0) {
+                throwTimer -= delta;
+                if (throwTimer < 0) throwTimer = 0;
+            }
             const leanFactor = Math.abs(joystick.x) * 0.3;
             const leanAngle = -joystick.x * Math.PI / 6;
             skierParts.torso.rotation.z = tiltAngle + leanAngle;
@@ -773,9 +863,11 @@
             skierParts.goggles.rotation.z = tiltAngle + leanAngle;
             skierParts.goggles.rotation.x = fallAngle;
             skierParts.leftArm.rotation.z = Math.PI / 4 + (joystick.x > 0 ? leanFactor : -leanFactor);
-            skierParts.rightArm.rotation.z = -Math.PI / 4 + (joystick.x > 0 ? -leanFactor : leanFactor);
-            skierParts.leftPole.rotation.z = Math.PI / 3 + (joystick.x > 0 ? leanFactor : -leanFactor);
-            skierParts.rightPole.rotation.z = -Math.PI / 3 + (joystick.x > 0 ? -leanFactor : leanFactor);
+            const throwProgress = throwTimer > 0 ? (0.5 - throwTimer) / 0.5 : 0;
+            const throwAngle = throwProgress < 0.5 ? Math.PI / 4 * (throwProgress * 2) : Math.PI / 4 * (1 - (throwProgress - 0.5) * 2);
+            skierParts.rightArm.rotation.z = -Math.PI / 4 + (joystick.x > 0 ? -leanFactor : leanFactor) + throwAngle;
+            skierParts.leftPole.rotation.set(0, 0, 0);
+            skierParts.rightPole.rotation.set(0, 0, 0);
             const crouchFactor = Math.min(currentSpeed / 40, 1);
             const scaleY = 1 - crouchFactor * 0.2;
             skierParts.torso.position.y = 1.5 * scaleY;
@@ -784,8 +876,8 @@
             skierParts.goggles.position.y = (2.1 * scaleY) - (crouchFactor * 0.3);
             skierParts.leftArm.position.y = 1.5 * scaleY;
             skierParts.rightArm.position.y = 1.5 * scaleY;
-            skierParts.leftPole.position.y = 1.0 * scaleY;
-            skierParts.rightPole.position.y = 1.0 * scaleY;
+            skierParts.leftPole.position.y = 1.1 * scaleY;
+            skierParts.rightPole.position.y = 1.1 * scaleY;
             skierParts.leftLeg.position.y = 0.5 * scaleY;
             skierParts.rightLeg.position.y = 0.5 * scaleY;
             skierParts.leftSki.position.y = 0.025;
@@ -807,6 +899,7 @@
             npc.userData.knockOverTimer = 3;
             npc.userData.spinAngle = 0;
             score += 50;
+            npcsHit++;
             showNPCHitMessage();
             showMiniScore('+50', npc.position.x, npc.position.z, false);
         }
@@ -860,7 +953,7 @@
         function updateCamera(delta) {
             if (!skier) return;
             if (skidTimer > 0) {
-                flyAroundAngle += delta * 0.5;
+                flyAroundAngle += delta * (2 * Math.PI / 4); // Complete 360 degrees in 4 seconds
                 const radius = 15;
                 camera.position.set(
                     skier.position.x + Math.sin(flyAroundAngle) * radius,
@@ -949,21 +1042,52 @@
 
         function updateSnowballs(delta) {
             snowballs.forEach((snowball, index) => {
-                snowball.position.add(snowball.userData.direction.clone().multiplyScalar(snowball.userData.speed * delta));
-                if (snowball.position.z < -1900 || Math.abs(snowball.position.x) > 50 || snowball.position.y > 40) {
+                if (!snowball.userData || !snowball.userData.target || snowball.userData.time > snowball.userData.duration) {
+                    snowball.userData.trail.forEach(particle => scene.remove(particle));
                     scene.remove(snowball);
                     snowballs.splice(index, 1);
                     return;
                 }
-                npcs.forEach(npc => {
-                    if (npc.userData.knockedOver) return;
-                    const dist = snowball.position.distanceTo(npc.position);
-                    if (dist < 1) {
-                        knockOverNPC(npc);
-                        scene.remove(snowball);
-                        snowballs.splice(index, 1);
+                snowball.userData.time += delta;
+                const t = snowball.userData.time / snowball.userData.duration;
+                const u = 1 - t;
+                const target = snowball.userData.target;
+                const predictedPos = target.position.clone();
+                predictedPos.z -= target.userData.speed * (snowball.userData.duration - snowball.userData.time);
+                predictedPos.y = target.position.y;
+                snowball.userData.endPos.copy(predictedPos);
+                const pos = new THREE.Vector3()
+                    .copy(snowball.userData.startPos).multiplyScalar(u * u)
+                    .add(snowball.userData.controlPos.clone().multiplyScalar(2 * u * t))
+                    .add(snowball.userData.endPos.clone().multiplyScalar(t * t));
+                snowball.position.copy(pos);
+                if (time - snowball.userData.lastTrailTime > 0.05) {
+                    const trailParticle = createSnowballTrailParticle(snowball.position.x, snowball.position.y, snowball.position.z, time);
+                    snowball.userData.trail.push(trailParticle);
+                    scene.add(trailParticle);
+                    snowball.userData.lastTrailTime = time;
+                }
+                snowball.userData.trail = snowball.userData.trail.filter(particle => {
+                    const age = time - particle.userData.time;
+                    if (age > 0.5) {
+                        scene.remove(particle);
+                        return false;
                     }
+                    particle.material.opacity = 0.6 * (1 - age / 0.5);
+                    return true;
                 });
+                if (!target.userData.knockedOver && snowball.position.distanceTo(target.position) < 1) {
+                    knockOverNPC(target);
+                    snowball.userData.trail.forEach(particle => scene.remove(particle));
+                    scene.remove(snowball);
+                    snowballs.splice(index, 1);
+                    return;
+                }
+                if (snowball.position.z < -1900 || Math.abs(snowball.position.x) > 50 || snowball.position.y > 40) {
+                    snowball.userData.trail.forEach(particle => scene.remove(particle));
+                    scene.remove(snowball);
+                    snowballs.splice(index, 1);
+                }
             });
         }
 
@@ -995,7 +1119,6 @@
             }
             if (skier) {
                 if (autoThrow && snowballAmmo > 0 && snowballCooldown <= 0) {
-                    let direction = new THREE.Vector3(0, 0, -1);
                     let target = null;
                     let minDist = Infinity;
                     npcs.forEach(npc => {
@@ -1009,11 +1132,24 @@
                     });
                     if (target) {
                         snowballAmmo--;
-                        direction = target.position.clone().sub(skier.position).normalize();
-                        const snowball = createSnowball(skier.position.x, skier.position.y + 1, skier.position.z, direction);
+                        snowballsUsed++;
+                        throwTimer = 0.5;
+                        const travelTime = minDist / 60;
+                        const predictedPos = target.position.clone();
+                        predictedPos.z -= target.userData.speed * travelTime;
+                        predictedPos.y = target.position.y;
+                        if (Math.random() < 0.5) {
+                            const missOffset = new THREE.Vector3(
+                                (Math.random() - 0.5) * 10,
+                                (Math.random() - 0.5) * 5,
+                                (Math.random() - 0.5) * 10
+                            ).normalize().multiplyScalar(5 + Math.random() * 5);
+                            predictedPos.add(missOffset);
+                        }
+                        const snowball = createSnowball(skier.position.x, skier.position.y + 1, skier.position.z, target, predictedPos);
                         snowballs.push(snowball);
                         scene.add(snowball);
-                        snowballCooldown = 1;
+                        snowballCooldown = 0.5;
                     }
                 }
                 if (skidTimer <= 0) {
@@ -1072,7 +1208,7 @@
                     }
                 });
                 npcs.forEach(npc => {
-                    if (npc.userData.knockedOver) return;
+                    if (!npc.position) return;
                     const dist = skier.position.distanceTo(npc.position);
                     if (dist < 1) {
                         showNPCHit();
@@ -1086,7 +1222,7 @@
                     hideFinishMessage();
                 }
                 if (skier.position.z < -1850 && skidTimer <= 0) {
-                    skidTimer = 2;
+                    skidTimer = 4; // Extended for 360-degree fly-around
                     joystick.x = 0;
                     joystick.y = 0;
                     document.getElementById('knob').style.transform = 'translate(0px, 0px)';
@@ -1100,7 +1236,9 @@
                     <span style="color: orange;">Time: ${time.toFixed(1)}s</span><br>
                     <span style="color: red;">Speed: ${currentSpeed.toFixed(1)} m/s</span><br>
                     <span style="color: purple;">Snowballs: ${snowballAmmo}</span><br>
-                    <span style="color: blue;">Altitude: ${altitude.toFixed(1)} m</span>
+                    <span style="color: blue;">Altitude: ${altitude.toFixed(1)} m</span><br>
+                    <span style="color: magenta;">Snowballs Used: ${snowballsUsed}</span><br>
+                    <span style="color: white;">NPCs Hit: ${npcsHit}</span>
                 `;
                 updateMiniMap();
                 updateProgressBar();
@@ -1119,12 +1257,15 @@
             gameOver = true;
             document.getElementById('levelComplete').style.display = 'block';
             document.getElementById('levelStats').innerHTML = `
-                Level: ${level}<br>
-                Score: ${score}<br>
-                Time: ${time.toFixed(1)}s<br>
-                Speed: ${currentSpeed.toFixed(1)} m/s
+                <span style="color: cyan; font-size: 24px;">Level: ${level}</span><br>
+                <span style="color: yellow; font-size: 24px;">Score: ${score}</span><br>
+                <span style="color: orange;">Time: ${time.toFixed(1)}s</span><br>
+                <span style="color: red;">Speed: ${currentSpeed.toFixed(1)} m/s</span><br>
+                <span style="color: magenta;">Snowballs Used: ${snowballsUsed}</span><br>
+                <span style="color: white;">NPCs Hit: ${npcsHit}</span>
             `;
             document.getElementById('miniMap').style.display = 'none';
+            document.getElementById('miniMapZoom').style.display = 'none';
             document.getElementById('progressBar').style.display = 'none';
             document.getElementById('toggleCamera').style.display = 'none';
         }
@@ -1136,9 +1277,12 @@
                 Level: ${level}<br>
                 Score: ${score}<br>
                 Time: ${time.toFixed(1)}s<br>
-                Speed: ${currentSpeed.toFixed(1)} m/s
+                Speed: ${currentSpeed.toFixed(1)} m/s<br>
+                Snowballs Used: ${snowballsUsed}<br>
+                NPCs Hit: ${npcsHit}
             `;
             document.getElementById('miniMap').style.display = 'none';
+            document.getElementById('miniMapZoom').style.display = 'none';
             document.getElementById('progressBar').style.display = 'none';
             document.getElementById('toggleCamera').style.display = 'none';
         }
@@ -1150,8 +1294,11 @@
             score = 0;
             time = 0;
             currentSpeed = 0;
-            snowballAmmo = 0;
+            snowballAmmo = 20;
+            snowballsUsed = 0;
+            npcsHit = 0;
             speedBoostTimer = 0;
+            throwTimer = 0;
             autoPlay = false;
             autoThrow = true;
             snowballCooldown = 0;
@@ -1161,7 +1308,9 @@
             lastFlagPassed = null;
             cameraMode = 'default';
             flyAroundAngle = 0;
+            miniMapZoom = 1.0;
             document.getElementById('toggleCamera').textContent = 'Camera: Default';
+            document.getElementById('miniMapZoom').value = 50;
             mainTrails.left.forEach(particle => scene.remove(particle));
             mainTrails.right.forEach(particle => scene.remove(particle));
             mainTrails = { left: [], right: [] };
@@ -1171,6 +1320,7 @@
             setupGame();
             document.getElementById('levelComplete').style.display = 'none';
             document.getElementById('miniMap').style.display = 'block';
+            document.getElementById('miniMapZoom').style.display = 'block';
             document.getElementById('progressBar').style.display = 'block';
             document.getElementById('stats').style.display = 'block';
             document.getElementById('toggleCamera').style.display = 'block';
@@ -1186,8 +1336,11 @@
             score = 0;
             time = 0;
             currentSpeed = 0;
-            snowballAmmo = 0;
+            snowballAmmo = 20;
+            snowballsUsed = 0;
+            npcsHit = 0;
             speedBoostTimer = 0;
+            throwTimer = 0;
             autoPlay = false;
             autoThrow = true;
             snowballCooldown = 0;
@@ -1197,7 +1350,9 @@
             lastFlagPassed = null;
             cameraMode = 'default';
             flyAroundAngle = 0;
+            miniMapZoom = 1.0;
             document.getElementById('toggleCamera').textContent = 'Camera: Default';
+            document.getElementById('miniMapZoom').value = 50;
             mainTrails.left.forEach(particle => scene.remove(particle));
             mainTrails.right.forEach(particle => scene.remove(particle));
             mainTrails = { left: [], right: [] };
