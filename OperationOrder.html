@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Operations - V0.9.93</title>
+    <title>Operations - V0.9.94</title>
     <style>
         body { 
             margin: 0; 
@@ -211,9 +211,10 @@
             top: 150px;
             left: 20px;
             font-size: 24px;
-            max-width: 500px;
+            max-width: 600px;
             color: white;
             margin-top: 5px;
+            width: 600px;
         }
 
         #steps .b { color: #ff0000; }
@@ -880,7 +881,7 @@
             } else {
                 const stepDiv = document.createElement('div');
                 targetDisplay.appendChild(stepDiv);
-                typeWriter('Problem solved!', stepDiv, 'feedback');
+                typeWriter('✅ Problem solved!', stepDiv, 'feedback');
             }
         }
 
