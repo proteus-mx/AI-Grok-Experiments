@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Shooting Game - V0.2</title>
+  <title>Shooting Game - V0.3</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
 </head>
 <body>
@@ -25,9 +25,9 @@ let greenHitTime = 0;
 let redHitTime = 0;
 let greenFlashCount = 0;
 let redFlashCount = 0;
-
+  
 function setup() {
-  createCanvas(800, 600);
+  createCanvas(windowWidth, windowHeight);
   greenObj = { x: 50, y: height/2, speed: random(2, 5), lives: 5, color: 'red', shieldHealth: 100, score: 0 };
   redObj = { x: width-50, y: height/2, speed: random(2, 5), lives: 5, color: 'green', shieldHealth: 100, score: 0 };
   startTime = millis();
