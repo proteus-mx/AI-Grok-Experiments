@@ -1,0 +1,445 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tesla Optimus 3D Viewer with Joystick, Camera Toggle, Sliders, Collectables, and Mars Terrain</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #controls { position: absolute; bottom: 20px; right: 10px; z-index: 10; display: flex; flex-direction: column; }
+        button, input { margin: 5px; padding: 10px; cursor: pointer; }
+        #joystickContainer { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10; }
+        #joystick { width: 100px; height: 100px; background: rgba(0, 0, 0, 0.5); border-radius: 50%; position: relative; }
+        #stick { width: 40px; height: 40px; background: #fff; border-radius: 50%; position: absolute; top: 30px; left: 30px; }
+        #minimap { position: absolute; top: 10px; right: 10px; width: 150px; height: 150px; border: 2px solid #fff; z-index: 10; opacity: 0.7; }
+        #stats { position: absolute; top: 170px; right: 10px; color: #fff; font-family: Arial; font-size: 16px; z-index: 10; background: rgba(0, 0, 0, 0.5); padding: 10px; }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <button onclick="playAnimation(0)">Idle</button>
+        <button onclick="playAnimation(1)">Walk</button>
+        <button onclick="playAnimation(2)">Wave</button>
+        <button onclick="playAnimation(3)">Dance</button>
+        <button onclick="playAnimation(4)">Jump</button>
+        <button onclick="playAnimation(5)">Improved Walk</button>
+        <button onclick="playAnimation(6)">Fast Walk</button>
+        <button onclick="toggleCamera()">Toggle Camera</button>
+        <div>
+            <label for="sizeSlider">Robot Size:</label>
+            <input type="range" id="sizeSlider" min="0.5" max="2" step="0.1" value="0.6">
+        </div>
+        <div>
+            <label for="floorSizeSlider">Terrain Size:</label>
+            <input type="range" id="floorSizeSlider" min="10" max="50" step="1" value="20">
+        </div>
+    </div>
+    <div id="joystickContainer">
+        <div id="joystick">
+            <div id="stick"></div>
+        </div>
+    </div>
+    <canvas id="minimap"></canvas>
+    <div id="stats">Collectables: 0</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const birdsEyeCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const flyAroundCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const robotCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const minimapCamera = new THREE.PerspectiveCamera(90, 150 / 150, 0.1, 1000); // Wider FOV for zoomed-out minimap
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Minimap renderer
+        const minimapCanvas = document.getElementById('minimap');
+        const minimapRenderer = new THREE.WebGLRenderer({ canvas: minimapCanvas, alpha: true });
+        minimapRenderer.setSize(150, 150);
+
+        // Camera controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = false;
+        controls.minDistance = 2;
+        controls.maxDistance = 10;
+
+        // Camera setup
+        camera.position.set(0, 1, 5);
+        birdsEyeCamera.position.set(0, 10, 0);
+        birdsEyeCamera.lookAt(0, 0, 0);
+        minimapCamera.position.set(0, 10, 0); // Higher for zoomed-out view
+        minimapCamera.lookAt(0, 0, 0);
+        let flyAroundAngle = 0;
+
+        let activeCamera = robotCamera; // Start with robot camera
+        let cameraMode = 3; // 0: Orbit, 1: Birds Eye, 2: Fly Around, 3: Robot
+
+        // Toggle camera
+        function toggleCamera() {
+            cameraMode = (cameraMode + 1) % 4;
+            if (cameraMode === 0) {
+                activeCamera = camera;
+                controls.enabled = true;
+            } else if (cameraMode === 1) {
+                activeCamera = birdsEyeCamera;
+                controls.enabled = false;
+            } else if (cameraMode === 2) {
+                activeCamera = flyAroundCamera;
+                controls.enabled = false;
+            } else {
+                activeCamera = robotCamera;
+                controls.enabled = false;
+            }
+        }
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 2);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(0, 1, 1);
+        scene.add(directionalLight);
+
+        // Sky
+        const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
+        const skyMaterial = new THREE.MeshBasicMaterial({
+            color: 0x87ceeb,
+            side: THREE.BackSide
+        });
+        const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+        scene.add(sky);
+
+        // Animation variables
+        let mixer, animations, currentAnimation, model, terrain;
+        let collectables = [];
+        let collectableCount = 0;
+        const trail = [];
+
+        // Load 3D model
+        const loader = new THREE.GLTFLoader();
+        loader.load(
+            'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/RobotExpressive/RobotExpressive.glb',
+            (gltf) => {
+                model = gltf.scene;
+                model.scale.set(0.6, 0.6, 0.6);
+                model.position.set(0, -1, 0);
+                scene.add(model);
+
+                // Setup animation mixer
+                mixer = new THREE.AnimationMixer(model);
+                animations = gltf.animations;
+                if (animations && animations.length) {
+                    currentAnimation = mixer.clipAction(animations[0]).play();
+
+                    // Duplicate and modify walk animation for improved walk
+                    const walkClip = animations[1];
+                    const improvedWalkClip = walkClip.clone();
+                    improvedWalkClip.name = 'ImprovedWalk';
+                    improvedWalkClip.tracks.forEach(track => {
+                        if (track.name.includes('rotation') || track.name.includes('position')) {
+                            track.values.forEach((value, i) => {
+                                track.values[i] = value * 1.2;
+                            });
+                        }
+                    });
+                    animations.push(improvedWalkClip);
+
+                    // Duplicate and modify for fast walk
+                    const fastWalkClip = walkClip.clone();
+                    fastWalkClip.name = 'FastWalk';
+                    fastWalkClip.tracks.forEach(track => {
+                        if (track.name.includes('rotation') || track.name.includes('position')) {
+                            track.values.forEach((value, i) => {
+                                track.values[i] = value * 1.5;
+                            });
+                        }
+                    });
+                    fastWalkClip.timeScale = 1.5;
+                    animations.push(fastWalkClip);
+                }
+            },
+            (xhr) => {
+                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+            },
+            (error) => {
+                console.error('An error occurred:', error);
+            }
+        );
+
+        // Animation control function
+        function playAnimation(index) {
+            if (mixer && animations && animations[index]) {
+                if (currentAnimation) {
+                    currentAnimation.fadeOut(0.5);
+                }
+                currentAnimation = mixer.clipAction(animations[index]);
+                currentAnimation.reset().fadeIn(0.5).play();
+            }
+        }
+
+        // Mars-like terrain with enhanced material
+        const terrainTexture = new THREE.TextureLoader().load(
+            'https://threejs.org/examples/textures/terrain.jpg'
+        );
+        terrainTexture.wrapS = terrainTexture.wrapT = THREE.RepeatWrapping;
+        terrainTexture.repeat.set(10, 10);
+        const normalTexture = new THREE.TextureLoader().load(
+            'https://threejs.org/examples/textures/normal.jpg'
+        );
+        normalTexture.wrapS = normalTexture.wrapT = THREE.RepeatWrapping;
+        normalTexture.repeat.set(10, 10);
+        const roughnessTexture = new THREE.TextureLoader().load(
+            'https://threejs.org/examples/textures/roughness.jpg'
+        );
+        roughnessTexture.wrapS = roughnessTexture.wrapT = THREE.RepeatWrapping;
+        roughnessTexture.repeat.set(10, 10);
+        const terrainMaterial = new THREE.MeshStandardMaterial({
+            map: terrainTexture,
+            normalMap: normalTexture,
+            roughnessMap: roughnessTexture,
+            metalness: 0.1,
+            roughness: 0.9,
+            color: 0x8b3a2c // Mars-like reddish hue
+        });
+        const terrainGeometry = new THREE.PlaneGeometry(20, 20);
+        terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
+        terrain.rotation.x = -Math.PI / 2;
+        terrain.position.y = -1.5;
+        scene.add(terrain);
+
+        // Collectables
+        const collectableGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+        const collectableMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 });
+        for (let i = 0; i < 10; i++) {
+            const collectable = new THREE.Mesh(collectableGeometry, collectableMaterial);
+            collectable.position.set(
+                (Math.random() - 0.5) * 10,
+                -1,
+                Math.random() * 80
+            );
+            scene.add(collectable);
+            collectables.push(collectable);
+        }
+
+        // Player trail
+        const trailGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+        const trailMaterial = new THREE.MeshBasicMaterial({ color: 0x808080 }); // Grey trail
+
+        // Size slider for robot
+        const sizeSlider = document.getElementById('sizeSlider');
+        sizeSlider.addEventListener('input', () => {
+            if (model) {
+                const scale = parseFloat(sizeSlider.value);
+                model.scale.set(scale, scale, scale);
+            }
+        });
+
+        // Terrain size slider
+        const floorSizeSlider = document.getElementById('floorSizeSlider');
+        floorSizeSlider.addEventListener('input', () => {
+            if (terrain) {
+                const size = parseFloat(floorSizeSlider.value);
+                terrain.geometry.dispose();
+                terrain.geometry = new THREE.PlaneGeometry(size, size);
+                terrainTexture.repeat.set(size / 2, size / 2);
+                normalTexture.repeat.set(size / 2, size / 2);
+                roughnessTexture.repeat.set(size / 2, size / 2);
+            }
+        });
+
+        // Joystick controls
+        const joystick = document.getElementById('joystick');
+        const stick = document.getElementById('stick');
+        let isDragging = false;
+        let joystickPos = { x: 0, y: 0 };
+
+        joystick.addEventListener('mousedown', startDragging);
+        joystick.addEventListener('touchstart', startDragging);
+
+        joystick.addEventListener('mousemove', drag);
+        joystick.addEventListener('touchmove', drag);
+
+        document.addEventListener('mouseup', stopDragging);
+        document.addEventListener('touchend', stopDragging);
+
+        function startDragging(e) {
+            e.preventDefault();
+            isDragging = true;
+            updateStickPosition(e.type.includes('touch') ? e.touches[0] : e);
+        }
+
+        function drag(e) {
+            if (isDragging) {
+                e.preventDefault();
+                updateStickPosition(e.type.includes('touch') ? e.touches[0] : e);
+            }
+        }
+
+        function stopDragging() {
+            isDragging = false;
+            stick.style.left = '30px';
+            stick.style.top = '30px';
+            joystickPos = { x: 0, y: 0 };
+            if (model) playAnimation(0); // Return to idle
+        }
+
+        function updateStickPosition(e) {
+            const rect = joystick.getBoundingClientRect();
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            let x = e.clientX - rect.left - centerX;
+            let y = e.clientY - rect.top - centerY;
+            const maxDist = 30;
+            const dist = Math.sqrt(x * x + y * y);
+            if (dist > maxDist) {
+                x = (x / dist) * maxDist;
+                y = (y / dist) * maxDist;
+            }
+            stick.style.left = `${centerX + x - 20}px`;
+            stick.style.top = `${centerY + y - 20}px`;
+            joystickPos = { x: x / maxDist, y: y / maxDist };
+        }
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            if (mixer) mixer.update(delta);
+
+            // Move robot continuously while joystick is active
+            if (model && isDragging && (joystickPos.x !== 0 || joystickPos.y !== 0)) {
+                playAnimation(6); // Fast walk animation
+                model.position.x += joystickPos.x * 0.05;
+                model.position.z += joystickPos.y * 0.05;
+                const direction = new THREE.Vector2(joystickPos.x, joystickPos.y).normalize();
+                model.rotation.y = Math.atan2(direction.x, direction.y);
+
+                // Add trail
+                const trailDot = new THREE.Mesh(trailGeometry, trailMaterial);
+                trailDot.position.copy(model.position);
+                trailDot.position.y = -1.4;
+                scene.add(trailDot);
+                trail.push({ mesh: trailDot, time: Date.now() });
+
+                // Check for collectable collision
+                collectables = collectables.filter(collectable => {
+                    const distance = model.position.distanceTo(collectable.position);
+                    if (distance < 0.5) {
+                        scene.remove(collectable);
+                        collectableCount++;
+                        document.getElementById('stats').innerText = `Collectables: ${collectableCount}`;
+                        return false;
+                    }
+                    return true;
+                });
+            } else if (model) {
+                playAnimation(0); // Idle when not moving
+            }
+
+            // Update robot camera (higher)
+            if (model) {
+                robotCamera.position.set(
+                    model.position.x - Math.sin(model.rotation.y) * 4,
+                    model.position.y + 4, // Higher
+                    model.position.z - Math.cos(model.rotation.y) * 4
+                );
+                robotCamera.lookAt(
+                    model.position.x + Math.sin(model.rotation.y),
+                    model.position.y,
+                    model.position.z + Math.cos(model.rotation.y)
+                );
+            }
+
+            // Fly around camera animation
+            if (cameraMode === 2 && model) {
+                flyAroundAngle += delta * 0.5;
+                flyAroundCamera.position.set(
+                    Math.sin(flyAroundAngle) * 5,
+                    2,
+                    Math.cos(flyAroundAngle) * 5
+                );
+                flyAroundCamera.lookAt(model.position);
+            }
+
+            // Update minimap camera
+            if (model) {
+                minimapCamera.position.set(model.position.x, 10, model.position.z);
+                minimapCamera.lookAt(model.position.x, 0, model.position.z);
+            }
+
+            // Clean up trail
+            const now = Date.now();
+            while (trail.length > 0 && now - trail[0].time > 5000) {
+                scene.remove(trail[0].mesh);
+                trail.shift();
+            }
+
+            controls.update();
+            renderer.render(scene, activeCamera);
+            minimapRenderer.render(scene, minimapCamera);
+        }
+
+        // Clock for animations
+        const clock = new THREE.Clock();
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            birdsEyeCamera.aspect = window.innerWidth / window.innerHeight;
+            flyAroundCamera.aspect = window.innerWidth / window.innerHeight;
+            robotCamera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            birdsEyeCamera.updateProjectionMatrix();
+            flyAroundCamera.updateProjectionMatrix();
+            robotCamera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
