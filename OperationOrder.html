@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order of Operations - V0.3</title>
+    <title>Order of Operations - V0.4</title>
     <style>
         body { 
             margin: 0; 
@@ -287,10 +287,10 @@
         #stepsNonGame .a { color: #00ffff; }
         #updatedSum {
             position: absolute;
-            top: 190px;
+            top: 170px;
             left: 20px;
             color: white;
-            font-size: 30px;
+            font-size: 26px;
         }
         body.light-mode #updatedSum {
             color: black;
@@ -951,6 +951,10 @@
                     );
                 }
                 updatedSumDisplay.innerHTML = `Current Sum: ${sumText}`;
+                if (isGameMode)
+                    updatedSumDisplay.top = `280px`; // TODO check
+                else
+                    updatedSumDisplay.top = `170px`; // TODO check
             } else {
                 updatedSumDisplay.innerHTML = '';
             }
