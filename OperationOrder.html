@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order of Operations</title>
+    <title>Order of Operations - V0.2</title>
     <style>
         body { 
             margin: 0; 
@@ -119,7 +119,7 @@
             padding: 15px 30px;
             font-size: 20px;
             font-weight: bold;
-            background: #333;
+            background: green;
             color: white;
             border: none;
             border-radius: 8px;
@@ -193,10 +193,10 @@
             color: #ffcc00;
         }
         #problem .grey { color: #666; }
-        #problem .b { color: #ff0000; font-weight: bold; }
-        #problem .e { color: #00ff00; font-weight: bold; }
-        #problem .m { color: #ff00ff; font-weight: bold; }
-        #problem .a { color: #00ffff; font-weight: bold; }
+        #problem .b { color: #ff0000; font-weight: bold; padding: 10px; }
+        #problem .e { color: #00ff00; font-weight: bold; padding: 10px; }
+        #problem .m { color: #ff00ff; font-weight: bold; padding: 10px; }
+        #problem .a { color: #00ffff; font-weight: bold; padding: 10px; }
         #gameMode {
             position: absolute;
             top: 180px;
@@ -378,7 +378,7 @@
         #nextLevelButton {
             padding: 12px 24px;
             font-size: 18px;
-            background: #333;
+            background: green;
             color: white;
             border: none;
             cursor: pointer;
@@ -980,7 +980,8 @@
 
         // Update score and level display
         function updateScoreDisplay() {
-            scoreDisplay.innerHTML = `Score: ${score} | Level: ${level}`;
+            if (isGameMode)
+                scoreDisplay.innerHTML = `Score: ${score} | Level: ${level}`;
         }
 
         // Update progress bar
