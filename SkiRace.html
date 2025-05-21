@@ -3,8 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ski Race - V0.6.0</title>
-    <link rel="stylesheet" href="SkiRace-styles.css">
+    <title>Ski Race - V0.9</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #joystick {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 100px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            touch-action: none;
+            display: none;
+        }
+        #knob {
+            width: 50px;
+            height: 50px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 25px;
+            left: 25px;
+        }
+        #stats {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            text-shadow: 1px 1px 2px black;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px;
+            border-radius: 4px;
+            display: none;
+        }
+        #bonus, #flagHit, #penalty, #correct, #finishMessage, #npcHit {
+            position: absolute;
+            color: yellow;
+            font-size: 30px;
+            font-family: Arial, sans-serif;
+            text-shadow: 1px 1px 2px black;
+            display: none;
+        }
+        #bonus, #flagHit, #penalty, #npcHit {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        #correct {
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        #correct.left {
+            left: 20px;
+        }
+        #correct.right {
+            right: 20px;
+        }
+        #finishMessage {
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+        }
+        #flagHit {
+            color: red;
+        }
+        #penalty {
+            color: orange;
+        }
+        #correct {
+            color: green;
+        }
+        .mini-score {
+            position: absolute;
+            color: yellow;
+            font-size: 20px;
+            font-family: Arial, sans-serif;
+            text-shadow: 1px 1px 2px black;
+            pointer-events: none;
+            transition: opacity 1s, transform 1s;
+        }
+        .mini-score.penalty {
+            color: orange;
+        }
+        .mini-score.fade {
+            opacity: 0;
+            transform: translateY(-50px);
+        }
+        #gameOver, #levelComplete {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            display: none;
+        }
+        #welcome {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+        }
+        #toggleCamera {
+            position: absolute;
+            bottom: 20px;
+            left: 10px;
+            padding: 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-family: Arial, sans-serif;
+            display: none;
+        }
+        #miniMap {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            display: none;
+            rotate: 90deg;
+        }
+        #sideView {
+            position: absolute;
+            top: 170px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            display: none;
+        }
+        #progressBar {
+            position: absolute;
+            bottom: 100px;
+            left: 10px;
+            width: 20px;
+            height: 60%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid white;
+            border-radius: 5px;
+            display: none;
+        }
+        #progressFill {
+            width: 100%;
+            background: white;
+            border-radius: 3px;
+            transition: height 0.2s;
+            position: absolute;
+            bottom: 0;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+    </style>
 </head>
 <body>
     <div id="joystick"><div id="knob"></div></div>
@@ -28,22 +203,14 @@
     <div id="welcome">
         <h1>Downhill Ski Challenge</h1>
         <p>Ski down steep slopes, weaving through flags, avoiding skiers, and collecting items to score points. Avoid hitting flags to keep your lives!</p>
-        <p><strong>Controls:</strong><br>
-        - Joystick: Move left/right (left moves right, right moves left), pull up to slow down, push down to speed up.<br>
-        - Camera: Toggle between default and fly-around views.<br>
-        - Snowballs: Automatically shoot at skiers (collect cyan spheres for ammo).<br>
-        - Objective: Reach the finish line, passing flags for points, collecting speed-ups (orange), extra lives (purple), and snowballs (cyan).<br>
-        - Lives: Start with 3, lose 1 per flag hit, game over at 0.<br>
-        - Scoring: +100 for correct side, -50 for wrong side, +50 for NPC snowball hit.</p>
         <button onclick="startGame()">Start Game</button>
     </div>
     <button id="toggleCamera" onclick="toggleCamera()">Camera: Default</button>
     <canvas id="miniMap"></canvas>
     <canvas id="sideView"></canvas>
-    <input type="range" id="miniMapZoom" min="0" max="100" value="50" style="display: none;">
     <div id="progressBar"><div id="progressFill"></div></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-    <script>
+    <script>        
         let scene, camera, renderer, skier, flags = [], finishLine, terrain, trees = [], npcs = [], collectables = [], snowballs = [], flagpoles = [];
         let lives = 3, score = 0, time = 0, level = 1, gameOver = false, autoPlay = false, autoThrow = true, snowballAmmo = 0, snowballsUsed = 0, npcsHit = 0;
         let clock = new THREE.Clock();
@@ -54,11 +221,12 @@
         let miniMap, miniMapCtx, sideView, sideViewCtx;
         let skiTrails = { left: [], right: [] };
         let mainTrails = { left: [], right: [] };
+        let npcTrails = [];
         let screenShake = { active: false, timer: 0, intensity: 0.5 };
         let cameraMode = 'default';
         let flyAroundAngle = 0;
         let snowballCooldown = 0;
-        let miniMapZoom = 1.0;
+        let miniMapZoom = 2.0;
 
         function createSkier(isNPC = false, colorIndex = 0) {
             const skierGroup = new THREE.Group();
@@ -131,39 +299,48 @@
             return skierGroup;
         }
 
+        function getTerrainHeight(x) {
+            if (!terrain || !terrain.geometry || !terrain.geometry.attributes.position.array) return 0;
+            const segments = 100;
+            const index = Math.floor((x / -2000) * segments);
+            const maxIndex = segments;
+            const clampedIndex = Math.max(0, Math.min(maxIndex, index));
+            return terrain.geometry.attributes.position.array[clampedIndex * (segments + 1) * 3 + 2] || 0;
+        }
+
         function generatePerlinNoise(width, depth, scale) {
             const noise = new Array(width * depth);
             for (let i = 0; i < width; i++) {
                 for (let j = 0; j < depth; j++) {
                     const x = i / width * scale;
                     const y = j / depth * scale;
-                    noise[i + j * width] = (Math.sin(x * 2) + Math.sin(y * 2)) * 0.5;
+                    noise[i + j * width] = (Math.sin(x * 2) + Math.sin(y * 2) + Math.sin(x * y)) * 0.5;
                 }
             }
             return noise;
         }
 
         function createTerrain() {
-            const width = 2000, depth = 100, segments = 50;
+            const width = 4000, depth = 400, segments = 100;
             const geometry = new THREE.PlaneGeometry(width, depth, segments, segments);
             const material = new THREE.MeshStandardMaterial({
                 color: 0xF5F6F5,
                 roughness: 0.9,
                 metalness: 0.1,
-                bumpScale: 0.1
+                bumpScale: 0.2
             });
             const terrain = new THREE.Mesh(geometry, material);
             terrain.rotation.x = -Math.PI / 2;
-            terrain.rotation.y = Math.PI / 2;
-            const noise = generatePerlinNoise(segments + 1, segments + 1, 5);
+            //terrain.rotation.y = Math.PI / 2;
+            const noise = generatePerlinNoise(segments + 1, segments + 1, 10);
             const vertices = geometry.attributes.position.array;
             for (let i = 0; i <= segments; i++) {
                 for (let j = 0; j <= segments; j++) {
                     const index = (i * (segments + 1) + j) * 3;
-                    let z = noise[i + j * (segments + 1)] * 5 - (i / segments) * 40;
-                    if (i > segments * 0.1 && i < segments * 0.125) z -= (i / segments - 0.1) * 100;
-                    if (i > segments * 0.2 && i < segments * 0.225) z -= (i / segments - 0.2) * 100;
-                    if (i > segments * 0.3 && i < segments * 0.325) z -= (i / segments - 0.3) * 100;
+                    let z = 20 + noise[i + j * (segments + 1)] * 10 - (i / segments) * 60;
+                    if (i > segments * 0.15 && i < segments * 0.175) z -= (i / segments - 0.15) * 150;
+                    if (i > segments * 0.25 && i < segments * 0.275) z -= (i / segments - 0.25) * 150;
+                    if (i > segments * 0.35 && i < segments * 0.375) z -= (i / segments - 0.35) * 150;
                     vertices[index + 2] = z;
                 }
             }
@@ -184,14 +361,22 @@
             const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
             foliage.position.set(0, 2.5, 0);
             treeGroup.add(foliage);
-            treeGroup.position.set(x, 0, z);
+            const terrainHeight = getTerrainHeight(x);
+            treeGroup.position.set(x, terrainHeight, z);
             return treeGroup;
         }
 
         function createNPC(x, z, colorIndex) {
             const npc = createSkier(true, colorIndex);
             npc.position.set(x, 0, z);
-            npc.userData = { speed: 10 + Math.random() * 10, knockedOver: false, knockOverTimer: 0, spinAngle: 0 };
+            npc.userData = { 
+                speed: 10 + Math.random() * 10, 
+                knockedOver: false, 
+                knockOverTimer: 0, 
+                spinAngle: 0, 
+                trails: { left: [], right: [] },
+                lateralOffset: Math.random() * 100
+            };
             return npc;
         }
 
@@ -199,50 +384,65 @@
             const geometry = new THREE.SphereGeometry(0.7, 32, 32);
             let color;
             if (type === 'speed') color = 0xFFA500;
-            else if (type === 'life') color = 0x800080;
-            else color = 0x00FFFF;
-            const material = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.0, roughness: 0.2 });
+            else if (type === 'life') color = 0xFF0000;
+            else color = 0xFFFFFF; //
+            const material = new THREE.MeshStandardMaterial({ 
+                color: color,
+                emissive: color, 
+                emissiveIntensity: 0.5,
+                roughness: 0.5 }
+            );
             const collectable = new THREE.Mesh(geometry, material);
-            const terrainHeight = terrain ? terrain.geometry.attributes.position.array[Math.floor((x / -2000) * 50) * (50 + 1) * 3 + 2] || 0 : 0;
+            const terrainHeight = getTerrainHeight(x);
             collectable.position.set(x, terrainHeight + 1.5, z);
             collectable.userData = { type, baseScale: 0.7, pulseTime: Math.random() * Math.PI * 2, baseY: terrainHeight + 1.5 };
             return collectable;
         }
 
-        function createSnowball(x, y, z, target, predictedPos) {
-            const geometry = new THREE.SphereGeometry(0.2, 16, 16);
-            const material = new THREE.MeshStandardMaterial({ color: 0xFFFFFF });
+        function createSnowball(target) {
+            const geometry = new THREE.SphereGeometry(0.3, 16, 16);
+            const material = new THREE.MeshStandardMaterial({ 
+                color: 0xFFFFFF, 
+                emissive: 0xFFFFFF, 
+                emissiveIntensity: 0.5, 
+                roughness: 0.5 
+            });
             const snowball = new THREE.Mesh(geometry, material);
-            snowball.position.set(x, y, z);
-            const dist = new THREE.Vector3(x, y, z).distanceTo(predictedPos);
+            snowball.renderOrder = 1;
+            const startPos = skierParts.rightArm.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(-2, 0, 0));
+            const targetPos = target.position.clone();
+            const targetVel = new THREE.Vector3(-target.userData.speed, 0, Math.sin(time * 0.5 + target.userData.lateralOffset) * 2);
+            const relativeVel = targetVel.clone().sub(new THREE.Vector3(-currentSpeed, 0, 0));
+            const dist = startPos.distanceTo(targetPos); 
+            const timeToHit = dist / 40; // speed of snowball
+            const predictedPos = targetPos.clone().add(relativeVel.multiplyScalar(timeToHit)); // predict target position
+            snowball.position.copy(startPos); 
             snowball.userData = { 
                 target, 
-                startPos: new THREE.Vector3(x, y, z), 
-                endPos: predictedPos, 
-                controlPos: new THREE.Vector3(
-                    (x + predictedPos.x) / 2 + (Math.random() - 0.5) * dist * 0.5,
-                    y + dist * 0.3,
-                    (z + predictedPos.z) / 2
-                ), 
-                time: 0, 
-                duration: dist / 60, 
-                trail: [], 
+                velocity: predictedPos.sub(startPos).normalize().multiplyScalar(55), // speed of snowball
+                startTime: time,
+                trail: [],
                 lastTrailTime: 0 
             };
             return snowball;
         }
 
-        function createTrailParticle(x, z, time) {
-            const geometry = new THREE.SphereGeometry(0.1, 8, 8);
-            const material = new THREE.MeshStandardMaterial({ color: 0x808080, transparent: true, opacity: 0.8 });
+        function createTrailParticle(x, z, time, isNPC = false) {
+            const geometry = new THREE.SphereGeometry(0.1, 8, 8); // Create a sphere for the trail particle
+            const material = new THREE.MeshStandardMaterial({ 
+                color: isNPC ? 0xB0B0B0 : 0x808080, 
+                transparent: true, 
+                opacity: isNPC ? 0.3 : 0.6 
+            });
             const particle = new THREE.Mesh(geometry, material);
-            particle.position.set(x, terrain.geometry.attributes.position.array[Math.floor((x / -2000) * 50) * (50 + 1) * 3 + 2] + 0.05, z);
+            const terrainHeight = getTerrainHeight(x);
+            particle.position.set(x, terrainHeight + 0.05, z);
             particle.userData = { time: time };
             return particle;
         }
 
         function createSnowballTrailParticle(x, y, z, time) {
-            const geometry = new THREE.SphereGeometry(0.1, 16, 16);
+            const geometry = new THREE.SphereGeometry(0.2, 16, 16);
             const material = new THREE.MeshStandardMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.6 });
             const particle = new THREE.Mesh(geometry, material);
             particle.position.set(x, y, z);
@@ -284,6 +484,26 @@
                 particle.material.opacity = 0.8 * (1 - age / 5);
                 return true;
             });
+            npcTrails.forEach(npcTrail => {
+                npcTrail.left = npcTrail.left.filter(particle => {
+                    const age = time - particle.userData.time;
+                    if (age > 5) {
+                        scene.remove(particle);
+                        return false;
+                    }
+                    particle.material.opacity = 0.5 * (1 - age / 5);
+                    return true;
+                });
+                npcTrail.right = npcTrail.right.filter(particle => {
+                    const age = time - particle.userData.time;
+                    if (age > 5) {
+                        scene.remove(particle);
+                        return false;
+                    }
+                    particle.material.opacity = 0.5 * (1 - age / 5);
+                    return true;
+                });
+            });
         }
 
         function initMiniMap() {
@@ -291,10 +511,6 @@
             miniMapCtx = miniMap.getContext('2d');
             miniMap.width = 150;
             miniMap.height = 150;
-            const zoomSlider = document.getElementById('miniMapZoom');
-            zoomSlider.addEventListener('input', () => {
-                miniMapZoom = 0.5 + (zoomSlider.value / 100) * 1.5;
-            });
         }
 
         function initSideView() {
@@ -305,21 +521,28 @@
         }
 
         function updateMiniMap() {
-            if (!skier || !miniMapCtx) return;
+            if (!skier || !miniMapCtx || !skier.position) return;
             miniMapCtx.clearRect(0, 0, miniMap.width, miniMap.height);
+            miniMapCtx.save();
+            miniMapCtx.scale(1, -1);
+            miniMapCtx.translate(0, -miniMap.height);
             const mapWidth = 2000 / miniMapZoom;
             const mapHeight = 100 / miniMapZoom;
             const scaleX = miniMap.width / mapWidth;
             const scaleY = miniMap.height / mapHeight;
             const centerX = miniMap.width / 2;
             const centerY = miniMap.height / 2;
+
+            // Ski trails
             if (currentSpeed > 0) {
                 skiTrails.left.push({ x: skier.position.x, z: skier.position.z - 0.3, time: time });
                 skiTrails.right.push({ x: skier.position.x, z: skier.position.z + 0.3, time: time });
             }
             skiTrails.left = skiTrails.left.filter(point => time - point.time < 5);
             skiTrails.right = skiTrails.right.filter(point => time - point.time < 5);
+
             skiTrails.left.forEach(point => {
+                if (!point.x || !point.z) return;
                 const alpha = 1 - (time - point.time) / 5;
                 miniMapCtx.fillStyle = `rgba(128, 128, 128, ${alpha})`;
                 const x = centerX + (point.x - skier.position.x) * scaleX;
@@ -330,7 +553,9 @@
                     miniMapCtx.fill();
                 }
             });
+
             skiTrails.right.forEach(point => {
+                if (!point.x || !point.z) return;
                 const alpha = 1 - (time - point.time) / 5;
                 miniMapCtx.fillStyle = `rgba(128, 128, 128, ${alpha})`;
                 const x = centerX + (point.x - skier.position.x) * scaleX;
@@ -341,8 +566,10 @@
                     miniMapCtx.fill();
                 }
             });
+
+            // Flags
             flags.forEach(flag => {
-                if (!flag.material) return;
+                if (!flag || !flag.material || !flag.position) return;
                 miniMapCtx.fillStyle = flag.material.color.getStyle();
                 const x = centerX + (flag.position.x - skier.position.x) * scaleX;
                 const z = centerY - (flag.position.z - skier.position.z) * scaleY;
@@ -352,7 +579,10 @@
                     miniMapCtx.fill();
                 }
             });
+
+            // Trees
             trees.forEach(tree => {
+                if (!tree || !tree.position) return;
                 miniMapCtx.fillStyle = '#228B22';
                 const x = centerX + (tree.position.x - skier.position.x) * scaleX;
                 const z = centerY - (tree.position.z - skier.position.z) * scaleY;
@@ -362,7 +592,10 @@
                     miniMapCtx.fill();
                 }
             });
+
+            // NPCs
             npcs.forEach(npc => {
+                if (!npc || !npc.position) return;
                 miniMapCtx.fillStyle = '#808080';
                 const x = centerX + (npc.position.x - skier.position.x) * scaleX;
                 const z = centerY - (npc.position.z - skier.position.z) * scaleY;
@@ -370,8 +603,10 @@
                     miniMapCtx.fillRect(x - 1 * miniMapZoom, z - 1 * miniMapZoom, 2 * miniMapZoom, 2 * miniMapZoom);
                 }
             });
+
+            // Collectables
             collectables.forEach(collectable => {
-                if (!collectable.material) return;
+                if (!collectable || !collectable.material || !collectable.position) return;
                 miniMapCtx.fillStyle = collectable.material.color.getStyle();
                 const x = centerX + (collectable.position.x - skier.position.x) * scaleX;
                 const z = centerY - (collectable.position.z - skier.position.z) * scaleY;
@@ -381,25 +616,33 @@
                     miniMapCtx.fill();
                 }
             });
+
+            // Finish line
             miniMapCtx.fillStyle = 'green';
             const finishX = centerX + (-1850 - skier.position.x) * scaleX;
             const finishZ = centerY - (0 - skier.position.z) * scaleY;
             if (finishX > 0 && finishX < miniMap.width) {
                 miniMapCtx.fillRect(finishX - 0.5, finishZ - 12.5 * scaleY, 1, 25 * scaleY);
             }
+
+            // Skier position
             miniMapCtx.fillStyle = `rgba(255, 255, 0, ${0.5 + 0.5 * Math.sin(time * (0.5 + 5 * currentSpeed / 50))})`;
             miniMapCtx.beginPath();
             miniMapCtx.arc(centerX, centerY, 2 * miniMapZoom, 0, Math.PI * 2);
             miniMapCtx.fill();
+            miniMapCtx.restore();
         }
 
         function updateSideView() {
             if (!skier || !terrain || !sideViewCtx) return;
             sideViewCtx.clearRect(0, 0, sideView.width, sideView.height);
-            const segments = 50;
+            sideViewCtx.save();
+            sideViewCtx.scale(-1, 1);
+            sideViewCtx.translate(-sideView.width, 0);
+            const segments = 100;
             const mapWidth = 2000;
             const scaleX = sideView.width / mapWidth;
-            const maxTerrainHeight = 10;
+            const maxTerrainHeight = 30;
             const minTerrainHeight = -40;
             const heightRange = maxTerrainHeight - minTerrainHeight;
             const scaleY = sideView.height / heightRange;
@@ -428,11 +671,12 @@
             sideViewCtx.lineWidth = 2;
             sideViewCtx.beginPath();
             const finishX = (mapWidth - 1850) * scaleX;
-            const finishHeight = terrain.geometry.attributes.position.array[Math.floor((-1850 / -2000) * segments) * (50 + 1) * 3 + 2] || 0;
+            const finishHeight = terrain.geometry.attributes.position.array[Math.floor((-1850 / -2000) * segments) * (100 + 1) * 3 + 2] || 0;
             const finishY = sideView.height - (finishHeight - minTerrainHeight) * scaleY;
             sideViewCtx.moveTo(finishX, sideView.height);
             sideViewCtx.lineTo(finishX, finishY - 10);
             sideViewCtx.stroke();
+            sideViewCtx.restore();
         }
 
         function showMiniScore(text, x, z, isPenalty) {
@@ -494,9 +738,9 @@
         function isNPCTargetable(npc) {
             if (!npc.userData || npc.userData.knockedOver) return false;
             const dist = skier.position.distanceTo(npc.position);
-            if (dist > 30 || npc.position.x > skier.position.x) return false;
+            if (dist > 25 || npc.position.x > skier.position.x) return false; // NPC too far or ahead
             const direction = npc.position.clone().sub(skier.position).normalize();
-            const forward = new THREE.Vector3(-1, 0, 0);
+            const forward = new THREE.Vector3(-1, 0, 0); 
             const angle = direction.angleTo(forward);
             if (angle > Math.PI / 6) return false;
             const raycaster = new THREE.Raycaster(skier.position, direction, 0, dist);
@@ -537,13 +781,14 @@
             skier.position.set(0, 0, 0);
             scene.add(skier);
             flags = [];
-            for (let i = 0; i < 40; i++) {
+            for (let i = 0; i < 40; i++) { // 40 flags
                 const flagGeometry = new THREE.CylinderGeometry(0.1, 0.1, 3, 32);
                 const flagMaterial = new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0x0000FF : 0xFF0000 });
                 const flag = new THREE.Mesh(flagGeometry, flagMaterial);
                 const x = -50 - i * 40;
                 const z = (Math.random() - 0.5) * 20;
-                flag.position.set(x, 1.5, z);
+                const terrainHeight = getTerrainHeight(x);
+                flag.position.set(x, terrainHeight + 1.5, z);
                 flags.push(flag);
                 scene.add(flag);
             }
@@ -558,11 +803,13 @@
                 }
             }
             npcs = [];
+            npcTrails = [];
             for (let i = 0; i < 40; i++) {
                 const x = -Math.random() * 1800;
                 const z = (Math.random() - 0.5) * 30;
                 const npc = createNPC(x, z, i);
                 npcs.push(npc);
+                npcTrails.push({ left: [], right: [] });
                 scene.add(npc);
             }
             collectables = [];
@@ -574,26 +821,26 @@
                 collectables.push(collectable);
                 scene.add(collectable);
             }
-            for (let i = 0; i < 10; i++) {
+            for (let i = 0; i < 20; i++) {
                 const x = -50 - i * 100;
                 const z = (Math.random() - 0.5) * 20;
                 const collectable = createCollectable('snowball', x, z);
                 collectables.push(collectable);
                 scene.add(collectable);
             }
-            const finishHeight = terrain ? terrain.geometry.attributes.position.array[Math.floor((-1850 / -2000) * 50) * (50 + 1) * 3 + 2] || 0 : 0;
+            const finishHeight = getTerrainHeight(-1850);
             const finishGeometry = new THREE.BoxGeometry(2, 0.2, 50);
             const finishMaterial = new THREE.MeshStandardMaterial({ color: 0x00FF00 });
             finishLine = new THREE.Mesh(finishGeometry, finishMaterial);
             finishLine.position.set(-1850, finishHeight + 0.1, 0);
-            finishLine.rotation.y = Math.PI / 2;
+            finishLine.rotation.y = Math.PI;
             scene.add(finishLine);
             const floorGeometry = new THREE.PlaneGeometry(10, 50);
             const floorMaterial = new THREE.MeshStandardMaterial({ map: createCheckeredTexture(), roughness: 0.5 });
             const finishFloor = new THREE.Mesh(floorGeometry, floorMaterial);
-            finishFloor.position.set(-1855, finishHeight + 0.05, 0);
-            finishFloor.rotation.x = -Math.PI / 2;
-            finishFloor.rotation.y = Math.PI / 2;
+            finishFloor.position.set(-1855, finishHeight + 0.1, 0);
+            //finishFloor.rotation.x = -Math.PI / 2;
+            finishFloor.rotation.y = Math.PI;
             scene.add(finishFloor);
             flagpoles = [];
             const poleGeometry = new THREE.CylinderGeometry(0.1, 0.1, 4, 16);
@@ -617,6 +864,7 @@
             rightFlag.rotation.y = Math.PI;
             scene.add(rightFlag);
             const ambientLight = new THREE.AmbientLight(0x606060);
+            //ambientLight.castShadow = true;
             scene.add(ambientLight);
             const directionalLight = new THREE.DirectionalLight(0xFFFFFF, 0.7);
             directionalLight.position.set(10, 20, 10);
@@ -639,7 +887,6 @@
             document.getElementById('toggleCamera').style.display = 'block';
             document.getElementById('miniMap').style.display = 'block';
             document.getElementById('sideView').style.display = 'block';
-            document.getElementById('miniMapZoom').style.display = 'block';
             document.getElementById('progressBar').style.display = 'block';
             setupGame();
         }
@@ -713,7 +960,7 @@
                 currentSpeed = currentSpeed * progress;
                 skier.position.x -= currentSpeed * delta;
                 if (skier.position.x < -1860) skier.position.x = -1860;
-                if (time % 0.03 < delta) {
+                if (time % 0.3 < delta) {
                     const leftParticle = createTrailParticle(skier.position.x, skier.position.z - 0.3, time);
                     const rightParticle = createTrailParticle(skier.position.x, skier.position.z + 0.3, time);
                     mainTrails.left.push(leftParticle);
@@ -757,14 +1004,15 @@
             skierParts.rightLeg.position.y = 0.5 * scaleY;
             skierParts.leftSki.position.y = 0.025;
             skierParts.rightSki.position.y = 0.025;
-            const skiAngle = -joystick.x * Math.PI / 6;
+            const skiAngle = joystick.x * Math.PI / 6;
             skierParts.leftSki.rotation.y = skiAngle + Math.PI;
             skierParts.rightSki.rotation.y = skiAngle + Math.PI;
         }
 
         function knockOverFlag(flag) {
             flag.rotation.x = Math.PI / 2;
-            flag.position.y = 0.1;
+            const terrainHeight = getTerrainHeight(flag.position.x);
+            flag.position.y = terrainHeight + 0.1;
         }
 
         function knockOverNPC(npc) {
@@ -806,9 +1054,9 @@
                 if (screenShake.timer <= 0) {
                     screenShake.active = false;
                     if (cameraMode === 'default' && skidTimer <= 0) {
-                        const isSteep = skier.position.x > -250 && skier.position.x < -200 ||
-                                        skier.position.x > -450 && skier.position.x < -400 ||
-                                        skier.position.x > -650 && skier.position.x < -600;
+                        const isSteep = skier.position.x > -300 && skier.position.x < -250 ||
+                                        skier.position.x > -500 && skier.position.x < -450 ||
+                                        skier.position.x > -700 && skier.position.x < -650;
                         if (isSteep) {
                             camera.position.set(skier.position.x + 10, skier.position.y + 10, skier.position.z);
                             camera.lookAt(skier.position.x - 5, skier.position.y, skier.position.z);
@@ -836,20 +1084,21 @@
                     skier.position.z + Math.sin(flyAroundAngle) * radius
                 );
                 camera.lookAt(skier.position);
+                
             } else if (cameraMode === 'default' && !screenShake.active) {
-                const isSteep = skier.position.x > -250 && skier.position.x < -200 ||
-                                skier.position.x > -450 && skier.position.x < -400 ||
-                                skier.position.x > -650 && skier.position.x < -600;
-                if (isSteep) {
-                    camera.position.set(skier.position.x + 10, skier.position.y + 10, skier.position.z);
-                    camera.lookAt(skier.position.x - 5, skier.position.y, skier.position.z);
-                } else {
-                    camera.position.set(skier.position.x + 10, skier.position.y + 5, skier.position.z);
+                //const isSteep = skier.position.x > -300 && skier.position.x < -250 ||
+                //                skier.position.x > -500 && skier.position.x < -450 ||
+                //                skier.position.x > -700 && skier.position.x < -650;
+                //if (isSteep) {
+                //    camera.position.set(skier.position.x + 10, skier.position.y + 10, skier.position.z);
+                //    camera.lookAt(skier.position.x - 5, skier.position.y, skier.position.z);
+                //} else {
+                    camera.position.set(skier.position.x + 10, skier.position.y + 5, skier.position.z );
                     camera.lookAt(skier.position);
-                }
+                //}
             } else if (cameraMode === 'flyAround') {
-                flyAroundAngle += delta * 0.5;
-                const radius = 15;
+                flyAroundAngle += delta * 0.75; // Adjust the speed of the fly-around effect
+                const radius = 25;
                 camera.position.set(
                     skier.position.x + Math.cos(flyAroundAngle) * radius,
                     skier.position.y + 5,
@@ -860,7 +1109,7 @@
         }
 
         function updateNPCs(delta) {
-            npcs.forEach(npc => {
+            npcs.forEach((npc, index) => {
                 if (!npc.userData) return;
                 if (npc.userData.knockedOver) {
                     npc.userData.knockOverTimer -= delta;
@@ -872,15 +1121,29 @@
                         npc.userData.knockedOver = false;
                         npc.rotation.x = 0;
                         npc.rotation.y = Math.PI / 2;
-                        npc.position.y = terrain.geometry.attributes.position.array[Math.floor((npc.position.x / -2000) * 50) * (50 + 1) * 3 + 2] + 0.5;
+                        const terrainHeight = getTerrainHeight(npc.position.x);
+                        npc.position.y = terrainHeight + 0.5;
                     }
                 } else {
                     npc.position.x -= npc.userData.speed * delta;
-                    const terrainHeight = terrain.geometry.attributes.position.array[Math.floor((npc.position.x / -2000) * 50) * (50 + 1) * 3 + 2] || 0;
+                    const lateralMove = Math.sin(time * 0.5 + npc.userData.lateralOffset) * 10;
+                    npc.position.z = Math.max(-30, Math.min(30, lateralMove));
+                    const terrainHeight = getTerrainHeight(npc.position.x);
                     npc.position.y = terrainHeight + 0.5;
                     if (npc.position.x < -1900) {
                         npc.position.x = 0;
                         npc.position.z = (Math.random() - 0.5) * 30;
+                        npc.userData.trails.left.forEach(particle => scene.remove(particle));
+                        npc.userData.trails.right.forEach(particle => scene.remove(particle));
+                        npc.userData.trails.left = [];
+                        npc.userData.trails.right = [];
+                    }
+                    if (time % 0.1 < delta) {
+                        const leftParticle = createTrailParticle(npc.position.x, npc.position.z - 0.3, time, true);
+                        const rightParticle = createTrailParticle(npc.position.x, npc.position.z + 0.3, time, true);
+                        npc.userData.trails.left.push(leftParticle);
+                        npc.userData.trails.right.push(rightParticle);
+                        scene.add(leftParticle, rightParticle);
                     }
                 }
             });
@@ -904,10 +1167,10 @@
                     scene.remove(collectable);
                     collectables.splice(index, 1);
                 } else {
-                    collectable.userData.pulseTime += delta * 2;
-                    const scale = collectable.userData.baseScale * (1 + 0.2 * Math.sin(collectable.userData.pulseTime));
+                    collectable.userData.pulseTime += delta * 5;
+                    const scale = collectable.userData.baseScale * (1 + 0.5 * Math.sin(collectable.userData.pulseTime));
                     collectable.scale.set(scale, scale, scale);
-                    const terrainHeight = terrain.geometry.attributes.position.array[Math.floor((collectable.position.x / -2000) * 50) * (50 + 1) * 3 + 2] || 0;
+                    const terrainHeight = getTerrainHeight(collectable.position.x);
                     collectable.position.y = terrainHeight + 1.5 * scale;
                 }
             });
@@ -915,27 +1178,13 @@
 
         function updateSnowballs(delta) {
             snowballs.forEach((snowball, index) => {
-                if (!snowball.userData || !snowball.userData.target || snowball.userData.time > snowball.userData.duration) {
-                    if (snowball.userData && snowball.userData.trail) {
-                        snowball.userData.trail.forEach(particle => scene.remove(particle));
-                    }
+                if (!snowball.userData || !snowball.userData.target) {
+                    snowball.userData.trail.forEach(particle => scene.remove(particle));
                     scene.remove(snowball);
                     snowballs.splice(index, 1);
                     return;
                 }
-                snowball.userData.time += delta;
-                const t = snowball.userData.time / snowball.userData.duration;
-                const u = 1 - t;
-                const target = snowball.userData.target;
-                const predictedPos = target.position.clone();
-                predictedPos.x -= target.userData.speed * (snowball.userData.duration - snowball.userData.time);
-                predictedPos.y = target.position.y;
-                snowball.userData.endPos.copy(predictedPos);
-                const pos = new THREE.Vector3()
-                    .copy(snowball.userData.startPos).multiplyScalar(u * u)
-                    .add(snowball.userData.controlPos.clone().multiplyScalar(2 * u * t))
-                    .add(snowball.userData.endPos.clone()).multiplyScalar(t * t);
-                snowball.position.copy(pos);
+                snowball.position.add(snowball.userData.velocity.clone().multiplyScalar(delta));
                 if (time - snowball.userData.lastTrailTime > 0.05) {
                     const trailParticle = createSnowballTrailParticle(snowball.position.x, snowball.position.y, snowball.position.z, time);
                     snowball.userData.trail.push(trailParticle);
@@ -951,19 +1200,16 @@
                     particle.material.opacity = 0.6 * (1 - age / 0.5);
                     return true;
                 });
+                const target = snowball.userData.target;
                 if (!target.userData.knockedOver && snowball.position.distanceTo(target.position) < 1) {
                     knockOverNPC(target);
-                    if (snowball.userData && snowball.userData.trail) {
-                        snowball.userData.trail.forEach(particle => scene.remove(particle));
-                    }
+                    snowball.userData.trail.forEach(particle => scene.remove(particle));
                     scene.remove(snowball);
                     snowballs.splice(index, 1);
                     return;
                 }
-                if (snowball.position.x < -1900 || Math.abs(snowball.position.z) > 50 || snowball.position.y > 40) {
-                    if (snowball.userData && snowball.userData.trail) {
-                        snowball.userData.trail.forEach(particle => scene.remove(particle));
-                    }
+                if (snowball.position.x < -1900 || Math.abs(snowball.position.z) > 50 || time - snowball.userData.startTime > 2) {
+                    snowball.userData.trail.forEach(particle => scene.remove(particle));
                     scene.remove(snowball);
                     snowballs.splice(index, 1);
                 }
@@ -976,152 +1222,172 @@
             const delta = clock.getDelta();
             time += delta;
             snowballCooldown = Math.max(0, snowballCooldown - delta);
-            if (autoPlay && skier && skidTimer <= 0) {
-                let targetZ = 0;
-                let targetSpeed = -0.5;
-                const nextFlag = flags.find(f => f.position.x > skier.position.x && Math.abs(f.position.x - skier.position.x) < 50);
-                const nearestCollectable = collectables.reduce((nearest, c) => {
-                    const dist = skier.position.distanceTo(c.position);
-                    return dist < 20 && c.position.x > skier.position.x && (!nearest || dist < nearest.dist) ? { obj: c, dist } : nearest;
-                }, null);
-                if (nextFlag) {
-                    const isBlue = nextFlag.material.color.getHex() === 0x0000FF;
-                    targetZ = nextFlag.position.z + (isBlue ? 2 : -2);
-                } else if (nearestCollectable) {
-                    targetZ = nearestCollectable.obj.position.z;
-                    targetSpeed = -0.7;
+
+            try {
+                if (autoPlay && skier && skidTimer <= 0) {
+                    let targetZ = 0;
+                    let targetSpeed = -0.5;
+
+                    const nextFlag = flags.find(f => f.position.x > skier.position.x && Math.abs(f.position.x - skier.position.x) < 50);
+                    const nearestCollectable = collectables.reduce((nearest, c) => {
+                        const dist = skier.position.distanceTo(c.position);
+                        return dist < 20 && c.position.x > skier.position.x && (!nearest || dist < nearest.dist) ? { obj: c, dist } : nearest;
+                    }, null);
+                    if (nextFlag) {
+                        const isBlue = nextFlag.material.color.getHex() === 0x0000FF;
+                        targetZ = nextFlag.position.z + (isBlue ? 2 : -2);
+                    } else if (nearestCollectable) {
+                        targetZ = nearestCollectable.obj.position.z;
+                        targetSpeed = -0.7;
+                    }
+                    const dz = targetZ - skier.position.z;
+                    joystick.x = Math.min(Math.max(dz * 0.05, -1), 1);
+                    joystick.y = targetSpeed;
+
+                    document.getElementById('knob').style.transform = `translate(${joystick.x * 25}px, ${joystick.y * 25}px)`;
                 }
-                const dz = targetZ - skier.position.z;
-                joystick.x = Math.min(Math.max(-dz * 0.05, -1), 1);
-                joystick.y = targetSpeed;
-                document.getElementById('knob').style.transform = `translate(${joystick.x * 25}px, ${joystick.y * 25}px)`;
-            }
-            if (skier) {
-                if (autoThrow && snowballAmmo > 0 && snowballCooldown <= 0) {
-                    let target = null;
-                    let minDist = Infinity;
-                    npcs.forEach(npc => {
-                        if (isNPCTargetable(npc)) {
-                            const dist = skier.position.distanceTo(npc.position);
-                            if (dist < minDist) {
-                                minDist = dist;
-                                target = npc;
+
+                if (skier) {
+                    let travelPoints = Math.round(currentSpeed / 10);
+                    score += travelPoints
+
+                    if (autoThrow && snowballAmmo > 0 && snowballCooldown <= 0) {
+                        let target = null;
+                        let minDist = Infinity;
+                        npcs.forEach(npc => {
+                            if (isNPCTargetable(npc)) {
+                                const dist = skier.position.distanceTo(npc.position);
+                                if (dist < minDist) {
+                                    minDist = dist;
+                                    target = npc;
+                                }
                             }
+                        });
+                        if (target) {
+                            snowballAmmo--;
+                            snowballsUsed++;
+                            throwTimer = 0.5; // throw animation duration
+                            const snowball = createSnowball(target);
+                            snowballs.push(snowball);
+                            scene.add(snowball);
+                            snowballCooldown = 0.2; // cooldown for next snowball
+                        }
+                    }
+                    if (skidTimer <= 0) {
+                        const baseSpeed = 20;
+                        currentSpeed = baseSpeed - joystick.y * 20 + (speedBoostTimer > 0 ? 10 : 0);
+                        currentSpeed = Math.max(0, Math.min(50, currentSpeed));
+                        speedBoostTimer = Math.max(0, speedBoostTimer - delta);
+                        skier.position.z += joystick.x * 15 * delta;
+                        skier.position.x -= currentSpeed * delta;
+                        skier.position.z = Math.max(-15, Math.min(15, skier.position.z));
+                    }
+                    const terrainHeight = getTerrainHeight(skier.position.x);
+                    skier.position.y = terrainHeight + 0.5;
+                    if (currentSpeed > 0 && time % 0.1 < delta && skidTimer <= 0) {
+                        const leftParticle = createTrailParticle(skier.position.x, skier.position.z - 0.3, time);
+                        const rightParticle = createTrailParticle(skier.position.x, skier.position.z + 0.3, time);
+                        mainTrails.left.push(leftParticle);
+                        mainTrails.right.push(rightParticle);
+                        scene.add(leftParticle, rightParticle);
+                    }
+                    updateMainTrails();
+                    animateSkier(delta);
+                    updateNPCs(delta);
+                    updateCollectables(delta);
+                    updateSnowballs(delta);
+                    updateScreenShake(delta);
+                    updateCamera(delta);
+                    flags.forEach((flag, index) => {
+                        if (!flag) return;
+                        const dist = skier.position.distanceTo(flag.position);
+                        if (dist < 1) {
+                            lives--;
+                            knockOverFlag(flag);
+                            showFlagHit();
+                            stumbleTimer = 1.0;
+                            flags.splice(index, 1);
+                            setTimeout(() => scene.remove(flag), 1000);
+                            if (lives <= 0) endGame();
+                        } else if (dist < 2 && flag.position.x > skier.position.x) {
+                            const isBlue = flag.material.color.getHex() === 0x0000FF;
+                            const isCorrectSide = isBlue ? skier.position.z > flag.position.z : skier.position.z < flag.position.z;
+                            if (isCorrectSide) {
+                                score += 100;
+                                showBonus('+100');
+                                showMiniScore('+100', flag.position.x, flag.position.z, false);
+                                showCorrectMessage(isBlue);
+                            } else {
+                                score = Math.max(0, score - 50);
+                                showPenalty();
+                                showMiniScore('-50', flag.position.x, flag.position.z, true);
+                            }
+                            flags.splice(index, 1);
+                            scene.remove(flag);
                         }
                     });
-                    if (target) {
-                        snowballAmmo--;
-                        snowballsUsed++;
-                        throwTimer = 0.5;
-                        const travelTime = minDist / 60;
-                        const predictedPos = target.position.clone();
-                        predictedPos.x -= target.userData.speed * travelTime;
-                        predictedPos.y = target.position.y;
-                        if (Math.random() < 0.5) {
-                            const missOffset = new THREE.Vector3(
-                                (Math.random() - 0.5) * 10,
-                                (Math.random() - 0.5) * 5,
-                                (Math.random() - 0.5) * 10
-                            ).normalize().multiplyScalar(5 + Math.random() * 5);
-                            predictedPos.add(missOffset);
+                    npcs.forEach(npc => {
+                        if (!npc.position) return;
+                        const dist = skier.position.distanceTo(npc.position);
+                        if (dist < 1 && !npc.userData.knockedOver) {
+                            knockOverNPC(npc);
+                            showNPCHit();
+                            stumbleTimer = 1.0;
                         }
-                        const snowball = createSnowball(skier.position.x, skier.position.y + 1, skier.position.z, target, predictedPos);
-                        snowballs.push(snowball);
-                        scene.add(snowball);
-                        snowballCooldown = 0.5;
+                    });
+                    const finishDistance = Math.abs(skier.position.x - (-1850));
+                    if (finishDistance <= 200 && skidTimer <= 0) {
+                        showFinishMessage(finishDistance);
+                    } else {
+                        hideFinishMessage();
                     }
-                }
-                if (skidTimer <= 0) {
-                    const baseSpeed = 20;
-                    currentSpeed = baseSpeed - joystick.y * 20 + (speedBoostTimer > 0 ? 10 : 0);
-                    currentSpeed = Math.max(0, Math.min(50, currentSpeed));
-                    speedBoostTimer = Math.max(0, speedBoostTimer - delta);
-                    skier.position.z -= joystick.x * 15 * delta;
-                    skier.position.x -= currentSpeed * delta;
-                    skier.position.z = Math.max(-15, Math.min(15, skier.position.z));
-                }
-                const terrainHeight = terrain && terrain.geometry.attributes.position.array[Math.floor((skier.position.x / -2000) * 50) * (50 + 1) * 3 + 2] || 0;
-                skier.position.y = terrainHeight + 0.5;
-                if (currentSpeed > 0 && time % 0.1 < delta && skidTimer <= 0) {
-                    const leftParticle = createTrailParticle(skier.position.x, skier.position.z - 0.3, time);
-                    const rightParticle = createTrailParticle(skier.position.x, skier.position.z + 0.3, time);
-                    mainTrails.left.push(leftParticle);
-                    mainTrails.right.push(rightParticle);
-                    scene.add(leftParticle, rightParticle);
-                }
-                updateMainTrails();
-                animateSkier(delta);
-                updateNPCs(delta);
-                updateCollectables(delta);
-                updateSnowballs(delta);
-                updateScreenShake(delta);
-                updateCamera(delta);
-                flags.forEach((flag, index) => {
-                    if (!flag) return;
-                    const dist = skier.position.distanceTo(flag.position);
-                    if (dist < 1) {
-                        lives--;
-                        knockOverFlag(flag);
-                        showFlagHit();
-                        stumbleTimer = 1.0;
-                        flags.splice(index, 1);
-                        setTimeout(() => scene.remove(flag), 1000);
-                        if (lives <= 0) endGame();
-                    } else if (dist < 2 && flag.position.x > skier.position.x) {
-                        const isBlue = flag.material.color.getHex() === 0x0000FF;
-                        const isCorrectSide = isBlue ? skier.position.z > flag.position.z : skier.position.z < flag.position.z;
-                        if (isCorrectSide) {
-                            score += 100;
-                            showBonus('+100');
-                            showMiniScore('+100', flag.position.x, flag.position.z, false);
-                            showCorrectMessage(isBlue);
-                        } else {
-                            score = Math.max(0, score - 50);
-                            showPenalty();
-                            showMiniScore('-50', flag.position.x, flag.position.z, true);
-                        }
-                        flags.splice(index, 1);
-                        scene.remove(flag);
+                    if (skier.position.x < -1850 && skidTimer <= 0) {
+                        skidTimer = 4;
+                        joystick.x = 0;
+                        joystick.y = 0;
+                        document.getElementById('knob').style.transform = 'translate(0px, 0px)';
                     }
-                });
-                npcs.forEach(npc => {
-                    if (!npc.position) return;
-                    const dist = skier.position.distanceTo(npc.position);
-                    if (dist < 1) {
-                        showNPCHit();
-                        stumbleTimer = 1.0;
-                    }
-                });
-                const finishDistance = Math.abs(skier.position.x - (-1850));
-                if (finishDistance <= 100 && skidTimer <= 0) {
-                    showFinishMessage(finishDistance);
-                } else {
-                    hideFinishMessage();
+                    const finishHeight = getTerrainHeight(-1850);
+                    const altitude = terrainHeight - finishHeight;
+                    document.getElementById('stats').innerHTML = `
+                        <span style="color: yellow; font-size: 32px;">Score: ${score}</span><br>
+                        <span style="color: orange; font-size: 32px;">Time: ${time.toFixed(1)}s</span><br>
+                        <span >Speed: ${currentSpeed.toFixed(1)} m/s</span><br>
+                        <span >Lives: ${lives}</span><br>
+                        <span >Snowballs: ${snowballAmmo}</span><br>
+                        <span >Altitude: ${altitude.toFixed(1)} m</span><br>
+                        <span >Snowballs Used: ${snowballsUsed}</span><br>
+                        <span >Skiers Hit: ${npcsHit}</span><br>
+                        <span >Level: ${level}</span><br>
+                        <span ">Camera: ${cameraMode}</span><br>
+                        <span style="color: white;">Auto Play: ${autoPlay ? 'On' : 'Off'}</span><br>
+
+                        <span style="color: white;">Auto Throw: ${autoThrow ? 'On' : 'Off'}</span><br>
+                        <span style="color: white;">Skid Timer: ${skidTimer.toFixed(1)}</span><br>
+                        <span style="color: white;">Stumble Timer: ${stumbleTimer.toFixed(1)}</span><br>
+                        <span style="color: white;">Speed Boost Timer: ${speedBoostTimer.toFixed(1)}</span><br>
+                        <span style="color: white;">Throw Timer: ${throwTimer.toFixed(1)}</span><br>
+                        <span style="color: white;">Screen Shake Timer: ${screenShake.timer.toFixed(1)}</span><br>
+                        <span style="color: white;">Joystick X: ${joystick.x.toFixed(2)}</span><br>
+                        <span style="color: white;">Joystick Y: ${joystick.y.toFixed(2)}</span><br>
+                        <span style="color: white;">Camera Position: (${camera.position.x.toFixed(1)}, ${camera.position.y.toFixed(1)}, ${camera.position.z.toFixed(1)})</span><br>
+                        <span style="color: white;">Skier Position: (${skier.position.x.toFixed(1)}, ${skier.position.y.toFixed(1)}, ${skier.position.z.toFixed(1)})</span><br>
+                        <span style="color: white;">Snowballs Used: ${snowballsUsed}</span><br>
+                        <span style="color: white;">Snowballs Left: ${snowballAmmo}</span><br>  
+                        <span style="color: white;">Snowballs Thrown: ${snowballsUsed}</span><br>
+                        <span style="color: white;">Snowballs Hit: ${npcsHit}</span><br>
+                        <span style="color: white;">Snowballs Missed: ${snowballs.length}</span><br>
+                        <span style="color: white;">Distance to Finish: ${finishDistance.toFixed()} m</span><br>
+                    `;
+                    updateMiniMap();
+                    updateSideView();
+                    updateProgressBar();
                 }
-                if (skier.position.x < -1850 && skidTimer <= 0) {
-                    skidTimer = 4;
-                    joystick.x = 0;
-                    joystick.y = 0;
-                    document.getElementById('knob').style.transform = 'translate(0px, 0px)';
-                }
-                const finishHeight = terrain.geometry.attributes.position.array[Math.floor((-1850 / -2000) * 50) * (50 + 1) * 3 + 2] || 0;
-                const altitude = terrainHeight - finishHeight;
-                document.getElementById('stats').innerHTML = `
-                    <span style="color: cyan;">Level: ${level}</span><br>
-                    <span style="color: green;">Lives: ${lives}</span><br>
-                    <span style="color: yellow;">Score: ${score}</span><br>
-                    <span style="color: orange;">Time: ${time.toFixed(1)}s</span><br>
-                    <span style="color: white;">Speed: ${currentSpeed.toFixed(1)} m/s</span><br>
-                    <span style="color: purple;">Snowballs: ${snowballAmmo}</span><br>
-                    <span style="color: blue;">Altitude: ${altitude.toFixed(1)} m</span><br>
-                    <span style="color: magenta;">Snowballs Used: ${snowballsUsed}</span><br>
-                    <span style="color: white;">NPCs Hit: ${npcsHit}</span>
-                `;
-                updateMiniMap();
-                updateSideView();
-                updateProgressBar();
+                renderer.render(scene, camera);
+            } catch (error) {
+                console.error('Error in animate:', error);
+                gameOver = true;
             }
-            renderer.render(scene, camera);
         }
 
         function showBonus(text) {
@@ -1135,16 +1401,15 @@
             gameOver = true;
             document.getElementById('levelComplete').style.display = 'block';
             document.getElementById('levelStats').innerHTML = `
-                <span style="color: cyan; font-size: 24px;">Level: ${level}</span><br>
-                <span style="color: yellow; font-size: 24px;">Score: ${score}</span><br>
-                <span style="color: orange;">Time: ${time.toFixed(1)}s</span><br>
+                <span style="color: cyan;">Level: ${level}</span><br>
+                <span style="color: yellow; font-size: 32px;">Score: ${score}</span><br>
+                <span style="color: orange; font-size: 32px;">Time: ${time.toFixed(1)}s</span><br>
                 <span style="color: white;">Speed: ${currentSpeed.toFixed(1)} m/s</span><br>
                 <span style="color: magenta;">Snowballs Used: ${snowballsUsed}</span><br>
                 <span style="color: white;">NPCs Hit: ${npcsHit}</span>
             `;
             document.getElementById('miniMap').style.display = 'none';
             document.getElementById('sideView').style.display = 'none';
-            document.getElementById('miniMapZoom').style.display = 'none';
             document.getElementById('progressBar').style.display = 'none';
             document.getElementById('toggleCamera').style.display = 'none';
         }
@@ -1162,7 +1427,6 @@
             `;
             document.getElementById('miniMap').style.display = 'none';
             document.getElementById('sideView').style.display = 'none';
-            document.getElementById('miniMapZoom').style.display = 'none';
             document.getElementById('progressBar').style.display = 'none';
             document.getElementById('toggleCamera').style.display = 'none';
         }
@@ -1187,12 +1451,16 @@
             screenShake.active = false;
             cameraMode = 'default';
             flyAroundAngle = 0;
-            miniMapZoom = 1.0;
+            miniMapZoom = 2.0;
             document.getElementById('toggleCamera').textContent = 'Camera: Default';
-            document.getElementById('miniMapZoom').value = 50;
             mainTrails.left.forEach(particle => scene.remove(particle));
             mainTrails.right.forEach(particle => scene.remove(particle));
+            npcTrails.forEach(trail => {
+                trail.left.forEach(particle => scene.remove(particle));
+                trail.right.forEach(particle => scene.remove(particle));
+            });
             mainTrails = { left: [], right: [] };
+            npcTrails = [];
             scene.clear();
             scene.background = new THREE.Color(0x87CEEB);
             scene.fog = new THREE.Fog(0x87CEEB, 20, 150);
@@ -1200,7 +1468,6 @@
             document.getElementById('levelComplete').style.display = 'none';
             document.getElementById('miniMap').style.display = 'block';
             document.getElementById('sideView').style.display = 'block';
-            document.getElementById('miniMapZoom').style.display = 'block';
             document.getElementById('progressBar').style.display = 'block';
             document.getElementById('stats').style.display = 'block';
             document.getElementById('toggleCamera').style.display = 'block';
@@ -1229,12 +1496,16 @@
             screenShake.active = false;
             cameraMode = 'default';
             flyAroundAngle = 0;
-            miniMapZoom = 1.0;
+            miniMapZoom = 2.0;
             document.getElementById('toggleCamera').textContent = 'Camera: Default';
-            document.getElementById('miniMapZoom').value = 50;
             mainTrails.left.forEach(particle => scene.remove(particle));
             mainTrails.right.forEach(particle => scene.remove(particle));
+            npcTrails.forEach(trail => {
+                trail.left.forEach(particle => scene.remove(particle));
+                trail.right.forEach(particle => scene.remove(particle));
+            });
             mainTrails = { left: [], right: [] };
+            npcTrails = [];
             scene.clear();
             scene.background = new THREE.Color(0x87CEEB);
             scene.fog = new THREE.Fog(0x87CEEB, 20, 150);
@@ -1242,7 +1513,6 @@
             document.getElementById('welcome').style.display = 'block';
             document.getElementById('miniMap').style.display = 'none';
             document.getElementById('sideView').style.display = 'none';
-            document.getElementById('miniMapZoom').style.display = 'none';
             document.getElementById('progressBar').style.display = 'none';
             document.getElementById('toggleCamera').style.display = 'none';
             resetJoystick();
@@ -1251,6 +1521,7 @@
         }
 
         init();
+        // startGame(); // Uncomment for testing
     </script>
 </body>
 </html>
