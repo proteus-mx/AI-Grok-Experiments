@@ -148,7 +148,7 @@
         let connectionStart = null;
         let timerInterval = null;
         let phoneBill = 0;
-        let billRate = 0.10;
+        let billRate = 0.25;
         let connectionCount = 0;
         let usedImages = [];
         let userInteracted = false;
@@ -360,7 +360,7 @@
                 } else {
                     phoneBillDisplay.classList.remove('flash');
                 }
-                if (phoneBill > 10) {
+                if (phoneBill > 5) {
                     phoneBillDisplay.classList.add('red');
                 } else {
                     phoneBillDisplay.classList.remove('red');
