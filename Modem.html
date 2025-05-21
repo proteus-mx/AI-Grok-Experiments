@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Retro Modem Simulator</title>
+    <title>Retro Modem Simulator - V0.2</title>
     <style>
         body {
             background: #000;
@@ -434,24 +434,25 @@
             const modemIndex = Math.min(connectionCount, modemTypes.length - 1);
             const modemSpeed = modemTypes[modemIndex];
             modemTypeDisplay.textContent = `Modem: ${modemSpeed}`;
-            print('Starting', 50, () => {});
+            print('Starting', 50, () => {
                   
-            print('Initializing modem... BEEP BOOP', 50, () => {
-                playAudio(modemDial, () => {
-                    modemDial.currentTime = 0;
-                    print('Dialing 555-0134... SCREEEEE', 50, () => {
-                        modemConnect.pause();
-                        modemConnect.currentTime = 0;
-                        print(`Connecting at ${modemSpeed}... HISSSSS`, 50, () => {
-                            setTimeout(() => {
-                                print('Connected to RetroNet! WHRRRR', 50, () => {
-                                    state = 'connected';
-                                    connectionCount++;
-                                    startTimer();
-                                    print('> ', 0);
-                                    if (autoplay) autoPlaySequence();
-                                });
-                            }, 1000);
+                print('Initializing modem... BEEP BOOP', 50, () => {
+                    playAudio(modemDial, () => {
+                        modemDial.currentTime = 0;
+                        print('Dialing 555-0134... SCREEEEE', 50, () => {
+                            modemConnect.pause();
+                            modemConnect.currentTime = 0;
+                            print(`Connecting at ${modemSpeed}... HISSSSS`, 50, () => {
+                                setTimeout(() => {
+                                    print('Connected to RetroNet! WHRRRR', 50, () => {
+                                        state = 'connected';
+                                        connectionCount++;
+                                        startTimer();
+                                        print('> ', 0);
+                                        if (autoplay) autoPlaySequence();
+                                    });
+                                }, 1000);
+                            });
                         });
                     });
                 });
