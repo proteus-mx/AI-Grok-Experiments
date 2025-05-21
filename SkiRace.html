@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ski Race - V0.9</title>
+    <title>Ski Race - V0.9.1</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -839,8 +839,8 @@
             const floorMaterial = new THREE.MeshStandardMaterial({ map: createCheckeredTexture(), roughness: 0.5 });
             const finishFloor = new THREE.Mesh(floorGeometry, floorMaterial);
             finishFloor.position.set(-1855, finishHeight + 0.1, 0);
-            //finishFloor.rotation.x = -Math.PI / 2;
-            finishFloor.rotation.y = Math.PI;
+            finishFloor.rotation.x = -Math.PI / 2; // Rotate the floor to be horizontal
+            //finishFloor.rotation.y = Math.PI;
             scene.add(finishFloor);
             flagpoles = [];
             const poleGeometry = new THREE.CylinderGeometry(0.1, 0.1, 4, 16);
