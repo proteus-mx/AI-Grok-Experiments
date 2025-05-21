@@ -434,6 +434,8 @@
             const modemIndex = Math.min(connectionCount, modemTypes.length - 1);
             const modemSpeed = modemTypes[modemIndex];
             modemTypeDisplay.textContent = `Modem: ${modemSpeed}`;
+            print('Starting', 50, () => {});
+                  
             print('Initializing modem... BEEP BOOP', 50, () => {
                 playAudio(modemDial, () => {
                     modemDial.currentTime = 0;
