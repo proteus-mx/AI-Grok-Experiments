@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Dot Connect Game</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; background: #000; }
+        canvas { display: block; }
+        #welcome, #game-over { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0, 0, 0, 0.85); color: #fff; text-align: center; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+        }
+        #welcome button, #game-over button, #camera-toggle, #undo-button { 
+            margin: 10px; padding: 12px 24px; font-size: 18px; cursor: pointer; 
+            background: #00ff00; color: #000; border: none; border-radius: 8px; 
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5); transition: transform 0.2s; 
+        }
+        #welcome button:hover, #game-over button:hover, #camera-toggle:hover, #undo-button:hover { 
+            background: #00cc00; transform: scale(1.05); 
+        }
+        #turn { position: absolute; top: 10px; left: 10px; color: #fff; font-size: 24px; text-shadow: 0 0 5px #000; }
+        #stats { position: absolute; top: 50px; left: 10px; color: #fff; font-size: 20px; text-shadow: 0 0 5px #000; }
+        #timer { position: absolute; top: 90px; left: 10px; color: #fff; font-size: 20px; text-shadow: 0 0 5px #000; }
+        #moves { position: absolute; top: 130px; left: 10px; color: #fff; font-size: 20px; text-shadow: 0 0 5px #000; }
+        #camera-toggle { position: absolute; bottom: 60px; left: 10px; display: none; }
+        #undo-button { position: absolute; bottom: 10px; left: 10px; display: none; }
+        #message { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            color: #fff; font-size: 24px; display: none; text-shadow: 0 0 5px #000; 
+        }
+        .flash { animation: flash 0.5s ease-in-out 3; }
+        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        #game-over { display: none; }
+        #progress-bar { 
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 20px; display: none; 
+            background: #333; font-size: 14px; color: #fff; text-align: center; 
+        }
+        #progress-red { background: #ff0000; height: 100%; float: left; }
+        #progress-blue { background: #0000ff; height: 100%; float: left; }
+        #progress-tie { background: #666; height: 100%; float: left; }
+    </style>
+</head>
+<body>
+    <div id="welcome">
+        <h1>3D Dot Connect Game</h1>
+        <p>Connect adjacent dots to form glowing lines. Complete a 1x1 square to claim it with your color (Red or Blue). Players keep their turn if they form a box; otherwise, the turn switches. In 1 Player mode, a smart AI plays as Blue. In AI Mode, both players are automated.</p>
+        <button onclick="startGame('1player')">1 Player</button>
+        <button onclick="startGame('2player')">2 Player</button>
+        <button onclick="startGame('ai')">AI Mode</button>
+    </div>
+    <div id="game-over">
+        <h1>Game Over</h1>
+        <div id="winner-text"></div>
+        <div id="final-stats"></div>
+        <button onclick="resetGame()">Play Again</button>
+    </div>
+    <div id="turn" style="display: none;">Red's Turn</div>
+    <div id="stats" style="display: none;">Red: 0<br>Blue: 0</div>
+    <div id="timer" style="display: none;">Time: 0s</div>
+    <div id="moves" style="display: none;">Moves: 0</div>
+    <button id="camera-toggle" onclick="toggleCamera()">Fly Camera</button>
+    <button id="undo-button" onclick="undoMove()">Undo Move</button>
+    <div id="message"></div>
+    <div id="progress-bar" style="display: none;">
+        <div id="progress-red" style="width: 0%;"></div>
+        <div id="progress-blue" style="width: 0%;"></div>
+        <div id="progress-tie" style="width: 0%;"></div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        // Set up scene, camera, and renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Game settings
+        const gridSize = 5;
+        const spacing = 2;
+        const maxLines = gridSize * (gridSize - 1) * 2; // 40 lines for 5x5 grid
+        const dots = [];
+        const lines = [];
+        const boxes = [];
+        let selectedDot = null;
+        let currentPlayer = 'red';
+        let scores = { red: 0, blue: 0 };
+        let moveCount = 0;
+        let gameMode = null;
+        let gameActive = false;
+        let startTime = 0;
+        let timerInterval = null;
+        let throbTime = 0;
+        let flashingLines = [];
+        let isFlyCamera = false;
+        let cameraTime = 0;
+        let moveHistory = [];
+        let audioCtx = null;
+        let gameStats = { red: 0, blue: 0, tie: 0 };
+
+        // Create enhanced starfield
+        const starGeometry = new THREE.BufferGeometry();
+        const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1, transparent: true });
+        const starPositions = new Float32Array(5000 * 3);
+        const starOpacities = new Float32Array(5000);
+        for (let i = 0; i < 5000; i++) {
+            starPositions[i * 3] = (Math.random() - 0.5) * 150;
+            starPositions[i * 3 + 1] = (Math.random() - 0.5) * 150;
+            starPositions[i * 3 + 2] = (Math.random() - 0.5) * 150;
+            starOpacities[i] = Math.random() * 0.5 + 0.5;
+        }
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        starGeometry.setAttribute('opacity', new THREE.BufferAttribute(starOpacities, 1));
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+
+        // Create glowing dots
+        const dotGeometry = new THREE.SphereGeometry(0.2, 64, 64);
+        const dotMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const highlightMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 }); // Yellow
+        const validDotMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+        const glowMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.3 });
+        for (let x = 0; x < gridSize; x++) {
+            for (let y = 0; y < gridSize; y++) {
+                const dot = new THREE.Mesh(dotGeometry, dotMaterial);
+                dot.position.set(x * spacing - (gridSize - 1) * spacing / 2, y * spacing - (gridSize - 1) * spacing / 2, 0);
+                dot.userData = { x, y };
+                scene.add(dot);
+                const glow = new THREE.Mesh(new THREE.SphereGeometry(0.25, 64, 64), glowMaterial);
+                glow.position.copy(dot.position);
+                scene.add(glow);
+                dots.push(dot);
+            }
+        }
+
+        // Player-specific line materials
+        const redLineMaterial = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 6, transparent: true });
+        const blueLineMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff, linewidth: 6, transparent: true });
+
+        // Raycaster for mouse interaction
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        // Audio context initialization
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(frequency, duration, type = 'sine') {
+            if (!audioCtx) return;
+            try {
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.type = type;
+                oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                console.warn('Audio playback failed:', e);
+            }
+        }
+
+        // Show flashing message
+        function showMessage(text) {
+            const messageElement = document.getElementById('message');
+            messageElement.textContent = text;
+            messageElement.style.display = 'block';
+            messageElement.classList.add('flash');
+            setTimeout(() => {
+                messageElement.style.display = 'none';
+                messageElement.classList.remove('flash');
+            }, 1500);
+        }
+
+        // Toggle camera mode
+        function toggleCamera() {
+            isFlyCamera = !isFlyCamera;
+            document.getElementById('camera-toggle').textContent = isFlyCamera ? 'Static Camera' : 'Fly Camera';
+            if (!isFlyCamera) {
+                camera.position.set(0, 0, 10);
+                camera.lookAt(0, 0, 0);
+            }
+        }
+
+        // Undo last move
+        function undoMove() {
+            if (gameMode === 'ai' || moveHistory.length === 0 || !gameActive) return;
+            const lastMove = moveHistory.pop();
+            if (lastMove && lastMove.line) {
+                scene.remove(lastMove.line.mesh);
+                lines.pop();
+                moveCount--;
+                if (lastMove.boxes && lastMove.boxes.length > 0) {
+                    lastMove.boxes.forEach(box => {
+                        scene.remove(box);
+                        const index = boxes.findIndex(b => b.userData.x === box.userData.x && b.userData.y === box.userData.y);
+                        if (index !== -1) {
+                            boxes.splice(index, 1);
+                            scores[currentPlayer]--;
+                        }
+                    });
+                }
+                currentPlayer = lastMove.player;
+                updateTurnIndicator();
+                updateStats();
+                updateMoves();
+                playSound(300, 0.2, 'square');
+            }
+        }
+
+        // Start game
+        function startGame(mode) {
+            initAudio();
+            gameMode = mode;
+            gameActive = true;
+            document.getElementById('welcome').style.display = 'none';
+            document.getElementById('turn').style.display = 'block';
+            document.getElementById('stats').style.display = 'block';
+            document.getElementById('timer').style.display = 'block';
+            document.getElementById('moves').style.display = 'block';
+            document.getElementById('progress-bar').style.display = 'block';
+            document.getElementById('camera-toggle').style.display = 'block';
+            if (mode !== 'ai') {
+                document.getElementById('undo-button').style.display = 'block';
+            }
+            startTime = Date.now();
+            timerInterval = setInterval(updateTimer, 1000);
+            if (mode === 'ai') {
+                aiMove();
+            }
+        }
+
+        // Update timer
+        function updateTimer() {
+            if (gameActive) {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                document.getElementById('timer').textContent = `Time: ${elapsed}s`;
+            }
+        }
+
+        // Update move counter
+        function updateMoves() {
+            document.getElementById('moves').textContent = `Moves: ${moveCount}`;
+        }
+
+        // Handle mouse clicks
+        window.addEventListener('click', (event) => {
+            if (!gameActive || (gameMode === '1player' && currentPlayer === 'blue') || gameMode === 'ai') return;
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(dots);
+            if (intersects.length > 0) {
+                const dot = intersects[0].object;
+                if (!selectedDot) {
+                    selectedDot = dot;
+                    dot.material = highlightMaterial; // Yellow
+                    highlightValidDots(dot);
+                } else {
+                    if (isValidConnection(selectedDot, dot)) {
+                        drawLine(selectedDot, dot);
+                        const boxCount = checkForBoxes();
+                        if (boxCount > 0) {
+                            showMessage(`${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)} formed a box!`);
+                            playSound(600, 0.3, 'sine');
+                        } else {
+                            playSound(400, 0.2, 'sine');
+                        }
+                        if (boxCount === 0) {
+                            currentPlayer = currentPlayer === 'red' ? 'blue' : 'red';
+                            updateTurnIndicator();
+                            if (gameMode === '1player' && currentPlayer === 'blue') {
+                                setTimeout(aiMove, 500);
+                            }
+                        }
+                    } else {
+                        showMessage('Invalid move! Choose an adjacent, unconnected dot.');
+                        playSound(200, 0.2, 'square');
+                    }
+                    resetDotColors();
+                    selectedDot = null;
+                }
+            }
+        });
+
+        // Check if connection is valid (prevents duplicate lines)
+        function isValidConnection(dot1, dot2) {
+            if (!dot1 || !dot2) return false;
+            const dx = Math.abs(dot1.userData.x - dot2.userData.x);
+            const dy = Math.abs(dot1.userData.y - dot2.userData.y);
+            const isAdjacent = (dx === 1 && dy === 0) || (dx === 0 && dy === 1);
+            if (!isAdjacent) return false;
+            const lineExists = lines.some(l => 
+                (l.start.x === Math.min(dot1.userData.x, dot2.userData.x) && 
+                 l.start.y === Math.min(dot1.userData.y, dot2.userData.y) && 
+                 l.end.x === Math.max(dot1.userData.x, dot2.userData.x) && 
+                 l.end.y === Math.max(dot1.userData.y, dot2.userData.y))
+            );
+            return !lineExists;
+        }
+
+        // Highlight valid adjacent dots
+        function highlightValidDots(selected) {
+            if (!selected) return;
+            const x = selected.userData.x;
+            const y = selected.userData.y;
+            dots.forEach(dot => {
+                if (isValidConnection(selected, dot)) {
+                    dot.material = validDotMaterial;
+                    dot.userData.isValid = true;
+                } else {
+                    dot.material = dotMaterial;
+                    dot.userData.isValid = false;
+                }
+            });
+        }
+
+        // Reset all dot colors and scales
+        function resetDotColors() {
+            dots.forEach(dot => {
+                dot.material = dotMaterial;
+                dot.scale.set(1, 1, 1);
+                dot.userData.isValid = false;
+                dot.material.opacity = 1;
+                dot.material.transparent = false;
+            });
+        }
+
+        // Draw line between two dots with flash effect
+        function drawLine(dot1, dot2) {
+            const points = [dot1.position, dot2.position];
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const lineMaterial = currentPlayer === 'red' ? redLineMaterial.clone() : blueLineMaterial.clone();
+            const line = new THREE.Line(geometry, lineMaterial);
+            line.position.z = 0.05;
+            scene.add(line);
+            const newBoxes = [];
+            const boxCount = checkForBoxes(newBoxes);
+            lines.push({ 
+                start: { x: Math.min(dot1.userData.x, dot2.userData.x), y: Math.min(dot1.userData.y, dot2.userData.y) },
+                end: { x: Math.max(dot1.userData.x, dot2.userData.x), y: Math.max(dot1.userData.y, dot2.userData.y) },
+                player: currentPlayer,
+                mesh: line
+            });
+            moveHistory.push({ line: lines[lines.length - 1], player: currentPlayer, boxes: newBoxes });
+            flashingLines.push({ line, time: 0, flashes: 0 });
+            moveCount++;
+            updateMoves();
+            checkGameOver();
+        }
+
+        // Smarter AI move
+        function aiMove() {
+            if (!gameActive) return;
+            const validMoves = [];
+            const boxClosingMoves = [];
+            const blockingMoves = [];
+            dots.forEach(dot1 => {
+                dots.forEach(dot2 => {
+                    if (isValidConnection(dot1, dot2)) {
+                        const move = [dot1, dot2];
+                        validMoves.push(move);
+                        const tempLines = [...lines, {
+                            start: { x: Math.min(dot1.userData.x, dot2.userData.x), y: Math.min(dot1.userData.y, dot2.userData.y) },
+                            end: { x: Math.max(dot1.userData.x, dot2.userData.x), y: Math.max(dot1.userData.y, dot2.userData.y) }
+                        }];
+                        let closesBox = false;
+                        for (let x = 0; x < gridSize - 1; x++) {
+                            for (let y = 0; y < gridSize - 1; y++) {
+                                if (hasBox(x, y, tempLines) && !boxes.some(box => box.userData.x === x && box.userData.y === y)) {
+                                    closesBox = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (closesBox) {
+                            boxClosingMoves.push(move);
+                        }
+                        const opponent = currentPlayer === 'red' ? 'blue' : 'red';
+                        let givesBox = false;
+                        dots.forEach(d1 => {
+                            dots.forEach(d2 => {
+                                if (isValidConnection(d1, d2)) {
+                                    const tempLines2 = [...tempLines, {
+                                        start: { x: Math.min(d1.userData.x, d2.userData.x), y: Math.min(d1.userData.y, d2.userData.y) },
+                                        end: { x: Math.max(d1.userData.x, d2.userData.x), y: Math.max(d2.userData.y, d2.userData.y) }
+                                    }];
+                                    for (let x = 0; x < gridSize - 1; x++) {
+                                        for (let y = 0; y < gridSize - 1; y++) {
+                                            if (hasBox(x, y, tempLines2) && !boxes.some(box => box.userData.x === x && box.userData.y === y)) {
+                                                givesBox = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                        });
+                        if (!givesBox) {
+                            blockingMoves.push(move);
+                        }
+                    }
+                });
+            });
+            let move;
+            if (boxClosingMoves.length > 0) {
+                move = boxClosingMoves[Math.floor(Math.random() * boxClosingMoves.length)];
+            } else if (blockingMoves.length > 0) {
+                move = blockingMoves[Math.floor(Math.random() * blockingMoves.length)];
+            } else if (validMoves.length > 0) {
+                move = validMoves[Math.floor(Math.random() * validMoves.length)];
+            }
+            if (move) {
+                const [dot1, dot2] = move;
+                drawLine(dot1, dot2);
+                const boxCount = checkForBoxes();
+                if (boxCount > 0) {
+                    showMessage(`${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)} formed a box!`);
+                    playSound(600, 0.3, 'sine');
+                } else {
+                    playSound(400, 0.2, 'sine');
+                }
+                if (boxCount === 0) {
+                    currentPlayer = currentPlayer === 'red' ? 'blue' : 'red';
+                    updateTurnIndicator();
+                }
+                if (gameMode === 'ai' || (gameMode === '1player' && currentPlayer === 'blue')) {
+                    setTimeout(aiMove, gameMode === 'ai' ? 50 : 500);
+                }
+            }
+        }
+
+        // Check for completed boxes
+        function checkForBoxes(newBoxes = []) {
+            let boxCount = 0;
+            for (let x = 0; x < gridSize - 1; x++) {
+                for (let y = 0; y < gridSize - 1; y++) {
+                    if (hasBox(x, y) && !boxes.some(box => box.userData.x === x && box.userData.y === y)) {
+                        const box = createBox(x, y);
+                        newBoxes.push(box);
+                        scores[currentPlayer]++;
+                        boxCount++;
+                        updateStats();
+                    }
+                }
+            }
+            return boxCount;
+        }
+
+        // Check if a box is formed at (x, y)
+        function hasBox(x, y, linesToCheck = lines) {
+            return linesToCheck.some(l => l.start.x === x && l.start.y === y && l.end.x === x && l.end.y === y + 1) &&
+                   linesToCheck.some(l => l.start.x === x && l.start.y === y + 1 && l.end.x === x + 1 && l.end.y === y + 1) &&
+                   linesToCheck.some(l => l.start.x === x + 1 && l.start.y === y && l.end.x === x + 1 && l.end.y === y + 1) &&
+                   linesToCheck.some(l => l.start.x === x && l.start.y === y && l.end.x === x + 1 && l.end.y === y);
+        }
+
+        // Create transparent colored box with fade-in
+        function createBox(x, y) {
+            const boxGeometry = new THREE.PlaneGeometry(spacing, spacing);
+            const boxMaterial = new THREE.MeshBasicMaterial({ 
+                color: currentPlayer === 'red' ? 0xff0000 : 0x0000ff, 
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0
+            });
+            const box = new THREE.Mesh(boxGeometry, boxMaterial);
+            box.position.set(x * spacing - (gridSize - 1) * spacing / 2 + spacing / 2, y * spacing - (gridSize - 1) * spacing / 2 + spacing / 2, -0.1);
+            box.userData = { x, y, player: currentPlayer, fadeTime: 0 };
+            scene.add(box);
+            boxes.push(box);
+            return box;
+        }
+
+        // Update turn indicator
+        function updateTurnIndicator() {
+            const turnElement = document.getElementById('turn');
+            turnElement.textContent = `${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)}'s Turn`;
+            turnElement.style.color = currentPlayer === 'red' ? '#ff0000' : '#0000ff';
+            turnElement.classList.add('flash');
+            setTimeout(() => turnElement.classList.remove('flash'), 1500);
+        }
+
+        // Update stats display and progress bar
+        function updateStats() {
+            document.getElementById('stats').innerHTML = `Red: ${scores.red}<br>Blue: ${scores.blue}`;
+            const totalGames = gameStats.red + gameStats.blue + gameStats.tie;
+            const redPercent = totalGames > 0 ? (gameStats.red / totalGames * 100).toFixed(1) : 0;
+            const bluePercent = totalGames > 0 ? (gameStats.blue / totalGames * 100).toFixed(1) : 0;
+            const tiePercent = totalGames > 0 ? (gameStats.tie / totalGames * 100).toFixed(1) : 0;
+            document.getElementById('progress-red').style.width = `${redPercent}%`;
+            document.getElementById('progress-blue').style.width = `${bluePercent}%`;
+            document.getElementById('progress-tie').style.width = `${tiePercent}%`;
+        }
+
+        // Check for game over (when all lines are drawn)
+        function checkGameOver() {
+            if (lines.length === maxLines) {
+                gameActive = false;
+                clearInterval(timerInterval);
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const winner = scores.red > scores.blue ? 'Red' : scores.blue > scores.red ? 'Blue' : 'Tie';
+                gameStats[winner.toLowerCase()]++;
+                document.getElementById('winner-text').textContent = `Winner: ${winner}`;
+                document.getElementById('final-stats').innerHTML = `Red: ${scores.red}<br>Blue: ${scores.blue}<br>Moves: ${moveCount}<br>Time: ${elapsed}s<br>Games Won - Red: ${gameStats.red}, Blue: ${gameStats.blue}, Tie: ${gameStats.tie}`;
+                document.getElementById('game-over').style.display = 'flex';
+                updateStats();
+            }
+        }
+
+        // Reset game
+        function resetGame() {
+            gameActive = false;
+            if (timerInterval) clearInterval(timerInterval);
+            document.getElementById('game-over').style.display = 'none';
+            document.getElementById('welcome').style.display = 'flex';
+            document.getElementById('turn').style.display = 'none';
+            document.getElementById('stats').style.display = 'none';
+            document.getElementById('timer').style.display = 'none';
+            document.getElementById('moves').style.display = 'none';
+            document.getElementById('progress-bar').style.display = 'none';
+            document.getElementById('camera-toggle').style.display = 'none';
+            document.getElementById('undo-button').style.display = 'none';
+            document.getElementById('message').style.display = 'none';
+            lines.forEach(line => scene.remove(line.mesh));
+            boxes.forEach(box => scene.remove(box));
+            scene.children = scene.children.filter(child => !(child.isMesh && child.geometry.type === 'SphereGeometry' && child.material === glowMaterial));
+            lines.length = 0;
+            boxes.length = 0;
+            scores = { red: 0, blue: 0 };
+            moveCount = 0;
+            moveHistory = [];
+            currentPlayer = 'red';
+            selectedDot = null;
+            flashingLines = [];
+            isFlyCamera = false;
+            document.getElementById('camera-toggle').textContent = 'Fly Camera';
+            camera.position.set(0, 0, 10);
+            camera.lookAt(0, 0, 0);
+            resetDotColors();
+            updateStats();
+            updateMoves();
+            document.getElementById('turn').textContent = "Red's Turn";
+            document.getElementById('timer').textContent = "Time: 0s";
+            dots.length = 0;
+            for (let x = 0; x < gridSize; x++) {
+                for (let y = 0; y < gridSize; y++) {
+                    const dot = new THREE.Mesh(dotGeometry, dotMaterial);
+                    dot.position.set(x * spacing - (gridSize - 1) * spacing / 2, y * spacing - (gridSize - 1) * spacing / 2, 0);
+                    dot.userData = { x, y };
+                    scene.add(dot);
+                    const glow = new THREE.Mesh(new THREE.SphereGeometry(0.25, 64, 64), glowMaterial);
+                    glow.position.copy(dot.position);
+                    scene.add(glow);
+                    dots.push(dot);
+                }
+            }
+        }
+
+        // Throb effect for selected dot, flash effect for valid dots and lines, animate boxes, twinkle stars
+        function updateThrob() {
+            throbTime += 0.05;
+            const scale = 1 + 0.1 * Math.sin(throbTime);
+            const flashOpacity = 0.3 + 0.7 * (Math.sin(throbTime * 2) + 1) / 2;
+            dots.forEach(dot => {
+                if (dot === selectedDot) {
+                    dot.scale.set(scale, scale, scale); // Throb yellow dot
+                } else if (dot.userData.isValid) {
+                    dot.scale.set(scale, scale, scale);
+                    dot.material.opacity = flashOpacity;
+                    dot.material.transparent = true;
+                } else {
+                    dot.material.opacity = 1;
+                    dot.material.transparent = false;
+                }
+            });
+            flashingLines = flashingLines.filter(flash => {
+                flash.time += 0.05;
+                const opacity = 0.3 + 0.7 * (Math.sin(flash.time * 8) + 1) / 2;
+                flash.line.material.opacity = opacity;
+                if (flash.flashes < 3 && flash.time > 0.5) {
+                    flash.flashes++;
+                    flash.time = 0;
+                }
+                if (flash.flashes >= 3) {
+                    flash.line.material.opacity = 1;
+                    flash.line.material.transparent = false;
+                    return false;
+                }
+                return true;
+            });
+            boxes.forEach(box => {
+                if (box.userData.fadeTime < 1) {
+                    box.userData.fadeTime += 0.05;
+                    box.material.opacity = Math.min(0.5, box.userData.fadeTime);
+                }
+            });
+            for (let i = 0; i < starOpacities.length; i++) {
+                starOpacities[i] = Math.random() * 0.5 + 0.5;
+            }
+            starGeometry.attributes.opacity.needsUpdate = true;
+        }
+
+        // Update camera for fly mode
+        function updateCamera() {
+            if (isFlyCamera && gameActive) {
+                cameraTime += 0.01;
+                const radius = 10;
+                camera.position.x = Math.sin(cameraTime) * radius;
+                camera.position.z = Math.cos(cameraTime) * radius;
+                camera.position.y = Math.sin(cameraTime * 0.5) * 2;
+                camera.lookAt(0, 0, 0);
+            }
+        }
+
+        // Camera position (initial)
+        camera.position.z = 10;
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            if (gameActive) {
+                updateThrob();
+                updateCamera();
+            }
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
