@@ -12,25 +12,17 @@
             color: #fff; text-align: center; 
             display: flex; flex-direction: column; justify-content: center; align-items: center; 
         }
-        #welcome, #exit-confirm { 
-            background: rgba(0, 0, 0, 0.85); 
-        }
-        #game-over { 
-            background: rgba(0, 0, 0, 0.7);
-        }
+        #welcome, #exit-confirm { background: rgba(0, 0, 0, 0.85); }
+        #game-over { background: rgba(0, 0, 0, 0.7); }
         #game-over > div {
-            background: rgba(0, 0, 0, 0.5); 
-            padding: 20px; 
-            border: 1px solid rgba(255, 255, 255, 0.3); 
-            border-radius: 10px; 
-            width: 80%;
+            background: rgba(0, 0, 0, 0.5); padding: 20px; border: 1px solid rgba(255, 255, 255, 0.3); 
+            border-radius: 10px; width: 80%;
         }
         #exit-confirm { display: none; }
         #welcome button, #game-over button, #camera-toggle, #undo-button, #exit-button, #sound-toggle, #hint-toggle, #exit-yes, #exit-no { 
             margin: 10px; padding: 6px 12px; font-size: 12px; cursor: pointer; 
             background: #00ff00; color: #000; border: none; border-radius: 8px; 
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5); transition: transform 0.2s; 
-            touch-action: none; 
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5); transition: transform 0.2s; touch-action: none; 
         }
         #welcome button:hover, #game-over button:hover, #camera-toggle:hover, #undo-button:hover, #exit-button:hover, #sound-toggle:hover, #hint-toggle:hover, #exit-yes:hover, #exit-no:hover { 
             background: #00cc00; transform: scale(1.05); 
@@ -38,64 +30,37 @@
         #game-stats-container { 
             position: absolute; top: 10px; left: 50%; transform: translateX(-50%); 
             background: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 5px; 
-            border: 1px solid rgba(255, 255, 255, 0.3); text-align: center; 
-            display: none; 
+            border: 1px solid rgba(255, 255, 255, 0.3); text-align: center; display: none; 
         }
-        #game-title { 
-            color: #00ff00; font-size: 18px; text-shadow: 0 0 5px #000; 
-            margin: 0; 
-        }
-        #game-timer { 
-            color: #fff; font-size: 14px; text-shadow: 0 0 5px #000; 
-            margin: 5px 0; 
-        }
-        #turn { 
-            color: #fff; font-size: 16px; text-shadow: 0 0 5px #000; 
-            margin: 5px 0; 
-        }
-        #moves { 
-            color: #fff; font-size: 14px; text-shadow: 0 0 5px #000; 
-            margin: 5px 0; 
-        }
-        #games-won { 
-            color: #fff; font-size: 14px; text-shadow: 0 0 5px #000; 
-            margin: 5px 0; 
-        }
+        #game-title { color: #00ff00; font-size: 18px; text-shadow: 0 0 5px #000; margin: 0; }
+        #game-timer { color: #fff; font-size: 14px; text-shadow: 0 0 5px #000; margin: 5px 0; }
+        #turn { color: #fff; font-size: 16px; text-shadow: 0 0 5px #000; margin: 5px 0; }
+        #moves { color: #fff; font-size: 14px; text-shadow: 0 0 5px #000; margin: 5px 0; }
+        #games-won { color: #fff; font-size: 14px; text-shadow: 0 0 5px #000; margin: 5px 0; }
         #red-stats { 
-            position: absolute; top: 120px; left: 10px; 
-            color: #ff0000; font-size: 14px; text-shadow: 0 0 5px #000; 
-            background: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 5px; 
-            border: 1px solid rgba(255, 0, 0, 0.3); 
-       305
+            position: absolute; top: 120px; left: 10px; color: #ff0000; font-size: 14px; 
+            text-shadow: 0 0 5px #000; background: rgba(0, 0, 0, 0.5); padding: 10px; 
+            border-radius: 5px; border: 1px solid rgba(255, 0, 0, 0.3); 
         }
         #blue-stats { 
-            position: absolute; top: 120px; right: 10px; 
-            color: #0000ff; font-size: 14px; text-shadow: 0 0 5px #000; text-align: right; 
-            background: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 5px; 
-            border: 1px solid rgba(0, 0, 255, 0.3); 
+            position: absolute; top: 120px; right: 10px; color: #0000ff; font-size: 14px; 
+            text-shadow: 0 0 5px #000; text-align: right; background: rgba(0, 0, 0, 0.5); 
+            padding: 10px; border-radius: 5px; border: 1px solid rgba(0, 0, 255, 0.3); 
         }
-        #red-stats.flash, #blue-stats.flash { 
-            animation: flash 0.5s ease-in-out 3; 
-        }
+        #red-stats.flash, #blue-stats.flash { animation: flash 0.5s ease-in-out 3; }
         #button-container { 
-            position: absolute; bottom: 30px; right: 10px; display: none; 
-            display: flex; gap: 10px; 
+            position: absolute; bottom: 30px; right: 10px; display: none; display: flex; gap: 10px; 
         }
         #camera-toggle, #undo-button, #exit-button, #sound-toggle, #hint-toggle { margin: 0; }
         #message { 
             position: absolute; bottom: 70px; left: 50%; transform: translate(-50%, 0); 
-            font-size: 28px; display: none; text-shadow: 0 0 5px #000; 
-            padding: 10px 20px; width: 80%; background: rgba(0, 0, 0, 0.5); 
-            border-radius: 5px; text-align: center; 
+            font-size: 28px; display: none; text-shadow: 0 0 5px #000; padding: 10px 20px; 
+            width: 80%; background: rgba(0, 0, 0, 0.5); border-radius: 5px; text-align: center; 
         }
         #points-message { 
-            position: absolute; font-size: 14px; display: none; text-shadow: 0 0 5px #000; 
-            text-align: center; 
+            position: absolute; font-size: 14px; display: none; text-shadow: 0 0 5px #000; text-align: center; 
         }
-        #points-message div {
-            width: 150px;
-            text-align: center;
-        }
+        #points-message div { width: 150px; text-align: center; }
         .neutral-message { color: #ffffff; }
         .positive-message { color: #00ff00; }
         .red-message { color: #ff0000; }
@@ -249,7 +214,6 @@
                 const dotMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00, shininess: 100, specular: 0x555555 });
                 const validDotMaterial = new THREE.MeshPhongMaterial({ color: 0x00ffff, shininess: 100, specular: 0x555555 });
                 const dimDotMaterial = new THREE.MeshPhongMaterial({ color: 0x006600, shininess: 100, specular: 0x555555 });
-                const glowMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.3 });
                 const yellowOverlayMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00, shininess: 100, specular: 0x555555 });
                 for (let x = 0; x < gridSize; x++) {
                     for (let y = 0; y < gridSize; y++) {
@@ -257,9 +221,6 @@
                         dot.position.set(x * spacing - (gridSize - 1) * spacing / 2, y * spacing - (gridSize - 1) * spacing / 2, 0);
                         dot.userData = { x, y, basePosition: dot.position.clone() };
                         scene.add(dot);
-                        const glow = new THREE.Mesh(new THREE.SphereGeometry(0.25, 64, 64), glowMaterial);
-                        glow.position.copy(dot.position);
-                        scene.add(glow);
                         dots.push(dot);
                         dotWobbleOffsets.push({
                             x: (Math.random() - 0.5) * 0.1,
@@ -278,10 +239,21 @@
                 const raycaster = new THREE.Raycaster();
                 const mouse = new THREE.Vector2();
 
+                // Dispose Three.js object
+                function disposeObject(obj) {
+                    if (obj && obj.geometry) obj.geometry.dispose();
+                    if (obj && obj.material) obj.material.dispose();
+                    if (obj && scene) scene.remove(obj);
+                }
+
                 // Audio context initialization
                 function initAudio() {
-                    if (!audioCtx) {
-                        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    try {
+                        if (!audioCtx) {
+                            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                        }
+                    } catch (e) {
+                        console.error('Error initializing audio:', e);
                     }
                 }
 
@@ -299,7 +271,7 @@
                         oscillator.start();
                         oscillator.stop(audioCtx.currentTime + duration);
                     } catch (e) {
-                        console.warn('Audio playback failed:', e);
+                        console.error('Audio playback failed:', e);
                     }
                 }
 
@@ -307,22 +279,26 @@
                 function toggleSound() {
                     soundEnabled = !soundEnabled;
                     const soundToggle = document.getElementById('sound-toggle');
-                    if (soundToggle) {
-                        soundToggle.textContent = soundEnabled ? 'Sound On' : 'Sound Off';
+                    if (!soundToggle) {
+                        console.error('Sound toggle element not found');
+                        return;
                     }
+                    soundToggle.textContent = soundEnabled ? 'Sound On' : 'Sound Off';
                 }
 
                 // Toggle hint on/off
                 function toggleHint() {
                     hintEnabled = !hintEnabled;
                     const hintToggle = document.getElementById('hint-toggle');
-                    if (hintToggle) {
-                        hintToggle.textContent = hintEnabled ? 'Hint On' : 'Hint Off';
+                    if (!hintToggle) {
+                        console.error('Hint toggle element not found');
+                        return;
                     }
+                    hintToggle.textContent = hintEnabled ? 'Hint On' : 'Hint Off';
                     if (hintEnabled && gameActive && (gameMode !== 'ai' && (gameMode !== '1player' || currentPlayer === 'red'))) {
                         highlightBestMove();
                     } else if (hintLine) {
-                        scene.remove(hintLine);
+                        disposeObject(hintLine);
                         hintLine = null;
                     }
                 }
@@ -331,7 +307,7 @@
                 function highlightBestMove() {
                     if (!hintEnabled || !gameActive || (gameMode === 'ai' || (gameMode === '1player' && currentPlayer === 'blue'))) return;
                     if (hintLine) {
-                        scene.remove(hintLine);
+                        disposeObject(hintLine);
                         hintLine = null;
                     }
                     const validMoves = [];
@@ -406,7 +382,10 @@
                 // Show flashing message
                 function showMessage(text, isReminder = false) {
                     const messageElement = document.getElementById('message');
-                    if (!messageElement) return;
+                    if (!messageElement) {
+                        console.error('Message element not found');
+                        return;
+                    }
                     messageElement.textContent = text;
                     messageElement.style.display = 'block';
                     messageElement.classList.remove('neutral-message', 'positive-message', 'red-message', 'blue-message');
@@ -449,7 +428,10 @@
 
                 function updatePointsDisplay() {
                     const pointsElement = document.getElementById('points-message');
-                    if (!pointsElement) return;
+                    if (!pointsElement) {
+                        console.error('Points message element not found');
+                        return;
+                    }
                     if (pointsMessages.length === 0) {
                         pointsElement.style.display = 'none';
                         pointsElement.innerHTML = '';
@@ -460,16 +442,17 @@
                         `<div class="${msg.player}-points" style="position: absolute; width: 150px; top: ${msg.y + msg.offset}px; left: ${msg.x}px; transform: translate(-50%, 0); text-align: center;">${msg.text}</div>`
                     ).join('');
                     pointsElement.classList.add('flash');
-                    setTimeout(() => pointsElement.classList.remove('flash'), 500);
                 }
 
                 // Toggle camera mode
                 function toggleCamera() {
                     isFlyCamera = !isFlyCamera;
                     const cameraToggle = document.getElementById('camera-toggle');
-                    if (cameraToggle) {
-                        cameraToggle.textContent = isFlyCamera ? 'Static Camera' : 'Fly Camera';
+                    if (!cameraToggle) {
+                        console.error('Camera toggle element not found');
+                        return;
                     }
+                    cameraToggle.textContent = isFlyCamera ? 'Static Camera' : 'Fly Camera';
                     if (!isFlyCamera) {
                         camera.position.set(0, 0, 12);
                         camera.lookAt(0, 0, 0);
@@ -481,7 +464,7 @@
                     if (gameMode === 'ai' || moveHistory.length === 0 || !gameActive) return;
                     const lastMove = moveHistory.pop();
                     if (lastMove && lastMove.line) {
-                        scene.remove(lastMove.line.mesh);
+                        disposeObject(lastMove.line.mesh);
                         lines.pop();
                         moveCount--;
                         if (lastMove.player === 'red') {
@@ -499,7 +482,7 @@
                         }
                         if (lastMove.boxes && lastMove.boxes.length > 0) {
                             lastMove.boxes.forEach(box => {
-                                scene.remove(box);
+                                disposeObject(box);
                                 const index = boxes.findIndex(b => b.userData.x === box.userData.x && b.userData.y === box.userData.y);
                                 if (index !== -1) {
                                     boxes.splice(index, 1);
@@ -512,7 +495,7 @@
                         updateStats();
                         updateMoves();
                         if (hintLine) {
-                            scene.remove(hintLine);
+                            disposeObject(hintLine);
                             hintLine = null;
                         }
                         if (hintEnabled) {
@@ -549,7 +532,11 @@
                         isWelcomeScreen = false;
                         isFlyCamera = false;
                         const cameraToggle = document.getElementById('camera-toggle');
-                        if (cameraToggle) cameraToggle.textContent = 'Fly Camera';
+                        if (!cameraToggle) {
+                            console.error('Camera toggle element not found');
+                            return;
+                        }
+                        cameraToggle.textContent = 'Fly Camera';
                         camera.position.set(0, 0, 12);
                         camera.lookAt(0, 0, 0);
                         const welcome = document.getElementById('welcome');
@@ -606,7 +593,8 @@
 
                 // Update timer
                 function updateTimer() {
-                    if (gameActive) {
+                    if (!gameActive) return;
+                    try {
                         const now = Date.now();
                         const elapsed = Math.floor((now - startTime) / 1000);
                         const turnTime = Math.floor((now - lastSwitchTime) / 1000);
@@ -622,13 +610,19 @@
                         if (redStats) redStats.innerHTML = `Red: ${scores.red}<br>Score: ${redScore}<br>Time: ${redTime}s<br>Moves: ${redMoves}`;
                         const blueStats = document.getElementById('blue-stats');
                         if (blueStats) blueStats.innerHTML = `Blue: ${scores.blue}<br>Score: ${blueScore}<br>Time: ${blueTime}s<br>Moves: ${blueMoves}`;
+                    } catch (e) {
+                        console.error('Error updating timer:', e);
                     }
                 }
 
                 // Update move counter
                 function updateMoves() {
                     const movesElement = document.getElementById('moves');
-                    if (movesElement) movesElement.textContent = `Moves: ${moveCount}`;
+                    if (!movesElement) {
+                        console.error('Moves element not found');
+                        return;
+                    }
+                    movesElement.textContent = `Moves: ${moveCount}`;
                 }
 
                 // Handle mouse/touch movement for preview line
@@ -647,16 +641,19 @@
 
                 window.addEventListener('mousemove', updateMousePosition);
                 window.addEventListener('touchmove', (event) => {
-                    if (event.touches && event.touches.length === 1) {
-                        event.preventDefault();
-                        updateMousePosition(event);
+                    try {
+                        if (event.touches && event.touches.length === 1) {
+                            event.preventDefault();
+                            updateMousePosition(event);
+                        }
+                    } catch (e) {
+                        console.error('Error handling touchmove:', e);
                     }
                 }, { passive: false });
 
                 // Handle button interaction (click or tap)
                 function handleButtonInteraction(event, callback) {
                     try {
-                        if (event.type === 'touchstart' && event.touches && event.touches.length > 1) return;
                         event.preventDefault();
                         callback();
                     } catch (e) {
@@ -666,9 +663,16 @@
 
                 // Add click and touch event listeners to buttons
                 function addButtonListeners(button, callback) {
-                    if (!button) return;
+                    if (!button) {
+                        console.error('Button element not found for listener');
+                        return;
+                    }
                     button.addEventListener('click', (event) => handleButtonInteraction(event, callback));
-                    button.addEventListener('touchstart', (event) => handleButtonInteraction(event, callback), { passive: false });
+                    button.addEventListener('touchstart', (event) => {
+                        if (event.touches && event.touches.length === 1) {
+                            handleButtonInteraction(event, callback);
+                        }
+                    }, { passive: false });
                 }
 
                 // Bind button events
@@ -693,14 +697,9 @@
                         if (!gameActive || (gameMode === '1player' && currentPlayer === 'blue') || gameMode === 'ai') return;
                         updateMousePosition(event);
                         raycaster.setFromCamera(mouse, camera);
-                        const tempDots = dots.map(dot => {
-                            const tempDot = dot.clone();
-                            tempDot.position.copy(dot.userData.basePosition);
-                            return tempDot;
-                        });
-                        const intersects = raycaster.intersectObjects(tempDots);
+                        const intersects = raycaster.intersectObjects(dots);
                         if (intersects.length > 0) {
-                            const clickedDot = dots.find(dot => dot.userData.x === intersects[0].object.userData.x && dot.userData.y === intersects[0].object.userData.y);
+                            const clickedDot = intersects[0].object;
                             if (!selectedDot) {
                                 selectedDot = clickedDot;
                                 yellowOverlayDot = new THREE.Mesh(new THREE.SphereGeometry(0.25, 64, 64), yellowOverlayMaterial);
@@ -743,11 +742,11 @@
                                     playSound(200, 0.2, 'square');
                                 }
                                 if (previewLine) {
-                                    scene.remove(previewLine);
+                                    disposeObject(previewLine);
                                     previewLine = null;
                                 }
                                 if (yellowOverlayDot) {
-                                    scene.remove(yellowOverlayDot);
+                                    disposeObject(yellowOverlayDot);
                                     yellowOverlayDot = null;
                                 }
                                 resetDotColors();
@@ -755,11 +754,11 @@
                             }
                         } else if (selectedDot) {
                             if (previewLine) {
-                                scene.remove(previewLine);
+                                disposeObject(previewLine);
                                 previewLine = null;
                             }
                             if (yellowOverlayDot) {
-                                scene.remove(yellowOverlayDot);
+                                disposeObject(yellowOverlayDot);
                                 yellowOverlayDot = null;
                             }
                             resetDotColors();
@@ -772,9 +771,13 @@
 
                 window.addEventListener('click', handleDotSelection);
                 window.addEventListener('touchstart', (event) => {
-                    if (event.touches && event.touches.length === 1) {
-                        event.preventDefault();
-                        handleDotSelection(event);
+                    try {
+                        if (event.touches && event.touches.length === 1) {
+                            event.preventDefault();
+                            handleDotSelection(event);
+                        }
+                    } catch (e) {
+                        console.error('Error handling touchstart:', e);
                     }
                 }, { passive: false });
 
@@ -797,8 +800,6 @@
                 // Highlight valid adjacent dots
                 function highlightValidDots(selected) {
                     if (!selected) return;
-                    const x = selected.userData.x;
-                    const y = selected.userData.y;
                     dots.forEach(dot => {
                         if (isValidConnection(selected, dot)) {
                             dot.material = validDotMaterial;
@@ -870,7 +871,7 @@
                         updateMoves();
                         updateStats();
                         if (hintLine) {
-                            scene.remove(hintLine);
+                            disposeObject(hintLine);
                             hintLine = null;
                         }
                         checkGameOver();
@@ -1012,7 +1013,10 @@
                 // Update turn indicator
                 function updateTurnIndicator() {
                     const turnElement = document.getElementById('turn');
-                    if (!turnElement) return;
+                    if (!turnElement) {
+                        console.error('Turn element not found');
+                        return;
+                    }
                     turnElement.textContent = `${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)}'s Turn`;
                     turnElement.style.color = currentPlayer === 'red' ? '#ff0000' : '#0000ff';
                     turnElement.classList.add('flash');
@@ -1041,7 +1045,8 @@
 
                 // Check for game over (when all lines are drawn)
                 function checkGameOver() {
-                    if (lines.length === maxLines) {
+                    if (lines.length !== maxLines) return;
+                    try {
                         gameActive = false;
                         isFlyCamera = true;
                         if (timerInterval) clearInterval(timerInterval);
@@ -1059,13 +1064,7 @@
                         if (winnerElement) {
                             winnerElement.textContent = `Winner: ${winner}`;
                             winnerElement.classList.remove('red-winner', 'blue-winner', 'tie-winner');
-                            if (winner === 'Red') {
-                                winnerElement.classList.add('red-winner');
-                            } else if (winner === 'Blue') {
-                                winnerElement.classList.add('blue-winner');
-                            } else {
-                                winnerElement.classList.add('tie-winner');
-                            }
+                            winnerElement.classList.add(winner === 'Red' ? 'red-winner' : winner === 'Blue' ? 'blue-winner' : 'tie-winner');
                         }
                         const finalStats = document.getElementById('final-stats');
                         if (finalStats) {
@@ -1079,6 +1078,8 @@
                         const gameOver = document.getElementById('game-over');
                         if (gameOver) gameOver.style.display = 'flex';
                         updateStats();
+                    } catch (e) {
+                        console.error('Error checking game over:', e);
                     }
                 }
 
@@ -1118,21 +1119,20 @@
                         if (message) message.style.display = 'none';
                         const pointsMessage = document.getElementById('points-message');
                         if (pointsMessage) pointsMessage.style.display = 'none';
-                        lines.forEach(line => scene.remove(line.mesh));
-                        boxes.forEach(box => scene.remove(box));
+                        lines.forEach(line => disposeObject(line.mesh));
+                        boxes.forEach(box => disposeObject(box));
                         if (yellowOverlayDot) {
-                            scene.remove(yellowOverlayDot);
+                            disposeObject(yellowOverlayDot);
                             yellowOverlayDot = null;
                         }
                         if (hintLine) {
-                            scene.remove(hintLine);
+                            disposeObject(hintLine);
                             hintLine = null;
                         }
                         if (previewLine) {
-                            scene.remove(previewLine);
+                            disposeObject(previewLine);
                             previewLine = null;
                         }
-                        scene.children = scene.children.filter(child => !(child.isMesh && child.geometry.type === 'SphereGeometry' && child.material === glowMaterial));
                         lines.length = 0;
                         boxes.length = 0;
                         scores = { red: 0, blue: 0 };
@@ -1181,9 +1181,6 @@
                                 dot.position.set(x * spacing - (gridSize - 1) * spacing / 2, y * spacing - (gridSize - 1) * spacing / 2, 0);
                                 dot.userData = { x, y, basePosition: dot.position.clone() };
                                 scene.add(dot);
-                                const glow = new THREE.Mesh(new THREE.SphereGeometry(0.25, 64, 64), glowMaterial);
-                                glow.position.copy(dot.position);
-                                scene.add(glow);
                                 dots.push(dot);
                                 dotWobbleOffsets.push({
                                     x: (Math.random() - 0.5) * 0.1,
@@ -1215,22 +1212,13 @@
                             dot.position.copy(dot.userData.basePosition);
                             dot.position.x += wobbleX;
                             dot.position.y += wobbleY;
-                            const glow = scene.children.find(child => 
-                                child.isMesh && 
-                                child.geometry.type === 'SphereGeometry' && 
-                                child.material === glowMaterial && 
-                                child.position.distanceTo(dot.userData.basePosition) < 0.01
-                            );
-                            if (glow) {
-                                glow.position.copy(dot.position);
-                            }
                         });
 
                         lines.forEach(line => {
                             const dot1 = line.dot1;
                             const dot2 = line.dot2;
                             if (dot1 && dot2) {
-                                scene.remove(line.mesh);
+                                disposeObject(line.mesh);
                                 const path = new THREE.LineCurve3(dot1.position, dot2.position);
                                 const geometry = new THREE.TubeGeometry(path, 32, 0.1, 8, false);
                                 line.mesh = new THREE.Mesh(geometry, line.mesh.material);
@@ -1268,7 +1256,7 @@
                         }
 
                         if (hintLine && hintEnabled) {
-                            scene.remove(hintLine);
+                            disposeObject(hintLine);
                             const validMoves = [];
                             dots.forEach(dot1 => {
                                 dots.forEach(dot2 => {
@@ -1364,14 +1352,15 @@
                             raycaster.setFromCamera(mouse, camera);
                             const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
                             const intersectPoint = new THREE.Vector3();
-                            raycaster.ray.intersectPlane(plane, intersectPoint);
-                            scene.remove(previewLine);
-                            const path = new THREE.LineCurve3(selectedDot.position, intersectPoint);
-                            const geometry = new THREE.TubeGeometry(path, 32, 0.1, 8, false);
-                            const tubeMaterial = currentPlayer === 'red' ? redTubeMaterial.clone() : blueTubeMaterial.clone();
-                            previewLine = new THREE.Mesh(geometry, tubeMaterial);
-                            previewLine.position.z = 0.05;
-                            scene.add(previewLine);
+                            if (raycaster.ray.intersectPlane(plane, intersectPoint)) {
+                                disposeObject(previewLine);
+                                const path = new THREE.LineCurve3(selectedDot.position, intersectPoint);
+                                const geometry = new THREE.TubeGeometry(path, 32, 0.1, 8, false);
+                                const tubeMaterial = currentPlayer === 'red' ? redTubeMaterial.clone() : blueTubeMaterial.clone();
+                                previewLine = new THREE.Mesh(geometry, tubeMaterial);
+                                previewLine.position.z = 0.05;
+                                scene.add(previewLine);
+                            }
                         }
                     } catch (e) {
                         console.error('Error updating preview line:', e);
