@@ -3,14 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grid Wars - V0.9</title>
+    <title>Grid Wars</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; background: #000; }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            font-family: 'Orbitron', sans-serif; 
+            background: #000; 
+        }
         canvas { display: block; }
         #welcome, #game-over, #exit-confirm { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
             color: #fff; text-align: center; 
             display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            font-family: 'Orbitron', sans-serif;
         }
         #welcome, #exit-confirm { background: rgba(0, 0, 0, 0.85); }
         #game-over { background: rgba(0, 0, 0, 0.7); }
@@ -23,6 +30,7 @@
             margin: 10px; padding: 6px 12px; font-size: 12px; cursor: pointer; 
             background: #00ff00; color: #000; border: none; border-radius: 8px; 
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5); transition: transform 0.2s; touch-action: none; 
+            font-family: 'Orbitron', sans-serif;
         }
         #welcome button:hover, #game-over button:hover, #camera-toggle:hover, #exit-button:hover, #sound-toggle:hover, #hint-toggle:hover, #exit-yes:hover, #exit-no:hover { 
             background: #00cc00; transform: scale(1.05); 
@@ -31,6 +39,7 @@
             position: absolute; top: 10px; left: 50%; transform: translateX(-50%); 
             background: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 5px; 
             border: 1px solid rgba(255, 255, 255, 0.3); text-align: center; display: none; 
+            font-family: 'Orbitron', sans-serif;
         }
         #game-title { color: #00ff00; font-size: 18px; text-shadow: 0 0 5px #000; margin: 0; }
         #game-timer { color: #fff; font-size: 14px; text-shadow: 0 0 5px #000; margin: 5px 0; }
@@ -41,11 +50,13 @@
             position: absolute; top: 120px; left: 10px; color: #ff0000; font-size: 14px; 
             text-shadow: 0 0 5px #000; background: rgba(0, 0, 0, 0.5); padding: 10px; 
             border-radius: 5px; border: 1px solid rgba(255, 0, 0, 0.3); 
+            font-family: 'Orbitron', sans-serif;
         }
         #blue-stats { 
             position: absolute; top: 120px; right: 10px; color: #0000ff; font-size: 14px; 
             text-shadow: 0 0 5px #000; text-align: right; background: rgba(0, 0, 0, 0.5); 
             padding: 10px; border-radius: 5px; border: 1px solid rgba(0, 0, 255, 0.3); 
+            font-family: 'Orbitron', sans-serif;
         }
         #red-stats.flash, #blue-stats.flash { animation: flash 0.5s ease-in-out 3; }
         #button-container { 
@@ -56,9 +67,11 @@
             position: absolute; bottom: 100px; left: 50%; transform: translate(-50%, 0); 
             font-size: 28px; display: none; text-shadow: 0 0 5px #000; padding: 10px 20px; 
             width: 80%; background: rgba(0, 0, 0, 0.5); border-radius: 5px; text-align: center; 
+            font-family: 'Orbitron', sans-serif;
         }
         #points-message { 
             position: absolute; font-size: 14px; display: none; text-shadow: 0 0 5px #000; text-align: center; 
+            font-family: 'Orbitron', sans-serif;
         }
         #points-message div { width: 150px; text-align: center; }
         .neutral-message { color: #ffffff; }
@@ -77,7 +90,7 @@
             position: absolute; bottom: 0; left: 0; width: 100%; height: 20px; display: none; 
             background: rgba(51, 51, 51, 0.5); font-size: 10px; color: #fff; 
             z-index: 10; display: flex; justify-content: center; align-items: center; 
-            text-shadow: 0 0 2px #000;
+            text-shadow: 0 0 2px #000; font-family: 'Orbitron', sans-serif;
         }
         #win-prob-red { background: rgba(255, 0, 0, 0.5); height: 100%; float: left; }
         #win-prob-blue { background: rgba(0, 0, 255, 0.5); height: 100%; float: left; }
@@ -85,7 +98,8 @@
         #progress-bar { 
             position: absolute; bottom: 20px; left: 0; width: 100%; height: 20px; display: none; 
             background: rgba(51, 51, 51, 0.5); font-size: 10px; color: #fff; text-align: center; 
-            display: flex; justify-content: center; align-items: center; text-shadow: 0 0 2px #000;
+            display: flex; justify-content: center; align-items: center; text-shadow: 0 0 2px #000; 
+            font-family: 'Orbitron', sans-serif;
         }
         #progress-red { background: #ff0000; height: 100%; float: left; }
         #progress-blue { background: #0000ff; height: 100%; float: left; }
@@ -155,87 +169,906 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            try {
-                if (!window.THREE) {
-                    console.error('Three.js library not loaded');
+            if (!window.THREE) return;
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+            const pointLight = new THREE.PointLight(0xffffff, 1, 50);
+            pointLight.position.set(0, 0, 12);
+            scene.add(pointLight);
+            const gridSize = 5;
+            const spacing = 2;
+            const maxLines = gridSize * (gridSize - 1) * 2;
+            const dots = [];
+            const lines = [];
+            const boxes = [];
+            let selectedDot = null;
+            let yellowOverlayDot = null;
+            let previewLine = null;
+            let currentPlayer = 'red';
+            let scores = { red: 0, blue: 0 };
+            let redScore = 0;
+            let blueScore = 0;
+            let moveCount = 0;
+            let redMoves = 0;
+            let blueMoves = 0;
+            let gameMode = null;
+            let gameActive = false;
+            let startTime = 0;
+            let redTime = 0;
+            let blueTime = 0;
+            let lastSwitchTime = 0;
+            let lastMoveTime = 0;
+            let timerInterval = null;
+            let throbTime = 0;
+            let flashingLines = [];
+            let isFlyCamera = false;
+            let cameraTime = 0;
+            let audioCtx = null;
+            let gameStats = { red: 0, blue: 0, tie: 0 };
+            let soundEnabled = true;
+            let hintEnabled = false;
+            let hintLine = null;
+            let bestHintMove = null;
+            let isWelcomeScreen = true;
+            let pointsMessages = [];
+            let lastIdleReminder = 0;
+            let wobbleTime = 0;
+            const dotWobbleOffsets = [];
+            const starGeometry = new THREE.BufferGeometry();
+            const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1, transparent: true });
+            const starPositions = new Float32Array(5000 * 3);
+            const starOpacities = new Float32Array(5000);
+            for (let i = 0; i < 5000; i++) {
+                starPositions[i * 3] = (Math.random() - 0.5) * 150;
+                starPositions[i * 3 + 1] = (Math.random() - 0.5) * 150;
+                starPositions[i * 3 + 2] = (Math.random() - 0.5) * 150;
+                starOpacities[i] = Math.random() * 0.5 + 0.5;
+            }
+            starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+            starGeometry.setAttribute('opacity', new THREE.BufferAttribute(starOpacities, 1));
+            const stars = new THREE.Points(starGeometry, starMaterial);
+            scene.add(stars);
+            const dotGeometry = new THREE.SphereGeometry(0.4, 64, 64);
+            const dotMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00, shininess: 100, specular: 0x555555 });
+            const validDotMaterial = new THREE.MeshPhongMaterial({ color: 0x00ffff, shininess: 100, specular: 0x555555 });
+            const dimDotMaterial = new THREE.MeshPhongMaterial({ color: 0x006600, shininess: 100, specular: 0x555555 });
+            const yellowOverlayMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00, shininess: 100, specular: 0x555555 });
+            for (let x = 0; x < gridSize; x++) {
+                for (let y = 0; y < gridSize; y++) {
+                    const dot = new THREE.Mesh(dotGeometry, dotMaterial);
+                    dot.position.set(x * spacing - (gridSize - 1) * spacing / 2, y * spacing - (gridSize - 1) * spacing / 2, 0);
+                    dot.userData = { x, y, basePosition: dot.position.clone() };
+                    scene.add(dot);
+                    dots.push(dot);
+                    dotWobbleOffsets.push({
+                        x: (Math.random() - 0.5) * 0.1,
+                        y: (Math.random() - 0.5) * 0.1,
+                        phase: Math.random() * Math.PI * 2
+                    });
+                }
+            }
+            const redTubeMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000, shininess: 100, specular: 0x555555, transparent: true });
+            const blueTubeMaterial = new THREE.MeshPhongMaterial({ color: 0x0000ff, shininess: 100, specular: 0x555555, transparent: true });
+            const hintTubeMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00, shininess: 100, specular: 0x555555, transparent: true });
+            const raycaster = new THREE.Raycaster();
+            raycaster.params.Points.threshold = 0.25;
+            const mouse = new THREE.Vector2();
+            function disposeObject(obj) {
+                if (!obj) return;
+                if (obj.geometry) obj.geometry.dispose();
+                if (obj.material) obj.material.dispose();
+                if (scene) scene.remove(obj);
+            }
+            function initAudio() {
+                if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            function playSound(frequency, duration, type = 'sine') {
+                if (!soundEnabled || !audioCtx) return;
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.type = type;
+                oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + duration);
+            }
+            function toggleSound() {
+                soundEnabled = !soundEnabled;
+                const soundToggle = document.getElementById('sound-toggle');
+                if (soundToggle) soundToggle.textContent = soundEnabled ? 'Sound On' : 'Sound Off';
+            }
+            function toggleHint() {
+                hintEnabled = !hintEnabled;
+                const hintToggle = document.getElementById('hint-toggle');
+                if (hintToggle) hintToggle.textContent = hintEnabled ? 'Hint On' : 'Hint Off';
+                if (hintEnabled && gameActive && (gameMode !== 'ai' && (gameMode !== '1player' || currentPlayer === 'red'))) {
+                    highlightBestMove();
+                } else {
+                    if (hintLine) {
+                        disposeObject(hintLine);
+                        hintLine = null;
+                    }
+                    bestHintMove = null;
+                }
+            }
+            function highlightBestMove() {
+                if (!hintEnabled || !gameActive || (gameMode === 'ai' || (gameMode === '1player' && currentPlayer === 'blue'))) return;
+                if (hintLine) {
+                    disposeObject(hintLine);
+                    hintLine = null;
+                }
+                const validMoves = [];
+                const boxClosingMoves = [];
+                const blockingMoves = [];
+                dots.forEach(dot1 => {
+                    dots.forEach(dot2 => {
+                        if (isValidConnection(dot1, dot2)) {
+                            const move = [dot1, dot2];
+                            validMoves.push(move);
+                            const tempLines = [...lines, {
+                                start: { x: Math.min(dot1.userData.x, dot2.userData.x), y: Math.min(dot1.userData.y, dot2.userData.y) },
+                                end: { x: Math.max(dot1.userData.x, dot2.userData.x), y: Math.max(dot1.userData.y, dot2.userData.y) }
+                            }];
+                            let closesBox = false;
+                            for (let x = 0; x < gridSize - 1; x++) {
+                                for (let y = 0; y < gridSize - 1; y++) {
+                                    if (hasBox(x, y, tempLines) && !boxes.some(box => box.userData.x === x && box.userData.y === y)) {
+                                        closesBox = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (closesBox) {
+                                boxClosingMoves.push(move);
+                            }
+                            const opponent = currentPlayer === 'red' ? 'blue' : 'red';
+                            let givesBox = false;
+                            dots.forEach(d1 => {
+                                dots.forEach(d2 => {
+                                    if (isValidConnection(d1, d2)) {
+                                        const tempLines2 = [...tempLines, {
+                                            start: { x: Math.min(d1.userData.x, d2.userData.x), y: Math.min(d1.userData.y, d2.userData.y) },
+                                            end: { x: Math.max(d1.userData.x, d2.userData.x), y: Math.max(d2.userData.y, d2.userData.y) }
+                                        }];
+                                        for (let x = 0; x < gridSize - 1; x++) {
+                                            for (let y = 0; y < gridSize - 1; y++) {
+                                                if (hasBox(x, y, tempLines2) && !boxes.some(box => box.userData.x === x && box.userData.y === y)) {
+                                                    givesBox = true;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                });
+                            });
+                            if (!givesBox) {
+                                blockingMoves.push(move);
+                            }
+                        }
+                    });
+                });
+                let move;
+                if (boxClosingMoves.length > 0) {
+                    move = boxClosingMoves[Math.floor(Math.random() * boxClosingMoves.length)];
+                } else if (blockingMoves.length > 0) {
+                    move = blockingMoves[Math.floor(Math.random() * blockingMoves.length)];
+                } else if (validMoves.length > 0) {
+                    move = validMoves[Math.floor(Math.random() * validMoves.length)];
+                }
+                if (move) {
+                    bestHintMove = move;
+                    const [dot1, dot2] = move;
+                    const path = new THREE.LineCurve3(dot1.position, dot2.position);
+                    const geometry = new THREE.TubeGeometry(path, 32, 0.1, 8, false);
+                    hintLine = new THREE.Mesh(geometry, hintTubeMaterial.clone());
+                    hintLine.position.z = 0.04;
+                    scene.add(hintLine);
+                    flashingLines.push({ line: hintLine, time: 0, flashes: 0 });
+                } else {
+                    bestHintMove = null;
+                }
+            }
+            function showMessage(text, isReminder = false) {
+                const messageElement = document.getElementById('message');
+                if (!messageElement) return;
+                messageElement.textContent = text;
+                messageElement.style.display = 'block';
+                messageElement.classList.remove('neutral-message', 'positive-message', 'red-message', 'blue-message');
+                if (text.includes('Invalid move')) {
+                    messageElement.classList.add('neutral-message');
+                } else if (isReminder) {
+                    messageElement.classList.add(currentPlayer === 'red' ? 'red-message' : 'blue-message');
+                } else {
+                    messageElement.classList.add('positive-message');
+                }
+                messageElement.classList.add('flash');
+                setTimeout(() => {
+                    if (messageElement) {
+                        messageElement.style.display = 'none';
+                        messageElement.classList.remove('flash');
+                    }
+                }, 1500);
+            }
+            function showPointsMessage(points, reason, position) {
+                const messageId = Date.now();
+                const vector = position.clone().project(camera);
+                const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-vector.y * 0.5 + 0.5) * window.innerHeight;
+                const clampedX = Math.max(50, Math.min(window.innerWidth - 50, x));
+                const clampedY = Math.max(50, Math.min(window.innerHeight - 100, y));
+                pointsMessages.push({ 
+                    id: messageId, 
+                    text: `+${points} ${reason}`, 
+                    x: clampedX, 
+                    y: clampedY, 
+                    offset: pointsMessages.length * 14,
+                    player: currentPlayer
+                });
+                updatePointsDisplay();
+                setTimeout(() => {
+                    pointsMessages = pointsMessages.filter(msg => msg.id !== messageId);
+                    updatePointsDisplay();
+                }, 1000);
+            }
+            function updatePointsDisplay() {
+                const pointsElement = document.getElementById('points-message');
+                if (!pointsElement) return;
+                if (pointsMessages.length === 0) {
+                    pointsElement.style.display = 'none';
+                    pointsElement.innerHTML = '';
                     return;
                 }
-
-                // Set up scene, camera, and renderer
-                const scene = new THREE.Scene();
-                const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-                const renderer = new THREE.WebGLRenderer({ antialias: true });
-                renderer.setSize(window.innerWidth, window.innerHeight);
-                document.body.appendChild(renderer.domElement);
-
-                // Add lighting for shaded dots
-                const pointLight = new THREE.PointLight(0xffffff, 1, 50);
-                pointLight.position.set(0, 0, 12);
-                scene.add(pointLight);
-
-                // Game settings
-                const gridSize = 5;
-                const spacing = 2;
-                const maxLines = gridSize * (gridSize - 1) * 2;
-                const dots = [];
-                const lines = [];
-                const boxes = [];
-                let selectedDot = null;
-                let yellowOverlayDot = null;
-                let previewLine = null;
-                let currentPlayer = 'red';
-                let scores = { red: 0, blue: 0 };
-                let redScore = 0;
-                let blueScore = 0;
-                let moveCount = 0;
-                let redMoves = 0;
-                let blueMoves = 0;
-                let gameMode = null;
-                let gameActive = false;
-                let startTime = 0;
-                let redTime = 0;
-                let blueTime = 0;
-                let lastSwitchTime = 0;
-                let lastMoveTime = 0;
-                let timerInterval = null;
-                let throbTime = 0;
-                let flashingLines = [];
-                let isFlyCamera = false;
-                let cameraTime = 0;
-                let audioCtx = null;
-                let gameStats = { red: 0, blue: 0, tie: 0 };
-                let soundEnabled = true;
-                let hintEnabled = false;
-                let hintLine = null;
-                let bestHintMove = null;
-                let isWelcomeScreen = true;
-                let pointsMessages = [];
-                let lastIdleReminder = 0;
-                let wobbleTime = 0;
-                const dotWobbleOffsets = [];
-
-                // Create enhanced starfield
-                const starGeometry = new THREE.BufferGeometry();
-                const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1, transparent: true });
-                const starPositions = new Float32Array(5000 * 3);
-                const starOpacities = new Float32Array(5000);
-                for (let i = 0; i < 5000; i++) {
-                    starPositions[i * 3] = (Math.random() - 0.5) * 150;
-                    starPositions[i * 3 + 1] = (Math.random() - 0.5) * 150;
-                    starPositions[i * 3 + 2] = (Math.random() - 0.5) * 150;
-                    starOpacities[i] = Math.random() * 0.5 + 0.5;
+                pointsElement.style.display = 'block';
+                pointsElement.innerHTML = pointsMessages.map(msg => 
+                    `<div class="${msg.player}-points" style="position: absolute; width: 150px; top: ${msg.y + msg.offset}px; left: ${msg.x}px; transform: translate(-50%, 0); text-align: center;">${msg.text}</div>`
+                ).join('');
+                pointsElement.classList.add('flash');
+            }
+            function toggleCamera() {
+                isFlyCamera = !isFlyCamera;
+                const cameraToggle = document.getElementById('camera-toggle');
+                if (cameraToggle) cameraToggle.textContent = isFlyCamera ? 'Static Camera' : 'Fly Camera';
+                if (!isFlyCamera) {
+                    camera.position.set(0, 0, 12);
+                    camera.lookAt(0, 0, 0);
                 }
-                starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-                starGeometry.setAttribute('opacity', new THREE.BufferAttribute(starOpacities, 1));
-                const stars = new THREE.Points(starGeometry, starMaterial);
-                scene.add(stars);
-
-                // Create glowing dots with shading
-                const dotGeometry = new THREE.SphereGeometry(0.3, 64, 64);
-                const dotMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00, shininess: 100, specular: 0x555555 });
-                const validDotMaterial = new THREE.MeshPhongMaterial({ color: 0x00ffff, shininess: 100, specular: 0x555555 });
-                const dimDotMaterial = new THREE.MeshPhongMaterial({ color: 0x006600, shininess: 100, specular: 0x555555 });
-                const yellowOverlayMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00, shininess: 100, specular: 0x555555 });
+            }
+            function checkDotConnectivity(dot) {
+                return dots.some(otherDot => isValidConnection(dot, otherDot));
+            }
+            function updateDotConnectivity() {
+                dots.forEach(dot => {
+                    if (!checkDotConnectivity(dot) && dot.material !== dimDotMaterial) {
+                        dot.material = dimDotMaterial;
+                    } else if (checkDotConnectivity(dot) && dot.material === dimDotMaterial) {
+                        dot.material = dotMaterial;
+                    }
+                });
+            }
+            function calculateWinProbabilities() {
+                const totalBoxes = (gridSize - 1) * (gridSize - 1);
+                const remainingBoxes = totalBoxes - (scores.red + scores.blue);
+                if (remainingBoxes <= 0) {
+                    return { red: scores.red > scores.blue ? 100 : 0, blue: scores.blue > scores.red ? 100 : 0, tie: scores.red === scores.blue ? 100 : 0 };
+                }
+                let redPotential = scores.red;
+                let bluePotential = scores.blue;
+                const validMoves = [];
+                const boxClosingMoves = [];
+                dots.forEach(dot1 => {
+                    dots.forEach(dot2 => {
+                        if (isValidConnection(dot1, dot2)) {
+                            const move = [dot1, dot2];
+                            validMoves.push(move);
+                            const tempLines = [...lines, {
+                                start: { x: Math.min(dot1.userData.x, dot2.userData.x), y: Math.min(dot1.userData.y, dot2.userData.y) },
+                                end: { x: Math.max(dot1.userData.x, dot2.userData.x), y: Math.max(dot1.userData.y, dot2.userData.y) }
+                            }];
+                            let closesBox = false;
+                            for (let x = 0; x < gridSize - 1; x++) {
+                                for (let y = 0; y < gridSize - 1; y++) {
+                                    if (hasBox(x, y, tempLines) && !boxes.some(box => box.userData.x === x && box.userData.y === y)) {
+                                        closesBox = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (closesBox) {
+                                boxClosingMoves.push(move);
+                            }
+                        }
+                    });
+                });
+                const boxClosingWeight = boxClosingMoves.length / (validMoves.length || 1);
+                redPotential += boxClosingWeight * remainingBoxes * (currentPlayer === 'red' ? 0.6 : 0.4);
+                bluePotential += boxClosingWeight * remainingBoxes * (currentPlayer === 'blue' ? 0.6 : 0.4);
+                const totalPotential = redPotential + bluePotential;
+                let redProb = totalPotential > 0 ? (redPotential / totalPotential) * 100 : 50;
+                let blueProb = totalPotential > 0 ? (bluePotential / totalPotential) * 100 : 50;
+                let tieProb = 100 - redProb - blueProb;
+                if (tieProb < 0) {
+                    const adjust = tieProb / 2;
+                    redProb += adjust;
+                    blueProb += adjust;
+                    tieProb = 0;
+                }
+                return {
+                    red: Math.max(0, Math.min(100, redProb.toFixed(1))),
+                    blue: Math.max(0, Math.min(100, blueProb.toFixed(1))),
+                    tie: Math.max(0, Math.min(100, tieProb.toFixed(1)))
+                };
+            }
+            function startGame(mode) {
+                initAudio();
+                gameMode = mode;
+                gameActive = true;
+                isWelcomeScreen = false;
+                isFlyCamera = false;
+                const cameraToggle = document.getElementById('camera-toggle');
+                if (cameraToggle) cameraToggle.textContent = 'Fly Camera';
+                camera.position.set(0, 0, 12);
+                camera.lookAt(0, 0, 0);
+                const welcome = document.getElementById('welcome');
+                if (welcome) welcome.style.display = 'none';
+                const statsContainer = document.getElementById('game-stats-container');
+                if (statsContainer) statsContainer.style.display = 'block';
+                const timer = document.getElementById('game-timer');
+                if (timer) timer.style.display = 'block';
+                const turn = document.getElementById('turn');
+                if (turn) turn.style.display = 'block';
+                const moves = document.getElementById('moves');
+                if (moves) moves.style.display = 'block';
+                const gamesWon = document.getElementById('games-won');
+                if (gamesWon) gamesWon.style.display = 'block';
+                const redStats = document.getElementById('red-stats');
+                if (redStats) redStats.style.display = 'block';
+                const blueStats = document.getElementById('blue-stats');
+                if (blueStats) blueStats.style.display = 'block';
+                const winProbBar = document.getElementById('win-prob-bar');
+                if (winProbBar) winProbBar.style.display = 'block';
+                const progressBar = document.getElementById('progress-bar');
+                if (progressBar) progressBar.style.display = 'block';
+                const buttonContainer = document.getElementById('button-container');
+                if (buttonContainer) buttonContainer.style.display = 'flex';
+                if (mode === 'ai') {
+                    const hintToggle = document.getElementById('hint-toggle');
+                    if (hintToggle) hintToggle.style.display = 'none';
+                } else {
+                    const hintToggle = document.getElementById('hint-toggle');
+                    if (hintToggle) hintToggle.style.display = 'block';
+                }
+                const soundToggle = document.getElementById('sound-toggle');
+                if (soundToggle) soundToggle.style.display = 'block';
+                const gameTitle = document.getElementById('game-title');
+                if (gameTitle) gameTitle.textContent = 'Grid Wars';
+                startTime = Date.now();
+                lastSwitchTime = startTime;
+                lastMoveTime = startTime;
+                lastIdleReminder = startTime;
+                redTime = 0;
+                blueTime = 0;
+                redMoves = 0;
+                blueMoves = 0;
+                timerInterval = setInterval(updateTimer, 1000);
+                if (mode === 'ai') {
+                    aiMove();
+                } else if (hintEnabled) {
+                    highlightBestMove();
+                }
+            }
+            function updateTimer() {
+                if (!gameActive) return;
+                const now = Date.now();
+                const elapsed = Math.floor((now - startTime) / 1000);
+                const turnTime = Math.floor((now - lastSwitchTime) / 1000);
+                if (currentPlayer === 'red') {
+                    redTime += turnTime;
+                } else {
+                    blueTime += turnTime;
+                }
+                lastSwitchTime = now;
+                const gameTimer = document.getElementById('game-timer');
+                if (gameTimer) gameTimer.textContent = `Game Time: ${elapsed}s`;
+                const redStats = document.getElementById('red-stats');
+                if (redStats) redStats.innerHTML = `Red: ${scores.red}<br>Score: ${redScore}<br>Time: ${redTime}s<br>Moves: ${redMoves}`;
+                const blueStats = document.getElementById('blue-stats');
+                if (blueStats) blueStats.innerHTML = `Blue: ${scores.blue}<br>Score: ${blueScore}<br>Time: ${blueTime}s<br>Moves: ${blueMoves}`;
+            }
+            function updateMoves() {
+                const movesElement = document.getElementById('moves');
+                if (movesElement) movesElement.textContent = `Moves: ${moveCount}`;
+            }
+            function updateMousePosition(event) {
+                const rect = renderer.domElement.getBoundingClientRect();
+                const clientX = event.clientX || (event.changedTouches && event.changedTouches[0] ? event.changedTouches[0].clientX : (event.touches && event.touches[0] ? event.touches[0].clientX : 0));
+                const clientY = event.clientY || (event.changedTouches && event.changedTouches[0] ? event.changedTouches[0].clientY : (event.touches && event.touches[0] ? event.touches[0].clientY : 0));
+                if (rect.width === 0 || rect.height === 0) return;
+                mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+            }
+            function handleButtonInteraction(event, callback) {
+                event.preventDefault();
+                callback();
+            }
+            function addButtonListeners(buttonId, callback) {
+                const button = document.getElementById(buttonId);
+                if (!button) return;
+                button.addEventListener('click', (event) => handleButtonInteraction(event, callback));
+                button.addEventListener('touchstart', (event) => {
+                    if (event.touches && event.touches.length === 1) {
+                        handleButtonInteraction(event, callback);
+                    }
+                }, { passive: false });
+            }
+            addButtonListeners('one-player', () => startGame('1player'));
+            addButtonListeners('two-player', () => startGame('2player'));
+            addButtonListeners('ai-mode', () => startGame('ai'));
+            addButtonListeners('play-again', () => resetGame(gameMode, false));
+            addButtonListeners('exit-yes', () => resetGame(null, true, false));
+            addButtonListeners('exit-no', () => {
+                const exitConfirm = document.getElementById('exit-confirm');
+                if (exitConfirm) exitConfirm.style.display = 'none';
+            });
+            addButtonListeners('camera-toggle', toggleCamera);
+            addButtonListeners('exit-button', () => resetGame(null, true, true));
+            addButtonListeners('sound-toggle', toggleSound);
+            addButtonListeners('hint-toggle', toggleHint);
+            function handleDotSelection(event, isTouch = false, isTouchRelease = false) {
+                if (!gameActive || (gameMode === '1player' && currentPlayer === 'blue') || gameMode === 'ai') return;
+                updateMousePosition(event);
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(dots);
+                if (!selectedDot && intersects.length > 0 && !isTouchRelease) {
+                    selectedDot = intersects[0].object;
+                    yellowOverlayDot = new THREE.Mesh(new THREE.SphereGeometry(0.475, 64, 64), yellowOverlayMaterial);
+                    yellowOverlayDot.position.copy(selectedDot.position);
+                    yellowOverlayDot.position.z = 0.01;
+                    scene.add(yellowOverlayDot);
+                    const path = new THREE.LineCurve3(selectedDot.position, selectedDot.position);
+                    const geometry = new THREE.TubeGeometry(path, 32, 0.1, 8, false);
+                    const tubeMaterial = currentPlayer === 'red' ? redTubeMaterial.clone() : blueTubeMaterial.clone();
+                    previewLine = new THREE.Mesh(geometry, tubeMaterial);
+                    previewLine.position.z = 0.05;
+                    scene.add(previewLine);
+                    highlightValidDots(selectedDot);
+                } else if (selectedDot && (isTouchRelease || !isTouch)) {
+                    const validIntersects = intersects
+                        .filter(intersect => isValidConnection(selectedDot, intersect.object))
+                        .sort((a, b) => a.distance - b.distance);
+                    const targetDot = validIntersects[0];
+                    if (targetDot && isValidConnection(selectedDot, targetDot.object)) {
+                        drawLine(selectedDot, targetDot.object);
+                        const boxCount = checkForBoxes();
+                        if (boxCount > 0) {
+                            showMessage(`${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)} formed a box!`);
+                            playSound(600, 0.3, 'sine');
+                        } else {
+                            playSound(400, 0.2, 'sine');
+                            lastSwitchTime = Date.now();
+                            lastMoveTime = Date.now();
+                            lastIdleReminder = Date.now();
+                        }
+                        if (boxCount === 0) {
+                            currentPlayer = currentPlayer === 'red' ? 'blue' : 'red';
+                            updateTurnIndicator();
+                            if (gameMode === '1player' && currentPlayer === 'blue') {
+                                setTimeout(aiMove, 500);
+                            } else if (hintEnabled) {
+                                highlightBestMove();
+                            }
+                        } else if (hintEnabled) {
+                            highlightBestMove();
+                        }
+                    } else {
+                        showMessage('Invalid move! Choose an adjacent, unconnected dot.');
+                        playSound(200, 0.2, 'square');
+                    }
+                    if (previewLine) {
+                        disposeObject(previewLine);
+                        previewLine = null;
+                    }
+                    if (yellowOverlayDot) {
+                        disposeObject(yellowOverlayDot);
+                        yellowOverlayDot = null;
+                    }
+                    resetDotColors();
+                    selectedDot = null;
+                }
+            }
+            window.addEventListener('click', (event) => handleDotSelection(event));
+            window.addEventListener('touchstart', (event) => {
+                if (event.touches && event.touches.length === 1) {
+                    event.preventDefault();
+                    handleDotSelection(event, true);
+                }
+            }, { passive: false });
+            window.addEventListener('touchend', (event) => {
+                if (event.changedTouches && event.changedTouches.length === 1) {
+                    event.preventDefault();
+                    handleDotSelection(event, true, true);
+                }
+            }, { passive: false });
+            window.addEventListener('touchmove', (event) => {
+                if (event.touches && event.touches.length === 1) {
+                    event.preventDefault();
+                    updateMousePosition(event);
+                    updatePreviewLine();
+                }
+            }, { passive: false });
+            function isValidConnection(dot1, dot2) {
+                if (!dot1 || !dot2 || dot1 === dot2) return false;
+                const dx = Math.abs(dot1.userData.x - dot2.userData.x);
+                const dy = Math.abs(dot1.userData.y - dot2.userData.y);
+                const isAdjacent = (dx === 1 && dy === 0) || (dx === 0 && dy === 1);
+                if (!isAdjacent) return false;
+                const lineExists = lines.some(l => 
+                    (l.start.x === Math.min(dot1.userData.x, dot2.userData.x) && 
+                     l.start.y === Math.min(dot1.userData.y, dot2.userData.y) && 
+                     l.end.x === Math.max(dot1.userData.x, dot2.userData.x) && 
+                     l.end.y === Math.max(dot1.userData.y, dot2.userData.y))
+                );
+                return !lineExists;
+            }
+            function highlightValidDots(selected) {
+                if (!selected) return;
+                dots.forEach(dot => {
+                    if (isValidConnection(selected, dot)) {
+                        dot.material = validDotMaterial;
+                        dot.userData.isValid = true;
+                    } else {
+                        dot.material = checkDotConnectivity(dot) ? dotMaterial : dimDotMaterial;
+                        dot.userData.isValid = false;
+                    }
+                });
+            }
+            function resetDotColors() {
+                dots.forEach(dot => {
+                    dot.material = checkDotConnectivity(dot) ? dotMaterial : dimDotMaterial;
+                    dot.scale.set(1, 1, 1);
+                    dot.userData.isValid = false;
+                    dot.material.opacity = 1;
+                    dot.material.transparent = false;
+                });
+            }
+            function drawLine(dot1, dot2) {
+                const path = new THREE.LineCurve3(dot1.userData.basePosition, dot2.userData.basePosition);
+                const geometry = new THREE.TubeGeometry(path, 32, 0.1, 8, false);
+                const tubeMaterial = currentPlayer === 'red' ? redTubeMaterial.clone() : blueTubeMaterial.clone();
+                const tube = new THREE.Mesh(geometry, tubeMaterial);
+                tube.position.z = 0.05;
+                scene.add(tube);
+                const newBoxes = [];
+                const lineMidpoint = new THREE.Vector3().addVectors(dot1.position, dot2.position).multiplyScalar(0.5);
+                const boxCount = checkForBoxes(newBoxes);
+                let points = 1;
+                showPointsMessage(1, 'Line', lineMidpoint);
+                if (boxCount > 0) {
+                    points += 5 * boxCount;
+                    const lastBox = newBoxes[newBoxes.length - 1];
+                    const boxPosition = lastBox ? lastBox.position : lineMidpoint;
+                    showPointsMessage(5 * boxCount, `${boxCount} Box${boxCount > 1 ? 'es' : ''}`, boxPosition);
+                }
+                const moveTime = Date.now();
+                if (moveTime - lastMoveTime < 5000) {
+                    points += 2;
+                    showPointsMessage(2, 'Fast Move', lineMidpoint);
+                }
+                if (currentPlayer === 'red') {
+                    redScore += points;
+                    redMoves++;
+                } else {
+                    blueScore += points;
+                    blueMoves++;
+                }
+                lines.push({ 
+                    start: { x: Math.min(dot1.userData.x, dot2.userData.x), y: Math.min(dot1.userData.y, dot2.userData.y) },
+                    end: { x: Math.max(dot1.userData.x, dot2.userData.x), y: Math.max(dot1.userData.y, dot2.userData.y) },
+                    player: currentPlayer,
+                    mesh: tube,
+                    dot1: dot1,
+                    dot2: dot2
+                });
+                flashingLines.push({ line: tube, time: 0, flashes: 0 });
+                moveCount++;
+                lastMoveTime = moveTime;
+                lastIdleReminder = moveTime;
+                updateDotConnectivity();
+                updateMoves();
+                updateStats();
+                if (hintLine) {
+                    disposeObject(hintLine);
+                    hintLine = null;
+                }
+                bestHintMove = null;
+                checkGameOver();
+            }
+            function aiMove() {
+                if (!gameActive) return;
+                const validMoves = [];
+                const boxClosingMoves = [];
+                const blockingMoves = [];
+                dots.forEach(dot1 => {
+                    dots.forEach(dot2 => {
+                        if (isValidConnection(dot1, dot2)) {
+                            const move = [dot1, dot2];
+                            validMoves.push(move);
+                            const tempLines = [...lines, {
+                                start: { x: Math.min(dot1.userData.x, dot2.userData.x), y: Math.min(dot1.userData.y, dot2.userData.y) },
+                                end: { x: Math.max(dot1.userData.x, dot2.userData.x), y: Math.max(dot1.userData.y, dot2.userData.y) }
+                            }];
+                            let closesBox = false;
+                            for (let x = 0; x < gridSize - 1; x++) {
+                                for (let y = 0; y < gridSize - 1; y++) {
+                                    if (hasBox(x, y, tempLines) && !boxes.some(box => box.userData.x === x && box.userData.y === y)) {
+                                        closesBox = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (closesBox) {
+                                boxClosingMoves.push(move);
+                            }
+                            const opponent = currentPlayer === 'red' ? 'blue' : 'red';
+                            let givesBox = false;
+                            dots.forEach(d1 => {
+                                dots.forEach(d2 => {
+                                    if (isValidConnection(d1, d2)) {
+                                        const tempLines2 = [...tempLines, {
+                                            start: { x: Math.min(d1.userData.x, d2.userData.x), y: Math.min(d1.userData.y, d2.userData.y) },
+                                            end: { x: Math.max(d1.userData.x, d2.userData.x), y: Math.max(d2.userData.y, d2.userData.y) }
+                                        }];
+                                        for (let x = 0; x < gridSize - 1; x++) {
+                                            for (let y = 0; y < gridSize - 1; y++) {
+                                                if (hasBox(x, y, tempLines2) && !boxes.some(box => box.userData.x === x && box.userData.y === y)) {
+                                                    givesBox = true;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                });
+                            });
+                            if (!givesBox) {
+                                blockingMoves.push(move);
+                            }
+                        }
+                    });
+                });
+                let move;
+                if (boxClosingMoves.length > 0) {
+                    move = boxClosingMoves[Math.floor(Math.random() * boxClosingMoves.length)];
+                } else if (blockingMoves.length > 0) {
+                    move = blockingMoves[Math.floor(Math.random() * blockingMoves.length)];
+                } else if (validMoves.length > 0) {
+                    move = validMoves[Math.floor(Math.random() * validMoves.length)];
+                }
+                if (move) {
+                    const [dot1, dot2] = move;
+                    drawLine(dot1, dot2);
+                    const boxCount = checkForBoxes();
+                    if (boxCount > 0) {
+                        showMessage(`${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)} formed a box!`);
+                        playSound(600, 0.3, 'sine');
+                    } else {
+                        playSound(400, 0.2, 'sine');
+                        lastSwitchTime = Date.now();
+                        lastMoveTime = Date.now();
+                        lastIdleReminder = Date.now();
+                    }
+                    if (boxCount === 0) {
+                        currentPlayer = currentPlayer === 'red' ? 'blue' : 'red';
+                        updateTurnIndicator();
+                    }
+                    if (gameMode === 'ai' || (gameMode === '1player' && currentPlayer === 'blue')) {
+                        setTimeout(aiMove, gameMode === 'ai' ? 50 : 500);
+                    }
+                }
+            }
+            function checkForBoxes(newBoxes = []) {
+                let boxCount = 0;
+                for (let x = 0; x < gridSize - 1; x++) {
+                    for (let y = 0; y < gridSize - 1; y++) {
+                        if (hasBox(x, y) && !boxes.some(box => box.userData.x === x && box.userData.y === y)) {
+                            const box = createBox(x, y);
+                            newBoxes.push(box);
+                            scores[currentPlayer]++;
+                            boxCount++;
+                            updateStats();
+                        }
+                    }
+                }
+                return boxCount;
+            }
+            function hasBox(x, y, linesToCheck = lines) {
+                return linesToCheck.some(l => l.start.x === x && l.start.y === y && l.end.x === x && l.end.y === y + 1) &&
+                       linesToCheck.some(l => l.start.x === x && l.start.y === y + 1 && l.end.x === x + 1 && l.end.y === y + 1) &&
+                       linesToCheck.some(l => l.start.x === x + 1 && l.start.y === y && l.end.x === x + 1 && l.end.y === y + 1) &&
+                       linesToCheck.some(l => l.start.x === x && l.start.y === y && l.end.x === x + 1 && l.end.y === y);
+            }
+            function createBox(x, y) {
+                const boxGeometry = new THREE.PlaneGeometry(spacing, spacing);
+                const boxMaterial = new THREE.MeshBasicMaterial({ 
+                    color: currentPlayer === 'red' ? 0xff0000 : 0x0000ff, 
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0
+                });
+                const box = new THREE.Mesh(boxGeometry, boxMaterial);
+                box.position.set(x * spacing - (gridSize - 1) * spacing / 2 + spacing / 2, y * spacing - (gridSize - 1) * spacing / 2 + spacing / 2, -0.1);
+                box.userData = { x, y, player: currentPlayer, fadeTime: 0, ripplePhase: Math.random() * Math.PI * 2 };
+                scene.add(box);
+                boxes.push(box);
+                return box;
+            }
+            function updateTurnIndicator() {
+                const turnElement = document.getElementById('turn');
+                if (!turnElement) return;
+                turnElement.textContent = `${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)}'s Turn`;
+                turnElement.style.color = currentPlayer === 'red' ? '#ff0000' : '#0000ff';
+                turnElement.classList.add('flash');
+                setTimeout(() => turnElement.classList.remove('flash'), 1500);
+            }
+            function updateStats() {
+                const redStats = document.getElementById('red-stats');
+                if (redStats) redStats.innerHTML = `Red: ${scores.red}<br>Score: ${redScore}<br>Time: ${redTime}s<br>Moves: ${redMoves}`;
+                const blueStats = document.getElementById('blue-stats');
+                if (blueStats) blueStats.innerHTML = `Blue: ${scores.blue}<br>Score: ${blueScore}<br>Time: ${blueTime}s<br>Moves: ${blueMoves}`;
+                const gamesWon = document.getElementById('games-won');
+                if (gamesWon) gamesWon.textContent = `Games Won: Red ${gameStats.red}, Blue ${gameStats.blue}, Tie ${gameStats.tie}`;
+                const totalGames = gameStats.red + gameStats.blue + gameStats.tie;
+                const redPercent = totalGames > 0 ? (gameStats.red / totalGames * 100).toFixed(1) : 0;
+                const bluePercent = totalGames > 0 ? (gameStats.blue / totalGames * 100).toFixed(1) : 0;
+                const tiePercent = totalGames > 0 ? (gameStats.tie / totalGames * 100).toFixed(1) : 0;
+                const progressRed = document.getElementById('progress-red');
+                if (progressRed) progressRed.style.width = `${redPercent}%`;
+                const progressBlue = document.getElementById('progress-blue');
+                if (progressBlue) progressBlue.style.width = `${bluePercent}%`;
+                const progressTie = document.getElementById('progress-tie');
+                if (progressTie) progressTie.style.width = `${tiePercent}%`;
+                const probs = calculateWinProbabilities();
+                const winProbRed = document.getElementById('win-prob-red');
+                if (winProbRed) winProbRed.style.width = `${probs.red}%`;
+                const winProbBlue = document.getElementById('win-prob-blue');
+                if (winProbBlue) winProbBlue.style.width = `${probs.blue}%`;
+                const winProbTie = document.getElementById('win-prob-tie');
+                if (winProbTie) winProbTie.style.width = `${probs.tie}%`;
+            }
+            function checkGameOver() {
+                if (lines.length !== maxLines) return;
+                gameActive = false;
+                isFlyCamera = true;
+                if (timerInterval) clearInterval(timerInterval);
+                const now = Date.now();
+                const elapsed = Math.floor((now - startTime) / 1000);
+                const turnTime = Math.floor((now - lastSwitchTime) / 1000);
+                if (currentPlayer === 'red') {
+                    redTime += turnTime;
+                } else {
+                    blueTime += turnTime;
+                }
+                const winner = scores.red > scores.blue ? 'Red' : scores.blue > scores.red ? 'Blue' : 'Tie';
+                gameStats[winner.toLowerCase()]++;
+                const winnerElement = document.getElementById('winner-text');
+                if (winnerElement) {
+                    winnerElement.textContent = `Winner: ${winner}`;
+                    winnerElement.classList.remove('red-winner', 'blue-winner', 'tie-winner');
+                    winnerElement.classList.add(winner === 'Red' ? 'red-winner' : winner === 'Blue' ? 'blue-winner' : 'tie-winner');
+                }
+                const finalStats = document.getElementById('final-stats');
+                if (finalStats) {
+                    finalStats.innerHTML = `
+                        <span class="red-stat">Red: ${scores.red} (Score: ${redScore}, Time: ${redTime}s, Moves: ${redMoves})</span><br>
+                        <span class="blue-stat">Blue: ${scores.blue} (Score: ${blueScore}, Time: ${blueTime}s, Moves: ${blueMoves})</span><br>
+                        <span class="neutral-stat">Total Moves: ${moveCount}</span><br>
+                        <span class="neutral-stat">Game Time: ${elapsed}s</span><br>
+                        <span class="neutral-stat">Games Won - Red: ${gameStats.red}, Blue: ${gameStats.blue}, Tie: ${gameStats.tie}</span>`;
+                }
+                const gameOver = document.getElementById('game-over');
+                if (gameOver) gameOver.style.display = 'flex';
+                updateStats();
+            }
+            function resetGame(mode, resetStats = false, showConfirm = false) {
+                if (showConfirm && gameActive) {
+                    const exitConfirm = document.getElementById('exit-confirm');
+                    if (exitConfirm) exitConfirm.style.display = 'flex';
+                    return;
+                }
+                gameActive = false;
+                if (timerInterval) clearInterval(timerInterval);
+                const gameOver = document.getElementById('game-over');
+                if (gameOver) gameOver.style.display = 'none';
+                const exitConfirm = document.getElementById('exit-confirm');
+                if (exitConfirm) exitConfirm.style.display = 'none';
+                const statsContainer = document.getElementById('game-stats-container');
+                if (statsContainer) statsContainer.style.display = 'none';
+                const gameTimer = document.getElementById('game-timer');
+                if (gameTimer) gameTimer.style.display = 'none';
+                const turn = document.getElementById('turn');
+                if (turn) turn.style.display = 'none';
+                const moves = document.getElementById('moves');
+                if (moves) moves.style.display = 'none';
+                const gamesWon = document.getElementById('games-won');
+                if (gamesWon) gamesWon.style.display = 'none';
+                const redStats = document.getElementById('red-stats');
+                if (redStats) redStats.style.display = 'none';
+                const blueStats = document.getElementById('blue-stats');
+                if (blueStats) blueStats.style.display = 'none';
+                const winProbBar = document.getElementById('win-prob-bar');
+                if (winProbBar) winProbBar.style.display = 'none';
+                const progressBar = document.getElementById('progress-bar');
+                if (progressBar) progressBar.style.display = 'none';
+                const buttonContainer = document.getElementById('button-container');
+                if (buttonContainer) buttonContainer.style.display = 'none';
+                const message = document.getElementById('message');
+                if (message) message.style.display = 'none';
+                const pointsMessage = document.getElementById('points-message');
+                if (pointsMessage) pointsMessage.style.display = 'none';
+                lines.forEach(line => disposeObject(line.mesh));
+                boxes.forEach(box => disposeObject(box));
+                if (yellowOverlayDot) {
+                    disposeObject(yellowOverlayDot);
+                    yellowOverlayDot = null;
+                }
+                if (hintLine) {
+                    disposeObject(hintLine);
+                    hintLine = null;
+                }
+                if (previewLine) {
+                    disposeObject(previewLine);
+                    previewLine = null;
+                }
+                lines.length = 0;
+                boxes.length = 0;
+                scores = { red: 0, blue: 0 };
+                redScore = 0;
+                blueScore = 0;
+                moveCount = 0;
+                redMoves = 0;
+                blueMoves = 0;
+                pointsMessages = [];
+                currentPlayer = 'red';
+                selectedDot = null;
+                flashingLines = [];
+                isFlyCamera = false;
+                redTime = 0;
+                blueTime = 0;
+                lastSwitchTime = 0;
+                lastMoveTime = 0;
+                lastIdleReminder = 0;
+                wobbleTime = 0;
+                soundEnabled = true;
+                hintEnabled = false;
+                bestHintMove = null;
+                const cameraToggle = document.getElementById('camera-toggle');
+                if (cameraToggle) cameraToggle.textContent = 'Fly Camera';
+                const soundToggle = document.getElementById('sound-toggle');
+                if (soundToggle) soundToggle.textContent = 'Sound On';
+                const hintToggle = document.getElementById('hint-toggle');
+                if (hintToggle) hintToggle.textContent = 'Hint Off';
+                camera.position.set(0, 0, 12);
+                camera.lookAt(0, 0, 0);
+                if (resetStats) {
+                    gameStats = { red: 0, blue: 0, tie: 0 };
+                }
+                resetDotColors();
+                updateStats();
+                updateMoves();
+                const turnElement = document.getElementById('turn');
+                if (turnElement) turnElement.textContent = "Red's Turn";
+                const gameTimerElement = document.getElementById('game-timer');
+                if (gameTimerElement) gameTimerElement.textContent = "Game Time: 0s";
+                const gameTitle = document.getElementById('game-title');
+                if (gameTitle) gameTitle.textContent = 'Grid Wars';
+                dots.length = 0;
+                dotWobbleOffsets.length = 0;
                 for (let x = 0; x < gridSize; x++) {
                     for (let y = 0; y < gridSize; y++) {
                         const dot = new THREE.Mesh(dotGeometry, dotMaterial);
@@ -250,1208 +1083,176 @@
                         });
                     }
                 }
-
-                // Player-specific tube materials
-                const redTubeMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000, shininess: 100, specular: 0x555555, transparent: true });
-                const blueTubeMaterial = new THREE.MeshPhongMaterial({ color: 0x0000ff, shininess: 100, specular: 0x555555, transparent: true });
-                const hintTubeMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00, shininess: 100, specular: 0x555555, transparent: true });
-
-                // Raycaster for mouse/touch interaction
-                const raycaster = new THREE.Raycaster();
-                raycaster.params.Points.threshold = 0.25;
-                const mouse = new THREE.Vector2();
-
-                // Dispose Three.js object
-                function disposeObject(obj) {
-                    if (!obj) return;
-                    if (obj.geometry) obj.geometry.dispose();
-                    if (obj.material) obj.material.dispose();
-                    if (scene) scene.remove(obj);
+                if (mode) {
+                    startGame(mode);
+                } else {
+                    isWelcomeScreen = true;
+                    const welcome = document.getElementById('welcome');
+                    if (welcome) welcome.style.display = 'flex';
                 }
-
-                // Audio context initialization
-                function initAudio() {
-                    try {
-                        if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
-                            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            function updateWobble() {
+                wobbleTime += 0.05;
+                dots.forEach((dot, index) => {
+                    const offset = dotWobbleOffsets[index];
+                    const wobbleX = offset.x * Math.sin(wobbleTime + offset.phase);
+                    const wobbleY = offset.y * Math.cos(wobbleTime + offset.phase);
+                    dot.position.copy(dot.userData.basePosition);
+                    dot.position.x += wobbleX;
+                    dot.position.y += wobbleY;
+                });
+                lines.forEach(line => {
+                    const dot1 = line.dot1;
+                    const dot2 = line.dot2;
+                    if (dot1 && dot2) {
+                        disposeObject(line.mesh);
+                        const path = new THREE.LineCurve3(dot1.position, dot2.position);
+                        const geometry = new THREE.TubeGeometry(path, 32, 0.1, 8, false);
+                        line.mesh = new THREE.Mesh(geometry, line.mesh.material);
+                        line.mesh.position.z = 0.05;
+                        scene.add(line.mesh);
+                    }
+                });
+                boxes.forEach(box => {
+                    const x = box.userData.x;
+                    const y = box.userData.y;
+                    const corners = [
+                        dots.find(dot => dot.userData.x === x && dot.userData.y === y),
+                        dots.find(dot => dot.userData.x === x + 1 && dot.userData.y === y),
+                        dots.find(dot => dot.userData.x === x && dot.userData.y === y + 1),
+                        dots.find(dot => dot.userData.x === x + 1 && dot.userData.y === y + 1)
+                    ];
+                    if (corners.every(corner => corner)) {
+                        const avgPosition = new THREE.Vector3();
+                        corners.forEach(corner => avgPosition.add(corner.position));
+                        avgPosition.multiplyScalar(0.25);
+                        box.position.set(avgPosition.x, avgPosition.y, -0.1);
+                        if (box.userData.fadeTime >= 1) {
+                            const ripple = 0.5 * (Math.sin(wobbleTime + box.userData.ripplePhase) + 1);
+                            const scale = 1.0 + 0.1 * ripple;
+                            box.scale.set(scale, scale, 1);
+                            box.material.opacity = 0.4 + 0.2 * ripple;
                         }
-                    } catch (e) {
-                        console.warn('Audio context initialization failed:', e);
                     }
+                });
+                if (yellowOverlayDot && selectedDot) {
+                    yellowOverlayDot.position.copy(selectedDot.position);
+                    yellowOverlayDot.position.z = 0.01;
                 }
-
-                function playSound(frequency, duration, type = 'sine') {
-                    if (!soundEnabled || !audioCtx) return;
-                    try {
-                        const oscillator = audioCtx.createOscillator();
-                        const gainNode = audioCtx.createGain();
-                        oscillator.type = type;
-                        oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
-                        gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
-                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-                        oscillator.connect(gainNode);
-                        gainNode.connect(audioCtx.destination);
-                        oscillator.start();
-                        oscillator.stop(audioCtx.currentTime + duration);
-                    } catch (e) {
-                        console.warn('Audio playback failed:', e);
-                    }
-                }
-
-                // Toggle sound on/off
-                function toggleSound() {
-                    soundEnabled = !soundEnabled;
-                    const soundToggle = document.getElementById('sound-toggle');
-                    if (soundToggle) {
-                        soundToggle.textContent = soundEnabled ? 'Sound On' : 'Sound Off';
-                    } else {
-                        console.warn('Sound toggle element not found');
-                    }
-                }
-
-                // Toggle hint on/off
-                function toggleHint() {
-                    hintEnabled = !hintEnabled;
-                    const hintToggle = document.getElementById('hint-toggle');
-                    if (hintToggle) {
-                        hintToggle.textContent = hintEnabled ? 'Hint On' : 'Hint Off';
-                    } else {
-                        console.warn('Hint toggle element not found');
-                        return;
-                    }
-                    if (hintEnabled && gameActive && (gameMode !== 'ai' && (gameMode !== '1player' || currentPlayer === 'red'))) {
-                        highlightBestMove();
-                    } else {
-                        if (hintLine) {
-                            disposeObject(hintLine);
-                            hintLine = null;
-                        }
-                        bestHintMove = null;
-                    }
-                }
-
-                // Highlight the best move with a tube
-                function highlightBestMove() {
-                    if (!hintEnabled || !gameActive || (gameMode === 'ai' || (gameMode === '1player' && currentPlayer === 'blue'))) return;
-                    if (hintLine) {
+                if (hintEnabled && bestHintMove && hintLine) {
+                    const [dot1, dot2] = bestHintMove;
+                    if (dot1 && dot2) {
                         disposeObject(hintLine);
-                        hintLine = null;
-                    }
-                    const validMoves = [];
-                    const boxClosingMoves = [];
-                    const blockingMoves = [];
-                    dots.forEach(dot1 => {
-                        dots.forEach(dot2 => {
-                            if (isValidConnection(dot1, dot2)) {
-                                const move = [dot1, dot2];
-                                validMoves.push(move);
-                                const tempLines = [...lines, {
-                                    start: { x: Math.min(dot1.userData.x, dot2.userData.x), y: Math.min(dot1.userData.y, dot2.userData.y) },
-                                    end: { x: Math.max(dot1.userData.x, dot2.userData.x), y: Math.max(dot1.userData.y, dot2.userData.y) }
-                                }];
-                                let closesBox = false;
-                                for (let x = 0; x < gridSize - 1; x++) {
-                                    for (let y = 0; y < gridSize - 1; y++) {
-                                        if (hasBox(x, y, tempLines) && !boxes.some(box => box.userData.x === x && box.userData.y === y)) {
-                                            closesBox = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                                if (closesBox) {
-                                    boxClosingMoves.push(move);
-                                }
-                                const opponent = currentPlayer === 'red' ? 'blue' : 'red';
-                                let givesBox = false;
-                                dots.forEach(d1 => {
-                                    dots.forEach(d2 => {
-                                        if (isValidConnection(d1, d2)) {
-                                            const tempLines2 = [...tempLines, {
-                                                start: { x: Math.min(d1.userData.x, d2.userData.x), y: Math.min(d1.userData.y, d2.userData.y) },
-                                                end: { x: Math.max(d1.userData.x, d2.userData.x), y: Math.max(d2.userData.y, d2.userData.y) }
-                                            }];
-                                            for (let x = 0; x < gridSize - 1; x++) {
-                                                for (let y = 0; y < gridSize - 1; y++) {
-                                                    if (hasBox(x, y, tempLines2) && !boxes.some(box => box.userData.x === x && box.userData.y === y)) {
-                                                        givesBox = true;
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    });
-                                });
-                                if (!givesBox) {
-                                    blockingMoves.push(move);
-                                }
-                            }
-                        });
-                    });
-                    let move;
-                    if (boxClosingMoves.length > 0) {
-                        move = boxClosingMoves[Math.floor(Math.random() * boxClosingMoves.length)];
-                    } else if (blockingMoves.length > 0) {
-                        move = blockingMoves[Math.floor(Math.random() * blockingMoves.length)];
-                    } else if (validMoves.length > 0) {
-                        move = validMoves[Math.floor(Math.random() * validMoves.length)];
-                    }
-                    if (move) {
-                        bestHintMove = move;
-                        const [dot1, dot2] = move;
                         const path = new THREE.LineCurve3(dot1.position, dot2.position);
                         const geometry = new THREE.TubeGeometry(path, 32, 0.1, 8, false);
                         hintLine = new THREE.Mesh(geometry, hintTubeMaterial.clone());
                         hintLine.position.z = 0.04;
                         scene.add(hintLine);
-                        flashingLines.push({ line: hintLine, time: 0, flashes: 0 });
+                    }
+                }
+            }
+            function updateThrob() {
+                throbTime += 0.05;
+                const scale = 1 + 0.1 * Math.sin(throbTime);
+                const flashOpacity = 0.3 + 0.7 * (Math.sin(throbTime * 2) + 1) / 2;
+                dots.forEach(dot => {
+                    if (dot.userData.isValid) {
+                        dot.scale.set(scale, scale, scale);
+                        dot.material.opacity = flashOpacity;
+                        dot.material.transparent = true;
                     } else {
-                        bestHintMove = null;
-                    }
-                }
-
-                // Show flashing message
-                function showMessage(text, isReminder = false) {
-                    const messageElement = document.getElementById('message');
-                    if (!messageElement) {
-                        console.warn('Message element not found');
-                        return;
-                    }
-                    messageElement.textContent = text;
-                    messageElement.style.display = 'block';
-                    messageElement.classList.remove('neutral-message', 'positive-message', 'red-message', 'blue-message');
-                    if (text.includes('Invalid move')) {
-                        messageElement.classList.add('neutral-message');
-                    } else if (isReminder) {
-                        messageElement.classList.add(currentPlayer === 'red' ? 'red-message' : 'blue-message');
-                    } else {
-                        messageElement.classList.add('positive-message');
-                    }
-                    messageElement.classList.add('flash');
-                    setTimeout(() => {
-                        if (messageElement) {
-                            messageElement.style.display = 'none';
-                            messageElement.classList.remove('flash');
-                        }
-                    }, 1500);
-                }
-
-                // Show points message near the line or box
-                function showPointsMessage(points, reason, position) {
-                    const messageId = Date.now();
-                    const vector = position.clone().project(camera);
-                    const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
-                    const y = (-vector.y * 0.5 + 0.5) * window.innerHeight;
-                    const clampedX = Math.max(50, Math.min(window.innerWidth - 50, x));
-                    const clampedY = Math.max(50, Math.min(window.innerHeight - 100, y));
-                    pointsMessages.push({ 
-                        id: messageId, 
-                        text: `+${points} ${reason}`, 
-                        x: clampedX, 
-                        y: clampedY, 
-                        offset: pointsMessages.length * 14,
-                        player: currentPlayer
-                    });
-                    updatePointsDisplay();
-                    setTimeout(() => {
-                        pointsMessages = pointsMessages.filter(msg => msg.id !== messageId);
-                        updatePointsDisplay();
-                    }, 1000);
-                }
-
-                function updatePointsDisplay() {
-                    const pointsElement = document.getElementById('points-message');
-                    if (!pointsElement) {
-                        console.warn('Points message element not found');
-                        return;
-                    }
-                    if (pointsMessages.length === 0) {
-                        pointsElement.style.display = 'none';
-                        pointsElement.innerHTML = '';
-                        return;
-                    }
-                    pointsElement.style.display = 'block';
-                    pointsElement.innerHTML = pointsMessages.map(msg => 
-                        `<div class="${msg.player}-points" style="position: absolute; width: 150px; top: ${msg.y + msg.offset}px; left: ${msg.x}px; transform: translate(-50%, 0); text-align: center;">${msg.text}</div>`
-                    ).join('');
-                    pointsElement.classList.add('flash');
-                }
-
-                // Toggle camera mode
-                function toggleCamera() {
-                    isFlyCamera = !isFlyCamera;
-                    const cameraToggle = document.getElementById('camera-toggle');
-                    if (cameraToggle) {
-                        cameraToggle.textContent = isFlyCamera ? 'Static Camera' : 'Fly Camera';
-                    } else {
-                        console.warn('Camera toggle element not found');
-                        return;
-                    }
-                    if (!isFlyCamera) {
-                        camera.position.set(0, 0, 12);
-                        camera.lookAt(0, 0, 0);
-                    }
-                }
-
-                // Check if a dot has any valid connections left
-                function checkDotConnectivity(dot) {
-                    return dots.some(otherDot => isValidConnection(dot, otherDot));
-                }
-
-                // Update dot materials based on connectivity
-                function updateDotConnectivity() {
-                    dots.forEach(dot => {
-                        if (!checkDotConnectivity(dot) && dot.material !== dimDotMaterial) {
-                            dot.material = dimDotMaterial;
-                        } else if (checkDotConnectivity(dot) && dot.material === dimDotMaterial) {
-                            dot.material = dotMaterial;
-                        }
-                    });
-                }
-
-                // Calculate win probabilities for Red and Blue
-                function calculateWinProbabilities() {
-                    const totalBoxes = (gridSize - 1) * (gridSize - 1);
-                    const remainingBoxes = totalBoxes - (scores.red + scores.blue);
-                    if (remainingBoxes <= 0) {
-                        return { red: scores.red > scores.blue ? 100 : 0, blue: scores.blue > scores.red ? 100 : 0, tie: scores.red === scores.blue ? 100 : 0 };
-                    }
-                    let redPotential = scores.red;
-                    let bluePotential = scores.blue;
-                    const validMoves = [];
-                    const boxClosingMoves = [];
-                    dots.forEach(dot1 => {
-                        dots.forEach(dot2 => {
-                            if (isValidConnection(dot1, dot2)) {
-                                const move = [dot1, dot2];
-                                validMoves.push(move);
-                                const tempLines = [...lines, {
-                                    start: { x: Math.min(dot1.userData.x, dot2.userData.x), y: Math.min(dot1.userData.y, dot2.userData.y) },
-                                    end: { x: Math.max(dot1.userData.x, dot2.userData.x), y: Math.max(dot1.userData.y, dot2.userData.y) }
-                                }];
-                                let closesBox = false;
-                                for (let x = 0; x < gridSize - 1; x++) {
-                                    for (let y = 0; y < gridSize - 1; y++) {
-                                        if (hasBox(x, y, tempLines) && !boxes.some(box => box.userData.x === x && box.userData.y === y)) {
-                                            closesBox = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                                if (closesBox) {
-                                    boxClosingMoves.push(move);
-                                }
-                            }
-                        });
-                    });
-                    const boxClosingWeight = boxClosingMoves.length / (validMoves.length || 1);
-                    redPotential += boxClosingWeight * remainingBoxes * (currentPlayer === 'red' ? 0.6 : 0.4);
-                    bluePotential += boxClosingWeight * remainingBoxes * (currentPlayer === 'blue' ? 0.6 : 0.4);
-                    const totalPotential = redPotential + bluePotential;
-                    let redProb = totalPotential > 0 ? (redPotential / totalPotential) * 100 : 50;
-                    let blueProb = totalPotential > 0 ? (bluePotential / totalPotential) * 100 : 50;
-                    let tieProb = 100 - redProb - blueProb;
-                    if (tieProb < 0) {
-                        const adjust = tieProb / 2;
-                        redProb += adjust;
-                        blueProb += adjust;
-                        tieProb = 0;
-                    }
-                    return {
-                        red: Math.max(0, Math.min(100, redProb.toFixed(1))),
-                        blue: Math.max(0, Math.min(100, blueProb.toFixed(1))),
-                        tie: Math.max(0, Math.min(100, tieProb.toFixed(1)))
-                    };
-                }
-
-                // Start game
-                function startGame(mode) {
-                    try {
-                        initAudio();
-                        gameMode = mode;
-                        gameActive = true;
-                        isWelcomeScreen = false;
-                        isFlyCamera = false;
-                        const cameraToggle = document.getElementById('camera-toggle');
-                        if (cameraToggle) {
-                            cameraToggle.textContent = 'Fly Camera';
-                        }
-                        camera.position.set(0, 0, 12);
-                        camera.lookAt(0, 0, 0);
-                        const welcome = document.getElementById('welcome');
-                        if (welcome) welcome.style.display = 'none';
-                        const statsContainer = document.getElementById('game-stats-container');
-                        if (statsContainer) statsContainer.style.display = 'block';
-                        const timer = document.getElementById('game-timer');
-                        if (timer) timer.style.display = 'block';
-                        const turn = document.getElementById('turn');
-                        if (turn) turn.style.display = 'block';
-                        const moves = document.getElementById('moves');
-                        if (moves) moves.style.display = 'block';
-                        const gamesWon = document.getElementById('games-won');
-                        if (gamesWon) gamesWon.style.display = 'block';
-                        const redStats = document.getElementById('red-stats');
-                        if (redStats) redStats.style.display = 'block';
-                        const blueStats = document.getElementById('blue-stats');
-                        if (blueStats) blueStats.style.display = 'block';
-                        const winProbBar = document.getElementById('win-prob-bar');
-                        if (winProbBar) winProbBar.style.display = 'block';
-                        const progressBar = document.getElementById('progress-bar');
-                        if (progressBar) progressBar.style.display = 'block';
-                        const buttonContainer = document.getElementById('button-container');
-                        if (buttonContainer) buttonContainer.style.display = 'flex';
-                        if (mode === 'ai') {
-                            const hintToggle = document.getElementById('hint-toggle');
-                            if (hintToggle) hintToggle.style.display = 'none';
-                        } else {
-                            const hintToggle = document.getElementById('hint-toggle');
-                            if (hintToggle) hintToggle.style.display = 'block';
-                        }
-                        const soundToggle = document.getElementById('sound-toggle');
-                        if (soundToggle) soundToggle.style.display = 'block';
-                        const gameTitle = document.getElementById('game-title');
-                        if (gameTitle) gameTitle.textContent = 'Grid Wars';
-                        startTime = Date.now();
-                        lastSwitchTime = startTime;
-                        lastMoveTime = startTime;
-                        lastIdleReminder = startTime;
-                        redTime = 0;
-                        blueTime = 0;
-                        redMoves = 0;
-                        blueMoves = 0;
-                        timerInterval = setInterval(updateTimer, 1000);
-                        if (mode === 'ai') {
-                            aiMove();
-                        } else if (hintEnabled) {
-                            highlightBestMove();
-                        }
-                    } catch (e) {
-                        console.error('Error starting game:', e);
-                    }
-                }
-
-                // Update timer
-                function updateTimer() {
-                    if (!gameActive) return;
-                    try {
-                        const now = Date.now();
-                        const elapsed = Math.floor((now - startTime) / 1000);
-                        const turnTime = Math.floor((now - lastSwitchTime) / 1000);
-                        if (currentPlayer === 'red') {
-                            redTime += turnTime;
-                        } else {
-                            blueTime += turnTime;
-                        }
-                        lastSwitchTime = now;
-                        const gameTimer = document.getElementById('game-timer');
-                        if (gameTimer) gameTimer.textContent = `Game Time: ${elapsed}s`;
-                        const redStats = document.getElementById('red-stats');
-                        if (redStats) redStats.innerHTML = `Red: ${scores.red}<br>Score: ${redScore}<br>Time: ${redTime}s<br>Moves: ${redMoves}`;
-                        const blueStats = document.getElementById('blue-stats');
-                        if (blueStats) blueStats.innerHTML = `Blue: ${scores.blue}<br>Score: ${blueScore}<br>Time: ${blueTime}s<br>Moves: ${blueMoves}`;
-                    } catch (e) {
-                        console.error('Error updating timer:', e);
-                    }
-                }
-
-                // Update move counter
-                function updateMoves() {
-                    const movesElement = document.getElementById('moves');
-                    if (movesElement) {
-                        movesElement.textContent = `Moves: ${moveCount}`;
-                    } else {
-                        console.warn('Moves element not found');
-                    }
-                }
-
-                // Handle mouse/touch movement for preview line
-                function updateMousePosition(event) {
-                    try {
-                        const rect = renderer.domElement.getBoundingClientRect();
-                        const clientX = event.clientX || (event.touches && event.touches[0] ? event.touches[0].clientX : 0);
-                        const clientY = event.clientY || (event.touches && event.touches[0] ? event.touches[0].clientY : 0);
-                        if (rect.width === 0 || rect.height === 0) return;
-                        mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-                        mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
-                    } catch (e) {
-                        console.error('Error updating mouse position:', e);
-                    }
-                }
-
-                window.addEventListener('mousemove', updateMousePosition);
-                window.addEventListener('touchmove', (event) => {
-                    try {
-                        if (event.touches && event.touches.length === 1) {
-                            event.preventDefault();
-                            updateMousePosition(event);
-                        }
-                    } catch (e) {
-                        console.error('Error handling touchmove:', e);
-                    }
-                }, { passive: false });
-
-                // Handle button interaction (click or tap)
-                function handleButtonInteraction(event, callback) {
-                    try {
-                        event.preventDefault();
-                        callback();
-                    } catch (e) {
-                        console.error('Button interaction error:', e);
-                    }
-                }
-
-                // Add click and touch event listeners to buttons
-                function addButtonListeners(buttonId, callback) {
-                    const button = document.getElementById(buttonId);
-                    if (!button) {
-                        console.warn(`Button element not found: ${buttonId}`);
-                        return;
-                    }
-                    button.addEventListener('click', (event) => handleButtonInteraction(event, callback));
-                    button.addEventListener('touchstart', (event) => {
-                        if (event.touches && event.touches.length === 1) {
-                            handleButtonInteraction(event, callback);
-                        }
-                    }, { passive: false });
-                }
-
-                // Bind button events
-                addButtonListeners('one-player', () => startGame('1player'));
-                addButtonListeners('two-player', () => startGame('2player'));
-                addButtonListeners('ai-mode', () => startGame('ai'));
-                addButtonListeners('play-again', () => resetGame(gameMode, false));
-                addButtonListeners('exit-yes', () => resetGame(null, true, false));
-                addButtonListeners('exit-no', () => {
-                    const exitConfirm = document.getElementById('exit-confirm');
-                    if (exitConfirm) exitConfirm.style.display = 'none';
-                });
-                addButtonListeners('camera-toggle', toggleCamera);
-                addButtonListeners('exit-button', () => resetGame(null, true, true));
-                addButtonListeners('sound-toggle', toggleSound);
-                addButtonListeners('hint-toggle', toggleHint);
-
-                // Handle dot selection (click or tap)
-                function handleDotSelection(event) {
-                    try {
-                        if (!gameActive || (gameMode === '1player' && currentPlayer === 'blue') || gameMode === 'ai') return;
-                        updateMousePosition(event);
-                        raycaster.setFromCamera(mouse, camera);
-                        const intersects = raycaster.intersectObjects(dots);
-                        if (intersects.length > 0) {
-                            const clickedDot = intersects[0].object;
-                            if (!selectedDot) {
-                                selectedDot = clickedDot;
-                                yellowOverlayDot = new THREE.Mesh(new THREE.SphereGeometry(0.375, 64, 64), yellowOverlayMaterial);
-                                yellowOverlayDot.position.copy(clickedDot.position);
-                                yellowOverlayDot.position.z = 0.01;
-                                scene.add(yellowOverlayDot);
-                                const path = new THREE.LineCurve3(clickedDot.position, clickedDot.position);
-                                const geometry = new THREE.TubeGeometry(path, 32, 0.1, 8, false);
-                                const tubeMaterial = currentPlayer === 'red' ? redTubeMaterial.clone() : blueTubeMaterial.clone();
-                                previewLine = new THREE.Mesh(geometry, tubeMaterial);
-                                previewLine.position.z = 0.05;
-                                scene.add(previewLine);
-                                highlightValidDots(clickedDot);
-                            } else {
-                                if (isValidConnection(selectedDot, clickedDot)) {
-                                    drawLine(selectedDot, clickedDot);
-                                    const boxCount = checkForBoxes();
-                                    if (boxCount > 0) {
-                                        showMessage(`${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)} formed a box!`);
-                                        playSound(600, 0.3, 'sine');
-                                    } else {
-                                        playSound(400, 0.2, 'sine');
-                                        lastSwitchTime = Date.now();
-                                        lastMoveTime = Date.now();
-                                        lastIdleReminder = Date.now();
-                                    }
-                                    if (boxCount === 0) {
-                                        currentPlayer = currentPlayer === 'red' ? 'blue' : 'red';
-                                        updateTurnIndicator();
-                                        if (gameMode === '1player' && currentPlayer === 'blue') {
-                                            setTimeout(aiMove, 500);
-                                        } else if (hintEnabled) {
-                                            highlightBestMove();
-                                        }
-                                    } else if (hintEnabled) {
-                                        highlightBestMove();
-                                    }
-                                } else {
-                                    showMessage('Invalid move! Choose an adjacent, unconnected dot.');
-                                    playSound(200, 0.2, 'square');
-                                }
-                                if (previewLine) {
-                                    disposeObject(previewLine);
-                                    previewLine = null;
-                                }
-                                if (yellowOverlayDot) {
-                                    disposeObject(yellowOverlayDot);
-                                    yellowOverlayDot = null;
-                                }
-                                resetDotColors();
-                                selectedDot = null;
-                            }
-                        } else if (selectedDot) {
-                            if (previewLine) {
-                                disposeObject(previewLine);
-                                previewLine = null;
-                            }
-                            if (yellowOverlayDot) {
-                                disposeObject(yellowOverlayDot);
-                                yellowOverlayDot = null;
-                            }
-                            resetDotColors();
-                            selectedDot = null;
-                        }
-                    } catch (e) {
-                        console.error('Error handling dot selection:', e);
-                    }
-                }
-
-                window.addEventListener('click', handleDotSelection);
-                window.addEventListener('touchstart', (event) => {
-                    try {
-                        if (event.touches && event.touches.length === 1) {
-                            event.preventDefault();
-                            handleDotSelection(event);
-                        }
-                    } catch (e) {
-                        console.error('Error handling touchstart:', e);
-                    }
-                }, { passive: false });
-
-                // Check if connection is valid (prevents duplicate lines)
-                function isValidConnection(dot1, dot2) {
-                    if (!dot1 || !dot2) return false;
-                    const dx = Math.abs(dot1.userData.x - dot2.userData.x);
-                    const dy = Math.abs(dot1.userData.y - dot2.userData.y);
-                    const isAdjacent = (dx === 1 && dy === 0) || (dx === 0 && dy === 1);
-                    if (!isAdjacent) return false;
-                    const lineExists = lines.some(l => 
-                        (l.start.x === Math.min(dot1.userData.x, dot2.userData.x) && 
-                         l.start.y === Math.min(dot1.userData.y, dot2.userData.y) && 
-                         l.end.x === Math.max(dot1.userData.x, dot2.userData.x) && 
-                         l.end.y === Math.max(dot1.userData.y, dot2.userData.y))
-                    );
-                    return !lineExists;
-                }
-
-                // Highlight valid adjacent dots
-                function highlightValidDots(selected) {
-                    if (!selected) return;
-                    dots.forEach(dot => {
-                        if (isValidConnection(selected, dot)) {
-                            dot.material = validDotMaterial;
-                            dot.userData.isValid = true;
-                        } else {
-                            dot.material = checkDotConnectivity(dot) ? dotMaterial : dimDotMaterial;
-                            dot.userData.isValid = false;
-                        }
-                    });
-                }
-
-                // Reset all dot colors and scales
-                function resetDotColors() {
-                    dots.forEach(dot => {
-                        dot.material = checkDotConnectivity(dot) ? dotMaterial : dimDotMaterial;
-                        dot.scale.set(1, 1, 1);
-                        dot.userData.isValid = false;
                         dot.material.opacity = 1;
                         dot.material.transparent = false;
-                    });
-                }
-
-                // Draw tube between two dots with flash effect
-                function drawLine(dot1, dot2) {
-                    try {
-                        const path = new THREE.LineCurve3(dot1.userData.basePosition, dot2.userData.basePosition);
-                        const geometry = new THREE.TubeGeometry(path, 32, 0.1, 8, false);
-                        const tubeMaterial = currentPlayer === 'red' ? redTubeMaterial.clone() : blueTubeMaterial.clone();
-                        const tube = new THREE.Mesh(geometry, tubeMaterial);
-                        tube.position.z = 0.05;
-                        scene.add(tube);
-                        const newBoxes = [];
-                        const lineMidpoint = new THREE.Vector3().addVectors(dot1.position, dot2.position).multiplyScalar(0.5);
-                        const boxCount = checkForBoxes(newBoxes);
-                        let points = 1;
-                        showPointsMessage(1, 'Line', lineMidpoint);
-                        if (boxCount > 0) {
-                            points += 5 * boxCount;
-                            const lastBox = newBoxes[newBoxes.length - 1];
-                            const boxPosition = lastBox ? lastBox.position : lineMidpoint;
-                            showPointsMessage(5 * boxCount, `${boxCount} Box${boxCount > 1 ? 'es' : ''}`, boxPosition);
-                        }
-                        const moveTime = Date.now();
-                        if (moveTime - lastMoveTime < 5000) {
-                            points += 2;
-                            showPointsMessage(2, 'Fast Move', lineMidpoint);
-                        }
-                        if (currentPlayer === 'red') {
-                            redScore += points;
-                            redMoves++;
-                        } else {
-                            blueScore += points;
-                            blueMoves++;
-                        }
-                        lines.push({ 
-                            start: { x: Math.min(dot1.userData.x, dot2.userData.x), y: Math.min(dot1.userData.y, dot2.userData.y) },
-                            end: { x: Math.max(dot1.userData.x, dot2.userData.x), y: Math.max(dot1.userData.y, dot2.userData.y) },
-                            player: currentPlayer,
-                            mesh: tube,
-                            dot1: dot1,
-                            dot2: dot2
-                        });
-                        flashingLines.push({ line: tube, time: 0, flashes: 0 });
-                        moveCount++;
-                        lastMoveTime = moveTime;
-                        lastIdleReminder = moveTime;
-                        updateDotConnectivity();
-                        updateMoves();
-                        updateStats();
-                        if (hintLine) {
-                            disposeObject(hintLine);
-                            hintLine = null;
-                        }
-                        bestHintMove = null;
-                        checkGameOver();
-                    } catch (e) {
-                        console.error('Error drawing line:', e);
-                    }
-                }
-
-                // Smarter AI move
-                function aiMove() {
-                    if (!gameActive) return;
-                    try {
-                        const validMoves = [];
-                        const boxClosingMoves = [];
-                        const blockingMoves = [];
-                        dots.forEach(dot1 => {
-                            dots.forEach(dot2 => {
-                                if (isValidConnection(dot1, dot2)) {
-                                    const move = [dot1, dot2];
-                                    validMoves.push(move);
-                                    const tempLines = [...lines, {
-                                        start: { x: Math.min(dot1.userData.x, dot2.userData.x), y: Math.min(dot1.userData.y, dot2.userData.y) },
-                                        end: { x: Math.max(dot1.userData.x, dot2.userData.x), y: Math.max(dot1.userData.y, dot2.userData.y) }
-                                    }];
-                                    let closesBox = false;
-                                    for (let x = 0; x < gridSize - 1; x++) {
-                                        for (let y = 0; y < gridSize - 1; y++) {
-                                            if (hasBox(x, y, tempLines) && !boxes.some(box => box.userData.x === x && box.userData.y === y)) {
-                                                closesBox = true;
-                                                break;
-                                            }
-                                        }
-                                    }
-                                    if (closesBox) {
-                                        boxClosingMoves.push(move);
-                                    }
-                                    const opponent = currentPlayer === 'red' ? 'blue' : 'red';
-                                    let givesBox = false;
-                                    dots.forEach(d1 => {
-                                        dots.forEach(d2 => {
-                                            if (isValidConnection(d1, d2)) {
-                                                const tempLines2 = [...tempLines, {
-                                                    start: { x: Math.min(d1.userData.x, d2.userData.x), y: Math.min(d1.userData.y, d2.userData.y) },
-                                                    end: { x: Math.max(d1.userData.x, d2.userData.x), y: Math.max(d2.userData.y, d2.userData.y) }
-                                                }];
-                                                for (let x = 0; x < gridSize - 1; x++) {
-                                                    for (let y = 0; y < gridSize - 1; y++) {
-                                                        if (hasBox(x, y, tempLines2) && !boxes.some(box => box.userData.x === x && box.userData.y === y)) {
-                                                            givesBox = true;
-                                                            break;
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        });
-                                    });
-                                    if (!givesBox) {
-                                        blockingMoves.push(move);
-                                    }
-                                }
-                            });
-                        });
-                        let move;
-                        if (boxClosingMoves.length > 0) {
-                            move = boxClosingMoves[Math.floor(Math.random() * boxClosingMoves.length)];
-                        } else if (blockingMoves.length > 0) {
-                            move = blockingMoves[Math.floor(Math.random() * blockingMoves.length)];
-                        } else if (validMoves.length > 0) {
-                            move = validMoves[Math.floor(Math.random() * validMoves.length)];
-                        }
-                        if (move) {
-                            const [dot1, dot2] = move;
-                            drawLine(dot1, dot2);
-                            const boxCount = checkForBoxes();
-                            if (boxCount > 0) {
-                                showMessage(`${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)} formed a box!`);
-                                playSound(600, 0.3, 'sine');
-                            } else {
-                                playSound(400, 0.2, 'sine');
-                                lastSwitchTime = Date.now();
-                                lastMoveTime = Date.now();
-                                lastIdleReminder = Date.now();
-                            }
-                            if (boxCount === 0) {
-                                currentPlayer = currentPlayer === 'red' ? 'blue' : 'red';
-                                updateTurnIndicator();
-                            }
-                            if (gameMode === 'ai' || (gameMode === '1player' && currentPlayer === 'blue')) {
-                                setTimeout(aiMove, gameMode === 'ai' ? 50 : 500);
-                            }
-                        }
-                    } catch (e) {
-                        console.error('Error in AI move:', e);
-                    }
-                }
-
-                // Check for completed boxes
-                function checkForBoxes(newBoxes = []) {
-                    let boxCount = 0;
-                    for (let x = 0; x < gridSize - 1; x++) {
-                        for (let y = 0; y < gridSize - 1; y++) {
-                            if (hasBox(x, y) && !boxes.some(box => box.userData.x === x && box.userData.y === y)) {
-                                const box = createBox(x, y);
-                                newBoxes.push(box);
-                                scores[currentPlayer]++;
-                                boxCount++;
-                                updateStats();
-                            }
-                        }
-                    }
-                    return boxCount;
-                }
-
-                // Check if a box is formed at (x, y)
-                function hasBox(x, y, linesToCheck = lines) {
-                    return linesToCheck.some(l => l.start.x === x && l.start.y === y && l.end.x === x && l.end.y === y + 1) &&
-                           linesToCheck.some(l => l.start.x === x && l.start.y === y + 1 && l.end.x === x + 1 && l.end.y === y + 1) &&
-                           linesToCheck.some(l => l.start.x === x + 1 && l.start.y === y && l.end.x === x + 1 && l.end.y === y + 1) &&
-                           linesToCheck.some(l => l.start.x === x && l.start.y === y && l.end.x === x + 1 && l.end.y === y);
-                }
-
-                // Create transparent colored box with fade-in and ripple phase
-                function createBox(x, y) {
-                    const boxGeometry = new THREE.PlaneGeometry(spacing, spacing);
-                    const boxMaterial = new THREE.MeshBasicMaterial({ 
-                        color: currentPlayer === 'red' ? 0xff0000 : 0x0000ff, 
-                        side: THREE.DoubleSide,
-                        transparent: true,
-                        opacity: 0
-                    });
-                    const box = new THREE.Mesh(boxGeometry, boxMaterial);
-                    box.position.set(x * spacing - (gridSize - 1) * spacing / 2 + spacing / 2, y * spacing - (gridSize - 1) * spacing / 2 + spacing / 2, -0.1);
-                    box.userData = { x, y, player: currentPlayer, fadeTime: 0, ripplePhase: Math.random() * Math.PI * 2 };
-                    scene.add(box);
-                    boxes.push(box);
-                    return box;
-                }
-
-                // Update turn indicator
-                function updateTurnIndicator() {
-                    const turnElement = document.getElementById('turn');
-                    if (!turnElement) {
-                        console.warn('Turn element not found');
-                        return;
-                    }
-                    turnElement.textContent = `${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)}'s Turn`;
-                    turnElement.style.color = currentPlayer === 'red' ? '#ff0000' : '#0000ff';
-                    turnElement.classList.add('flash');
-                    setTimeout(() => turnElement.classList.remove('flash'), 1500);
-                }
-
-                // Update stats display, progress bar, and win probability bar
-                function updateStats() {
-                    const redStats = document.getElementById('red-stats');
-                    if (redStats) redStats.innerHTML = `Red: ${scores.red}<br>Score: ${redScore}<br>Time: ${redTime}s<br>Moves: ${redMoves}`;
-                    const blueStats = document.getElementById('blue-stats');
-                    if (blueStats) blueStats.innerHTML = `Blue: ${scores.blue}<br>Score: ${blueScore}<br>Time: ${blueTime}s<br>Moves: ${blueMoves}`;
-                    const gamesWon = document.getElementById('games-won');
-                    if (gamesWon) gamesWon.textContent = `Games Won: Red ${gameStats.red}, Blue ${gameStats.blue}, Tie ${gameStats.tie}`;
-                    const totalGames = gameStats.red + gameStats.blue + gameStats.tie;
-                    const redPercent = totalGames > 0 ? (gameStats.red / totalGames * 100).toFixed(1) : 0;
-                    const bluePercent = totalGames > 0 ? (gameStats.blue / totalGames * 100).toFixed(1) : 0;
-                    const tiePercent = totalGames > 0 ? (gameStats.tie / totalGames * 100).toFixed(1) : 0;
-                    const progressRed = document.getElementById('progress-red');
-                    if (progressRed) progressRed.style.width = `${redPercent}%`;
-                    const progressBlue = document.getElementById('progress-blue');
-                    if (progressBlue) progressBlue.style.width = `${bluePercent}%`;
-                    const progressTie = document.getElementById('progress-tie');
-                    if (progressTie) progressTie.style.width = `${tiePercent}%`;
-                    const probs = calculateWinProbabilities();
-                    const winProbRed = document.getElementById('win-prob-red');
-                    if (winProbRed) winProbRed.style.width = `${probs.red}%`;
-                    const winProbBlue = document.getElementById('win-prob-blue');
-                    if (winProbBlue) winProbBlue.style.width = `${probs.blue}%`;
-                    const winProbTie = document.getElementById('win-prob-tie');
-                    if (winProbTie) winProbTie.style.width = `${probs.tie}%`;
-                }
-
-                // Check for game over (when all lines are drawn)
-                function checkGameOver() {
-                    if (lines.length !== maxLines) return;
-                    try {
-                        gameActive = false;
-                        isFlyCamera = true;
-                        if (timerInterval) clearInterval(timerInterval);
-                        const now = Date.now();
-                        const elapsed = Math.floor((now - startTime) / 1000);
-                        const turnTime = Math.floor((now - lastSwitchTime) / 1000);
-                        if (currentPlayer === 'red') {
-                            redTime += turnTime;
-                        } else {
-                            blueTime += turnTime;
-                        }
-                        const winner = scores.red > scores.blue ? 'Red' : scores.blue > scores.red ? 'Blue' : 'Tie';
-                        gameStats[winner.toLowerCase()]++;
-                        const winnerElement = document.getElementById('winner-text');
-                        if (winnerElement) {
-                            winnerElement.textContent = `Winner: ${winner}`;
-                            winnerElement.classList.remove('red-winner', 'blue-winner', 'tie-winner');
-                            winnerElement.classList.add(winner === 'Red' ? 'red-winner' : winner === 'Blue' ? 'blue-winner' : 'tie-winner');
-                        }
-                        const finalStats = document.getElementById('final-stats');
-                        if (finalStats) {
-                            finalStats.innerHTML = `
-                                <span class="red-stat">Red: ${scores.red} (Score: ${redScore}, Time: ${redTime}s, Moves: ${redMoves})</span><br>
-                                <span class="blue-stat">Blue: ${scores.blue} (Score: ${blueScore}, Time: ${blueTime}s, Moves: ${blueMoves})</span><br>
-                                <span class="neutral-stat">Total Moves: ${moveCount}</span><br>
-                                <span class="neutral-stat">Game Time: ${elapsed}s</span><br>
-                                <span class="neutral-stat">Games Won - Red: ${gameStats.red}, Blue: ${gameStats.blue}, Tie: ${gameStats.tie}</span>`;
-                        }
-                        const gameOver = document.getElementById('game-over');
-                        if (gameOver) gameOver.style.display = 'flex';
-                        updateStats();
-                    } catch (e) {
-                        console.error('Error checking game over:', e);
-                    }
-                }
-
-                // Reset game
-                function resetGame(mode, resetStats = false, showConfirm = false) {
-                    try {
-                        if (showConfirm && gameActive) {
-                            const exitConfirm = document.getElementById('exit-confirm');
-                            if (exitConfirm) exitConfirm.style.display = 'flex';
-                            return;
-                        }
-                        gameActive = false;
-                        if (timerInterval) clearInterval(timerInterval);
-                        const gameOver = document.getElementById('game-over');
-                        if (gameOver) gameOver.style.display = 'none';
-                        const exitConfirm = document.getElementById('exit-confirm');
-                        if (exitConfirm) exitConfirm.style.display = 'none';
-                        const statsContainer = document.getElementById('game-stats-container');
-                        if (statsContainer) statsContainer.style.display = 'none';
-                        const gameTimer = document.getElementById('game-timer');
-                        if (gameTimer) gameTimer.style.display = 'none';
-                        const turn = document.getElementById('turn');
-                        if (turn) turn.style.display = 'none';
-                        const moves = document.getElementById('moves');
-                        if (moves) moves.style.display = 'none';
-                        const gamesWon = document.getElementById('games-won');
-                        if (gamesWon) gamesWon.style.display = 'none';
-                        const redStats = document.getElementById('red-stats');
-                        if (redStats) redStats.style.display = 'none';
-                        const blueStats = document.getElementById('blue-stats');
-                        if (blueStats) blueStats.style.display = 'none';
-                        const winProbBar = document.getElementById('win-prob-bar');
-                        if (winProbBar) winProbBar.style.display = 'none';
-                        const progressBar = document.getElementById('progress-bar');
-                        if (progressBar) progressBar.style.display = 'none';
-                        const buttonContainer = document.getElementById('button-container');
-                        if (buttonContainer) buttonContainer.style.display = 'none';
-                        const message = document.getElementById('message');
-                        if (message) message.style.display = 'none';
-                        const pointsMessage = document.getElementById('points-message');
-                        if (pointsMessage) pointsMessage.style.display = 'none';
-                        lines.forEach(line => disposeObject(line.mesh));
-                        boxes.forEach(box => disposeObject(box));
-                        if (yellowOverlayDot) {
-                            disposeObject(yellowOverlayDot);
-                            yellowOverlayDot = null;
-                        }
-                        if (hintLine) {
-                            disposeObject(hintLine);
-                            hintLine = null;
-                        }
-                        if (previewLine) {
-                            disposeObject(previewLine);
-                            previewLine = null;
-                        }
-                        lines.length = 0;
-                        boxes.length = 0;
-                        scores = { red: 0, blue: 0 };
-                        redScore = 0;
-                        blueScore = 0;
-                        moveCount = 0;
-                        redMoves = 0;
-                        blueMoves = 0;
-                        pointsMessages = [];
-                        currentPlayer = 'red';
-                        selectedDot = null;
-                        flashingLines = [];
-                        isFlyCamera = false;
-                        redTime = 0;
-                        blueTime = 0;
-                        lastSwitchTime = 0;
-                        lastMoveTime = 0;
-                        lastIdleReminder = 0;
-                        wobbleTime = 0;
-                        soundEnabled = true;
-                        hintEnabled = false;
-                        bestHintMove = null;
-                        const cameraToggle = document.getElementById('camera-toggle');
-                        if (cameraToggle) cameraToggle.textContent = 'Fly Camera';
-                        const soundToggle = document.getElementById('sound-toggle');
-                        if (soundToggle) soundToggle.textContent = 'Sound On';
-                        const hintToggle = document.getElementById('hint-toggle');
-                        if (hintToggle) hintToggle.textContent = 'Hint Off';
-                        camera.position.set(0, 0, 12);
-                        camera.lookAt(0, 0, 0);
-                        if (resetStats) {
-                            gameStats = { red: 0, blue: 0, tie: 0 };
-                        }
-                        resetDotColors();
-                        updateStats();
-                        updateMoves();
-                        const turnElement = document.getElementById('turn');
-                        if (turnElement) turnElement.textContent = "Red's Turn";
-                        const gameTimerElement = document.getElementById('game-timer');
-                        if (gameTimerElement) gameTimerElement.textContent = "Game Time: 0s";
-                        const gameTitle = document.getElementById('game-title');
-                        if (gameTitle) gameTitle.textContent = 'Grid Wars';
-                        dots.length = 0;
-                        dotWobbleOffsets.length = 0;
-                        for (let x = 0; x < gridSize; x++) {
-                            for (let y = 0; y < gridSize; y++) {
-                                const dot = new THREE.Mesh(dotGeometry, dotMaterial);
-                                dot.position.set(x * spacing - (gridSize - 1) * spacing / 2, y * spacing - (gridSize - 1) * spacing / 2, 0);
-                                dot.userData = { x, y, basePosition: dot.position.clone() };
-                                scene.add(dot);
-                                dots.push(dot);
-                                dotWobbleOffsets.push({
-                                    x: (Math.random() - 0.5) * 0.1,
-                                    y: (Math.random() - 0.5) * 0.1,
-                                    phase: Math.random() * Math.PI * 2
-                                });
-                            }
-                        }
-                        if (mode) {
-                            startGame(mode);
-                        } else {
-                            isWelcomeScreen = true;
-                            const welcome = document.getElementById('welcome');
-                            if (welcome) welcome.style.display = 'flex';
-                        }
-                    } catch (e) {
-                        console.error('Error resetting game:', e);
-                    }
-                }
-
-                // Update wobble for dots, lines, and boxes with ripple effect
-                function updateWobble() {
-                    try {
-                        wobbleTime += 0.05;
-                        dots.forEach((dot, index) => {
-                            const offset = dotWobbleOffsets[index];
-                            const wobbleX = offset.x * Math.sin(wobbleTime + offset.phase);
-                            const wobbleY = offset.y * Math.cos(wobbleTime + offset.phase);
-                            dot.position.copy(dot.userData.basePosition);
-                            dot.position.x += wobbleX;
-                            dot.position.y += wobbleY;
-                        });
-
-                        lines.forEach(line => {
-                            const dot1 = line.dot1;
-                            const dot2 = line.dot2;
-                            if (dot1 && dot2) {
-                                disposeObject(line.mesh);
-                                const path = new THREE.LineCurve3(dot1.position, dot2.position);
-                                const geometry = new THREE.TubeGeometry(path, 32, 0.1, 8, false);
-                                line.mesh = new THREE.Mesh(geometry, line.mesh.material);
-                                line.mesh.position.z = 0.05;
-                                scene.add(line.mesh);
-                            }
-                        });
-
-                        boxes.forEach(box => {
-                            const x = box.userData.x;
-                            const y = box.userData.y;
-                            const corners = [
-                                dots.find(dot => dot.userData.x === x && dot.userData.y === y),
-                                dots.find(dot => dot.userData.x === x + 1 && dot.userData.y === y),
-                                dots.find(dot => dot.userData.x === x && dot.userData.y === y + 1),
-                                dots.find(dot => dot.userData.x === x + 1 && dot.userData.y === y + 1)
-                            ];
-                            if (corners.every(corner => corner)) {
-                                const avgPosition = new THREE.Vector3();
-                                corners.forEach(corner => avgPosition.add(corner.position));
-                                avgPosition.multiplyScalar(0.25);
-                                box.position.set(avgPosition.x, avgPosition.y, -0.1);
-                                if (box.userData.fadeTime >= 1) {
-                                    const ripple = 0.5 * (Math.sin(wobbleTime + box.userData.ripplePhase) + 1);
-                                    const scale = 1.0 + 0.1 * ripple;
-                                    box.scale.set(scale, scale, 1);
-                                    box.material.opacity = 0.4 + 0.2 * ripple;
-                                }
-                            }
-                        });
-
-                        if (yellowOverlayDot && selectedDot) {
-                            yellowOverlayDot.position.copy(selectedDot.position);
-                            yellowOverlayDot.position.z = 0.01;
-                        }
-
-                        if (hintEnabled && bestHintMove && hintLine) {
-                            const [dot1, dot2] = bestHintMove;
-                            if (dot1 && dot2) {
-                                disposeObject(hintLine);
-                                const path = new THREE.LineCurve3(dot1.position, dot2.position);
-                                const geometry = new THREE.TubeGeometry(path, 32, 0.1, 8, false);
-                                hintLine = new THREE.Mesh(geometry, hintTubeMaterial.clone());
-                                hintLine.position.z = 0.04;
-                                scene.add(hintLine);
-                            }
-                        }
-                    } catch (e) {
-                        console.error('Error updating wobble:', e);
-                    }
-                }
-
-                // Throb effect for selected dot, flash effect for valid dots and tubes, animate boxes, twinkle stars
-                function updateThrob() {
-                    try {
-                        throbTime += 0.05;
-                        const scale = 1 + 0.1 * Math.sin(throbTime);
-                        const flashOpacity = 0.3 + 0.7 * (Math.sin(throbTime * 2) + 1) / 2;
-                        dots.forEach(dot => {
-                            if (dot.userData.isValid) {
-                                dot.scale.set(scale, scale, scale);
-                                dot.material.opacity = flashOpacity;
-                                dot.material.transparent = true;
-                            } else {
-                                dot.material.opacity = 1;
-                                dot.material.transparent = false;
-                            }
-                        });
-                        if (yellowOverlayDot) {
-                            yellowOverlayDot.scale.set(scale, scale, scale);
-                        }
-                        flashingLines = flashingLines.filter(flash => {
-                            flash.time += 0.05;
-                            const opacity = 0.3 + 0.7 * (Math.sin(flash.time * 8) + 1) / 2;
-                            flash.line.material.opacity = opacity;
-                            if (flash.flashes < 3 && flash.time > 0.5) {
-                                flash.flashes++;
-                                flash.time = 0;
-                            }
-                            if (flash.flashes >= 3) {
-                                flash.line.material.opacity = 1;
-                                flash.line.material.transparent = false;
-                                return false;
-                            }
-                            return true;
-                        });
-                        boxes.forEach(box => {
-                            if (box.userData.fadeTime < 1) {
-                                box.userData.fadeTime += 0.05;
-                                box.material.opacity = Math.min(0.5, box.userData.fadeTime);
-                            }
-                        });
-                        for (let i = 0; i < starOpacities.length; i++) {
-                            starOpacities[i] = Math.random() * 0.5 + 0.5;
-                        }
-                        starGeometry.attributes.opacity.needsUpdate = true;
-                    } catch (e) {
-                        console.error('Error updating throb:', e);
-                    }
-                }
-
-                // Update camera for fly mode or welcome screen
-                function updateCamera() {
-                    try {
-                        if ((isFlyCamera && (gameActive || (document.getElementById('game-over') && document.getElementById('game-over').style.display === 'flex'))) || isWelcomeScreen) {
-                            cameraTime += 0.01;
-                            const radius = 12;
-                            camera.position.x = Math.sin(cameraTime) * radius;
-                            camera.position.z = Math.cos(cameraTime) * radius;
-                            camera.position.y = Math.sin(cameraTime * 0.5) * 2;
-                            camera.lookAt(0, 0, 0);
-                        }
-                    } catch (e) {
-                        console.error('Error updating camera:', e);
-                    }
-                }
-
-                // Update preview line to follow mouse/touch
-                function updatePreviewLine() {
-                    try {
-                        if (previewLine && selectedDot) {
-                            raycaster.setFromCamera(mouse, camera);
-                            const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
-                            const intersectPoint = new THREE.Vector3();
-                            if (raycaster.ray.intersectPlane(plane, intersectPoint)) {
-                                disposeObject(previewLine);
-                                const path = new THREE.LineCurve3(selectedDot.position, intersectPoint);
-                                const geometry = new THREE.TubeGeometry(path, 32, 0.1, 8, false);
-                                const tubeMaterial = currentPlayer === 'red' ? redTubeMaterial.clone() : blueTubeMaterial.clone();
-                                previewLine = new THREE.Mesh(geometry, tubeMaterial);
-                                previewLine.position.z = 0.05;
-                                scene.add(previewLine);
-                            }
-                        }
-                    } catch (e) {
-                        console.error('Error updating preview line:', e);
-                    }
-                }
-
-                // Camera position (initial)
-                camera.position.z = 12;
-
-                // Animation loop
-                function animate() {
-                    try {
-                        requestAnimationFrame(animate);
-                        if (gameActive || isWelcomeScreen || (document.getElementById('game-over') && document.getElementById('game-over').style.display === 'flex')) {
-                            updateThrob();
-                            updateCamera();
-                            if (gameActive) {
-                                updateWobble();
-                                updatePreviewLine();
-                                const now = Date.now();
-                                if (now - lastIdleReminder > 10000 && gameActive && (gameMode !== 'ai' && (gameMode !== '1player' || currentPlayer === 'red'))) {
-                                    lastIdleReminder = now;
-                                    const statsElement = document.getElementById(currentPlayer === 'red' ? 'red-stats' : 'blue-stats');
-                                    if (statsElement) {
-                                        statsElement.classList.add('flash');
-                                        setTimeout(() => statsElement.classList.remove('flash'), 1500);
-                                    }
-                                    showMessage(`${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)}'s Turn!`, true);
-                                }
-                            }
-                        }
-                        renderer.render(scene, camera);
-                    } catch (e) {
-                        console.error('Error in animation loop:', e);
-                    }
-                }
-                animate();
-
-                // Handle window resize
-                window.addEventListener('resize', () => {
-                    try {
-                        camera.aspect = window.innerWidth / window.innerHeight;
-                        camera.updateProjectionMatrix();
-                        renderer.setSize(window.innerWidth, window.innerHeight);
-                    } catch (e) {
-                        console.error('Error handling resize:', e);
                     }
                 });
-            } catch (e) {
-                console.error('Error in DOMContentLoaded:', e);
+                if (yellowOverlayDot) {
+                    yellowOverlayDot.scale.set(scale, scale, scale);
+                }
+                flashingLines = flashingLines.filter(flash => {
+                    flash.time += 0.05;
+                    const opacity = 0.3 + 0.7 * (Math.sin(flash.time * 8) + 1) / 2;
+                    flash.line.material.opacity = opacity;
+                    if (flash.flashes < 3 && flash.time > 0.5) {
+                        flash.flashes++;
+                        flash.time = 0;
+                    }
+                    if (flash.flashes >= 3) {
+                        flash.line.material.opacity = 1;
+                        flash.line.material.transparent = false;
+                        return false;
+                    }
+                    return true;
+                });
+                boxes.forEach(box => {
+                    if (box.userData.fadeTime < 1) {
+                        box.userData.fadeTime += 0.05;
+                        box.material.opacity = Math.min(0.5, box.userData.fadeTime);
+                    }
+                });
+                for (let i = 0; i < starOpacities.length; i++) {
+                    starOpacities[i] = Math.random() * 0.5 + 0.5;
+                }
+                starGeometry.attributes.opacity.needsUpdate = true;
             }
+            function updateCamera() {
+                if ((isFlyCamera && (gameActive || (document.getElementById('game-over') && document.getElementById('game-over').style.display === 'flex'))) || isWelcomeScreen) {
+                    cameraTime += 0.01;
+                    const radius = 12;
+                    camera.position.x = Math.sin(cameraTime) * radius;
+                    camera.position.z = Math.cos(cameraTime) * radius;
+                    camera.position.y = Math.sin(cameraTime * 0.5) * 2;
+                    camera.lookAt(0, 0, 0);
+                }
+            }
+            function updatePreviewLine() {
+                if (previewLine && selectedDot) {
+                    raycaster.setFromCamera(mouse, camera);
+                    const intersects = raycaster.intersectObjects(dots);
+                    const validIntersects = intersects
+                        .filter(intersect => isValidConnection(selectedDot, intersect.object))
+                        .sort((a, b) => a.distance - b.distance);
+                    const targetDot = validIntersects[0];
+                    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+                    const intersectPoint = new THREE.Vector3();
+                    raycaster.ray.intersectPlane(plane, intersectPoint);
+                    const endPoint = targetDot ? targetDot.object.position : intersectPoint;
+                    disposeObject(previewLine);
+                    const path = new THREE.LineCurve3(selectedDot.position, endPoint);
+                    const geometry = new THREE.TubeGeometry(path, 32, 0.1, 8, false);
+                    const tubeMaterial = currentPlayer === 'red' ? redTubeMaterial.clone() : blueTubeMaterial.clone();
+                    previewLine = new THREE.Mesh(geometry, tubeMaterial);
+                    previewLine.position.z = 0.05;
+                    scene.add(previewLine);
+                }
+            }
+            camera.position.z = 12;
+            function animate() {
+                requestAnimationFrame(animate);
+                if (gameActive || isWelcomeScreen || (document.getElementById('game-over') && document.getElementById('game-over').style.display === 'flex')) {
+                    updateThrob();
+                    updateCamera();
+                    if (gameActive) {
+                        updateWobble();
+                        const now = Date.now();
+                        if (now - lastIdleReminder > 10000 && gameActive && (gameMode !== 'ai' && (gameMode !== '1player' || currentPlayer === 'red'))) {
+                            lastIdleReminder = now;
+                            const statsElement = document.getElementById(currentPlayer === 'red' ? 'red-stats' : 'blue-stats');
+                            if (statsElement) {
+                                statsElement.classList.add('flash');
+                                setTimeout(() => statsElement.classList.remove('flash'), 1500);
+                            }
+                            showMessage(`${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)}'s Turn!`, true);
+                        }
+                    }
+                }
+                renderer.render(scene, camera);
+            }
+            animate();
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
         });
     </script>
 </body>
