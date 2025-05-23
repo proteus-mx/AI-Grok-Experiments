@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Dot Connect Game</title>
+    <title>Grid Wars</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; background: #000; }
         canvas { display: block; }
@@ -73,6 +73,15 @@
         .flash { animation: flash 0.5s ease-in-out 3; }
         @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
         #game-over { display: none; }
+        #win-prob-bar { 
+            position: absolute; top: 260px; left: 0; width: 100%; height: 20px; display: none; 
+            background: rgba(51, 51, 51, 0.5); font-size: 10px; color: #fff; text-align: center; 
+            z-index: 10; display: flex; justify-content: center; align-items: center; 
+            text-shadow: 0 0 2px #000;
+        }
+        #win-prob-red { background: rgba(255, 0, 0, 0.5); height: 100%; float: left; }
+        #win-prob-blue { background: rgba(0, 0, 255, 0.5); height: 100%; float: left; }
+        #win-prob-tie { background: rgba(153, 153, 153, 0.5); height: 100%; float: left; }
         #progress-bar { 
             position: absolute; bottom: 0; left: 0; width: 100%; height: 20px; display: none; 
             background: #333; font-size: 14px; color: #fff; text-align: center; 
@@ -88,7 +97,7 @@
 </head>
 <body>
     <div id="welcome">
-        <h1>3D Dot Connect Game</h1>
+        <h1>Grid Wars</h1>
         <p>Connect adjacent dots to form glowing lines. Complete a 1x1 square to claim it with your color (Red or Blue). Players keep their turn if they form a box; otherwise, the turn switches. In 1 Player mode, a smart AI plays as Blue. In AI Mode, both players are automated.</p>
         <button id="one-player">1 Player</button>
         <button id="two-player">2 Player</button>
@@ -122,6 +131,12 @@
     </div>
     <div id="red-stats" style="display: none;">Red: 0<br>Score: 0<br>Time: 0s<br>Moves: 0</div>
     <div id="blue-stats" style="display: none;">Blue: 0<br>Score: 0<br>Time: 0s<br>Moves: 0</div>
+    <div id="win-prob-bar" style="display: none;">
+        <div id="win-prob-red" style="width: 0%;"></div>
+        <div id="win-prob-blue" style="width: 0%;"></div>
+        <div id="win-prob-tie" style="width: 0%;"></div>
+        <span>Winning Player Probability</span>
+    </div>
     <div id="button-container">
         <button id="camera-toggle">Fly Camera</button>
         <button id="exit-button">Exit Game</button>
@@ -345,8 +360,8 @@
                                                 start: { x: Math.min(d1.userData.x, d2.userData.x), y: Math.min(d1.userData.y, d2.userData.y) },
                                                 end: { x: Math.max(d1.userData.x, d2.userData.x), y: Math.max(d2.userData.y, d2.userData.y) }
                                             }];
-                                            for (let x = 0; x < gridSize - 1; x++) {
-                                                for (let y = 0; y < gridSize - 1; y++) {
+                                            for (x = 0; x < gridSize - 1; x++) {
+                                                for (y = 0; y < gridSize - 1; y++) {
                                                     if (hasBox(x, y, tempLines2) && !boxes.some(box => box.userData.x === x && box.userData.y === y)) {
                                                         givesBox = true;
                                                         break;
@@ -480,6 +495,61 @@
                     });
                 }
 
+                // Calculate win probabilities for Red and Blue
+                function calculateWinProbabilities() {
+                    const totalBoxes = (gridSize - 1) * (gridSize - 1); // 16 for 5x5 grid
+                    const remainingBoxes = totalBoxes - (scores.red + scores.blue);
+                    if (remainingBoxes <= 0) {
+                        return { red: scores.red > scores.blue ? 100 : 0, blue: scores.blue > scores.red ? 100 : 0, tie: scores.red === scores.blue ? 100 : 0 };
+                    }
+                    let redPotential = scores.red;
+                    let bluePotential = scores.blue;
+                    const validMoves = [];
+                    const boxClosingMoves = [];
+                    dots.forEach(dot1 => {
+                        dots.forEach(dot2 => {
+                            if (isValidConnection(dot1, dot2)) {
+                                const move = [dot1, dot2];
+                                validMoves.push(move);
+                                const tempLines = [...lines, {
+                                    start: { x: Math.min(dot1.userData.x, dot2.userData.x), y: Math.min(dot1.userData.y, dot2.userData.y) },
+                                    end: { x: Math.max(dot1.userData.x, dot2.userData.x), y: Math.max(dot1.userData.y, dot2.userData.y) }
+                                }];
+                                let closesBox = false;
+                                for (let x = 0; x < gridSize - 1; x++) {
+                                    for (let y = 0; y < gridSize - 1; y++) {
+                                        if (hasBox(x, y, tempLines) && !boxes.some(box => box.userData.x === x && box.userData.y === y)) {
+                                            closesBox = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (closesBox) {
+                                    boxClosingMoves.push(move);
+                                }
+                            }
+                        });
+                    });
+                    const boxClosingWeight = boxClosingMoves.length / (validMoves.length || 1);
+                    redPotential += boxClosingWeight * remainingBoxes * (currentPlayer === 'red' ? 0.6 : 0.4);
+                    bluePotential += boxClosingWeight * remainingBoxes * (currentPlayer === 'blue' ? 0.6 : 0.4);
+                    const totalPotential = redPotential + bluePotential;
+                    let redProb = totalPotential > 0 ? (redPotential / totalPotential) * 100 : 50;
+                    let blueProb = totalPotential > 0 ? (bluePotential / totalPotential) * 100 : 50;
+                    let tieProb = 100 - redProb - blueProb;
+                    if (tieProb < 0) {
+                        const adjust = tieProb / 2;
+                        redProb += adjust;
+                        blueProb += adjust;
+                        tieProb = 0;
+                    }
+                    return {
+                        red: Math.max(0, Math.min(100, redProb.toFixed(1))),
+                        blue: Math.max(0, Math.min(100, blueProb.toFixed(1))),
+                        tie: Math.max(0, Math.min(100, tieProb.toFixed(1)))
+                    };
+                }
+
                 // Start game
                 function startGame(mode) {
                     try {
@@ -512,6 +582,8 @@
                         if (redStats) redStats.style.display = 'block';
                         const blueStats = document.getElementById('blue-stats');
                         if (blueStats) blueStats.style.display = 'block';
+                        const winProbBar = document.getElementById('win-prob-bar');
+                        if (winProbBar) winProbBar.style.display = 'block';
                         const progressBar = document.getElementById('progress-bar');
                         if (progressBar) progressBar.style.display = 'block';
                         const buttonContainer = document.getElementById('button-container');
@@ -869,8 +941,8 @@
                                                     start: { x: Math.min(d1.userData.x, d2.userData.x), y: Math.min(d1.userData.y, d2.userData.y) },
                                                     end: { x: Math.max(d1.userData.x, d2.userData.x), y: Math.max(d2.userData.y, d2.userData.y) }
                                                 }];
-                                                for (let x = 0; x < gridSize - 1; x++) {
-                                                    for (let y = 0; y < gridSize - 1; y++) {
+                                                for (x = 0; x < gridSize - 1; x++) {
+                                                    for (y = 0; y < gridSize - 1; y++) {
                                                         if (hasBox(x, y, tempLines2) && !boxes.some(box => box.userData.x === x && box.userData.y === y)) {
                                                             givesBox = true;
                                                             break;
@@ -975,7 +1047,7 @@
                     setTimeout(() => turnElement.classList.remove('flash'), 1500);
                 }
 
-                // Update stats display and progress bar
+                // Update stats display, progress bar, and win probability bar
                 function updateStats() {
                     const redStats = document.getElementById('red-stats');
                     if (redStats) redStats.innerHTML = `Red: ${scores.red}<br>Score: ${redScore}<br>Time: ${redTime}s<br>Moves: ${redMoves}`;
@@ -993,6 +1065,13 @@
                     if (progressBlue) progressBlue.style.width = `${bluePercent}%`;
                     const progressTie = document.getElementById('progress-tie');
                     if (progressTie) progressTie.style.width = `${tiePercent}%`;
+                    const probs = calculateWinProbabilities();
+                    const winProbRed = document.getElementById('win-prob-red');
+                    if (winProbRed) winProbRed.style.width = `${probs.red}%`;
+                    const winProbBlue = document.getElementById('win-prob-blue');
+                    if (winProbBlue) winProbBlue.style.width = `${probs.blue}%`;
+                    const winProbTie = document.getElementById('win-prob-tie');
+                    if (winProbTie) winProbTie.style.width = `${probs.tie}%`;
                 }
 
                 // Check for game over (when all lines are drawn)
@@ -1063,6 +1142,8 @@
                         if (redStats) redStats.style.display = 'none';
                         const blueStats = document.getElementById('blue-stats');
                         if (blueStats) blueStats.style.display = 'none';
+                        const winProbBar = document.getElementById('win-prob-bar');
+                        if (winProbBar) winProbBar.style.display = 'none';
                         const progressBar = document.getElementById('progress-bar');
                         if (progressBar) progressBar.style.display = 'none';
                         const buttonContainer = document.getElementById('button-container');
