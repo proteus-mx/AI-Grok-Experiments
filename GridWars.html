@@ -19,12 +19,12 @@
             border-radius: 10px; width: 80%;
         }
         #exit-confirm { display: none; }
-        #welcome button, #game-over button, #camera-toggle, #undo-button, #exit-button, #sound-toggle, #hint-toggle, #exit-yes, #exit-no { 
+        #welcome button, #game-over button, #camera-toggle, #exit-button, #sound-toggle, #hint-toggle, #exit-yes, #exit-no { 
             margin: 10px; padding: 6px 12px; font-size: 12px; cursor: pointer; 
             background: #00ff00; color: #000; border: none; border-radius: 8px; 
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5); transition: transform 0.2s; touch-action: none; 
         }
-        #welcome button:hover, #game-over button:hover, #camera-toggle:hover, #undo-button:hover, #exit-button:hover, #sound-toggle:hover, #hint-toggle:hover, #exit-yes:hover, #exit-no:hover { 
+        #welcome button:hover, #game-over button:hover, #camera-toggle:hover, #exit-button:hover, #sound-toggle:hover, #hint-toggle:hover, #exit-yes:hover, #exit-no:hover { 
             background: #00cc00; transform: scale(1.05); 
         }
         #game-stats-container { 
@@ -51,7 +51,7 @@
         #button-container { 
             position: absolute; bottom: 30px; right: 10px; display: none; display: flex; gap: 10px; 
         }
-        #camera-toggle, #undo-button, #exit-button, #sound-toggle, #hint-toggle { margin: 0; }
+        #camera-toggle, #exit-button, #sound-toggle, #hint-toggle { margin: 0; }
         #message { 
             position: absolute; bottom: 70px; left: 50%; transform: translate(-50%, 0); 
             font-size: 28px; display: none; text-shadow: 0 0 5px #000; padding: 10px 20px; 
@@ -124,7 +124,6 @@
     <div id="blue-stats" style="display: none;">Blue: 0<br>Score: 0<br>Time: 0s<br>Moves: 0</div>
     <div id="button-container">
         <button id="camera-toggle">Fly Camera</button>
-        <button id="undo-button">Undo Move</button>
         <button id="exit-button">Exit Game</button>
         <button id="sound-toggle">Sound On</button>
         <button id="hint-toggle">Hint Off</button>
@@ -181,7 +180,6 @@
                 let flashingLines = [];
                 let isFlyCamera = false;
                 let cameraTime = 0;
-                let moveHistory = [];
                 let audioCtx = null;
                 let gameStats = { red: 0, blue: 0, tie: 0 };
                 let soundEnabled = true;
@@ -459,54 +457,6 @@
                     }
                 }
 
-                // Undo last move
-                function undoMove() {
-                    if (gameMode === 'ai' || moveHistory.length === 0 || !gameActive) return;
-                    const lastMove = moveHistory.pop();
-                    if (lastMove && lastMove.line) {
-                        disposeObject(lastMove.line.mesh);
-                        lines.pop();
-                        moveCount--;
-                        if (lastMove.player === 'red') {
-                            redMoves--;
-                            redScore -= lastMove.points;
-                            if (lastMove.boxes.length > 0) {
-                                scores.red -= lastMove.boxes.length;
-                            }
-                        } else {
-                            blueMoves--;
-                            blueScore -= lastMove.points;
-                            if (lastMove.boxes.length > 0) {
-                                scores.blue -= lastMove.boxes.length;
-                            }
-                        }
-                        if (lastMove.boxes && lastMove.boxes.length > 0) {
-                            lastMove.boxes.forEach(box => {
-                                disposeObject(box);
-                                const index = boxes.findIndex(b => b.userData.x === box.userData.x && b.userData.y === box.userData.y);
-                                if (index !== -1) {
-                                    boxes.splice(index, 1);
-                                }
-                            });
-                        }
-                        currentPlayer = lastMove.player;
-                        updateDotConnectivity();
-                        updateTurnIndicator();
-                        updateStats();
-                        updateMoves();
-                        if (hintLine) {
-                            disposeObject(hintLine);
-                            hintLine = null;
-                        }
-                        if (hintEnabled) {
-                            highlightBestMove();
-                        }
-                        playSound(300, 0.2, 'square');
-                        lastMoveTime = Date.now();
-                        lastIdleReminder = Date.now();
-                    }
-                }
-
                 // Check if a dot has any valid connections left
                 function checkDotConnectivity(dot) {
                     return dots.some(otherDot => isValidConnection(dot, otherDot));
@@ -560,13 +510,9 @@
                         const buttonContainer = document.getElementById('button-container');
                         if (buttonContainer) buttonContainer.style.display = 'flex';
                         if (mode === 'ai') {
-                            const undoButton = document.getElementById('undo-button');
-                            if (undoButton) undoButton.style.display = 'none';
                             const hintToggle = document.getElementById('hint-toggle');
                             if (hintToggle) hintToggle.style.display = 'none';
                         } else {
-                            const undoButton = document.getElementById('undo-button');
-                            if (undoButton) undoButton.style.display = 'block';
                             const hintToggle = document.getElementById('hint-toggle');
                             if (hintToggle) hintToggle.style.display = 'block';
                         }
@@ -686,7 +632,6 @@
                     if (exitConfirm) exitConfirm.style.display = 'none';
                 });
                 addButtonListeners(document.getElementById('camera-toggle'), toggleCamera);
-                addButtonListeners(document.getElementById('undo-button'), undoMove);
                 addButtonListeners(document.getElementById('exit-button'), () => resetGame(null, true, true));
                 addButtonListeners(document.getElementById('sound-toggle'), toggleSound);
                 addButtonListeners(document.getElementById('hint-toggle'), toggleHint);
@@ -862,7 +807,6 @@
                             dot1: dot1,
                             dot2: dot2
                         });
-                        moveHistory.push({ line: lines[lines.length - 1], player: currentPlayer, boxes: newBoxes, points: points });
                         flashingLines.push({ line: tube, time: 0, flashes: 0 });
                         moveCount++;
                         lastMoveTime = moveTime;
@@ -1141,7 +1085,6 @@
                         moveCount = 0;
                         redMoves = 0;
                         blueMoves = 0;
-                        moveHistory = [];
                         pointsMessages = [];
                         currentPlayer = 'red';
                         selectedDot = null;
