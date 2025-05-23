@@ -185,6 +185,7 @@
                 let soundEnabled = true;
                 let hintEnabled = false;
                 let hintLine = null;
+                let bestHintMove = null;
                 let isWelcomeScreen = true;
                 let pointsMessages = [];
                 let lastIdleReminder = 0;
@@ -295,9 +296,12 @@
                     hintToggle.textContent = hintEnabled ? 'Hint On' : 'Hint Off';
                     if (hintEnabled && gameActive && (gameMode !== 'ai' && (gameMode !== '1player' || currentPlayer === 'red'))) {
                         highlightBestMove();
-                    } else if (hintLine) {
-                        disposeObject(hintLine);
-                        hintLine = null;
+                    } else {
+                        if (hintLine) {
+                            disposeObject(hintLine);
+                            hintLine = null;
+                        }
+                        bestHintMove = null;
                     }
                 }
 
@@ -367,13 +371,16 @@
                         move = validMoves[Math.floor(Math.random() * validMoves.length)];
                     }
                     if (move) {
+                        bestHintMove = move;
                         const [dot1, dot2] = move;
-                        const path = new THREE.LineCurve3(dot1.userData.basePosition, dot2.userData.basePosition);
+                        const path = new THREE.LineCurve3(dot1.position, dot2.position);
                         const geometry = new THREE.TubeGeometry(path, 32, 0.1, 8, false);
                         hintLine = new THREE.Mesh(geometry, hintTubeMaterial.clone());
                         hintLine.position.z = 0.04;
                         scene.add(hintLine);
                         flashingLines.push({ line: hintLine, time: 0, flashes: 0 });
+                    } else {
+                        bestHintMove = null;
                     }
                 }
 
@@ -818,6 +825,7 @@
                             disposeObject(hintLine);
                             hintLine = null;
                         }
+                        bestHintMove = null;
                         checkGameOver();
                     } catch (e) {
                         console.error('Error drawing line:', e);
@@ -1098,6 +1106,7 @@
                         wobbleTime = 0;
                         soundEnabled = true;
                         hintEnabled = false;
+                        bestHintMove = null;
                         const cameraToggle = document.getElementById('camera-toggle');
                         if (cameraToggle) cameraToggle.textContent = 'Fly Camera';
                         const soundToggle = document.getElementById('sound-toggle');
@@ -1198,19 +1207,10 @@
                             yellowOverlayDot.position.z = 0.01;
                         }
 
-                        if (hintLine && hintEnabled) {
-                            disposeObject(hintLine);
-                            const validMoves = [];
-                            dots.forEach(dot1 => {
-                                dots.forEach(dot2 => {
-                                    if (isValidConnection(dot1, dot2)) {
-                                        validMoves.push([dot1, dot2]);
-                                    }
-                                });
-                            });
-                            if (validMoves.length > 0) {
-                                const move = validMoves[Math.floor(Math.random() * validMoves.length)];
-                                const [dot1, dot2] = move;
+                        if (hintEnabled && bestHintMove && hintLine) {
+                            const [dot1, dot2] = bestHintMove;
+                            if (dot1 && dot2) {
+                                disposeObject(hintLine);
                                 const path = new THREE.LineCurve3(dot1.position, dot2.position);
                                 const geometry = new THREE.TubeGeometry(path, 32, 0.1, 8, false);
                                 hintLine = new THREE.Mesh(geometry, hintTubeMaterial.clone());
