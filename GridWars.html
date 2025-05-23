@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Dot Connect Game</title>
+    <title>Grid Wars</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; background: #000; }
         canvas { display: block; }
@@ -121,7 +121,7 @@
 </head>
 <body>
     <div id="welcome">
-        <h1>3D Dot Connect Game</h1>
+        <h1>Grid Wars</h1>
         <p>Connect adjacent dots to form glowing lines. Complete a 1x1 square to claim it with your color (Red or Blue). Players keep their turn if they form a box; otherwise, the turn switches. In 1 Player mode, a smart AI plays as Blue. In AI Mode, both players are automated.</p>
         <button onclick="startGame('1player')">1 Player</button>
         <button onclick="startGame('2player')">2 Player</button>
@@ -270,7 +270,7 @@
         const blueTubeMaterial = new THREE.MeshPhongMaterial({ color: 0x0000ff, shininess: 100, specular: 0x555555, transparent: true });
         const hintTubeMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00, shininess: 100, specular: 0x555555, transparent: true });
 
-        // Raycaster for mouse interaction
+        // Raycaster for mouse/touch interaction
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
 
@@ -594,19 +594,29 @@
             document.getElementById('moves').textContent = `Moves: ${moveCount}`;
         }
 
-        // Handle mouse movement for preview line
-        window.addEventListener('mousemove', (event) => {
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-        });
+        // Handle mouse/touch movement for preview line
+        function updateMousePosition(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            const clientX = event.clientX || (event.touches && event.touches[0] ? event.touches[0].clientX : 0);
+            const clientY = event.clientY || (event.touches && event.touches[0] ? event.touches[0].clientY : 0);
+            mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+        }
 
-        // Handle mouse clicks
-        window.addEventListener('click', (event) => {
+        window.addEventListener('mousemove', updateMousePosition);
+        window.addEventListener('touchmove', (event) => {
+            if (event.touches.length === 1) {
+                event.preventDefault();
+                updateMousePosition(event);
+            }
+        }, { passive: false });
+
+        // Handle dot selection (click or tap)
+        function handleDotSelection(event) {
             if (!gameActive || (gameMode === '1player' && currentPlayer === 'blue') || gameMode === 'ai') return;
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            updateMousePosition(event);
             raycaster.setFromCamera(mouse, camera);
-            // Use base positions for raycasting to ensure accurate clicking
+            // Use base positions for raycasting to ensure accurate selection
             const intersects = raycaster.intersectObjects(dots.map(dot => {
                 const tempDot = dot.clone();
                 tempDot.position.copy(dot.userData.basePosition);
@@ -669,7 +679,7 @@
                     selectedDot = null;
                 }
             } else if (selectedDot) {
-                // Clicked outside dots, cancel selection
+                // Clicked/tapped outside dots, cancel selection
                 if (previewLine) {
                     scene.remove(previewLine);
                     previewLine = null;
@@ -681,7 +691,15 @@
                 resetDotColors();
                 selectedDot = null;
             }
-        });
+        }
+
+        window.addEventListener('click', handleDotSelection);
+        window.addEventListener('touchstart', (event) => {
+            if (event.touches.length === 1) {
+                event.preventDefault();
+                handleDotSelection(event);
+            }
+        }, { passive: false });
 
         // Check if connection is valid (prevents duplicate lines)
         function isValidConnection(dot1, dot2) {
@@ -1213,7 +1231,7 @@
             }
         }
 
-        // Update preview line to follow mouse
+        // Update preview line to follow mouse/touch
         function updatePreviewLine() {
             if (previewLine && selectedDot) {
                 raycaster.setFromCamera(mouse, camera);
