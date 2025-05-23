@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grid Wars - 0.8</title>
+    <title>Grid Wars - V0.9</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; background: #000; }
         canvas { display: block; }
@@ -84,7 +84,8 @@
         #win-prob-tie { background: rgba(153, 153, 153, 0.5); height: 100%; float: left; }
         #progress-bar { 
             position: absolute; bottom: 20px; left: 0; width: 100%; height: 20px; display: none; 
-            background: #333; font-size: 14px; color: #fff; text-align: center; 
+            background: rgba(51, 51, 51, 0.5); font-size: 10px; color: #fff; text-align: center; 
+            display: flex; justify-content: center; align-items: center; text-shadow: 0 0 2px #000;
         }
         #progress-red { background: #ff0000; height: 100%; float: left; }
         #progress-blue { background: #0000ff; height: 100%; float: left; }
@@ -123,7 +124,7 @@
         <button id="exit-no">No</button>
     </div>
     <div id="game-stats-container">
-        <div id="game-title">3D Dot Connect</div>
+        <div id="game-title">Grid Wars</div>
         <div id="game-timer" style="display: none;">Game Time: 0s</div>
         <div id="turn" style="display: none;">Red's Turn</div>
         <div id="moves" style="display: none;">Moves: 0</div>
@@ -149,11 +150,17 @@
         <div id="progress-red" style="width: 0%;"></div>
         <div id="progress-blue" style="width: 0%;"></div>
         <div id="progress-tie" style="width: 0%;"></div>
+        <span>Games Won</span>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             try {
+                if (!window.THREE) {
+                    console.error('Three.js library not loaded');
+                    return;
+                }
+
                 // Set up scene, camera, and renderer
                 const scene = new THREE.Scene();
                 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -224,7 +231,7 @@
                 scene.add(stars);
 
                 // Create glowing dots with shading
-                const dotGeometry = new THREE.SphereGeometry(0.2, 64, 64);
+                const dotGeometry = new THREE.SphereGeometry(0.3, 64, 64);
                 const dotMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00, shininess: 100, specular: 0x555555 });
                 const validDotMaterial = new THREE.MeshPhongMaterial({ color: 0x00ffff, shininess: 100, specular: 0x555555 });
                 const dimDotMaterial = new THREE.MeshPhongMaterial({ color: 0x006600, shininess: 100, specular: 0x555555 });
@@ -251,23 +258,25 @@
 
                 // Raycaster for mouse/touch interaction
                 const raycaster = new THREE.Raycaster();
+                raycaster.params.Points.threshold = 0.25;
                 const mouse = new THREE.Vector2();
 
                 // Dispose Three.js object
                 function disposeObject(obj) {
-                    if (obj && obj.geometry) obj.geometry.dispose();
-                    if (obj && obj.material) obj.material.dispose();
-                    if (obj && scene) scene.remove(obj);
+                    if (!obj) return;
+                    if (obj.geometry) obj.geometry.dispose();
+                    if (obj.material) obj.material.dispose();
+                    if (scene) scene.remove(obj);
                 }
 
                 // Audio context initialization
                 function initAudio() {
                     try {
-                        if (!audioCtx) {
+                        if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
                             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                         }
                     } catch (e) {
-                        console.error('Error initializing audio:', e);
+                        console.warn('Audio context initialization failed:', e);
                     }
                 }
 
@@ -285,7 +294,7 @@
                         oscillator.start();
                         oscillator.stop(audioCtx.currentTime + duration);
                     } catch (e) {
-                        console.error('Audio playback failed:', e);
+                        console.warn('Audio playback failed:', e);
                     }
                 }
 
@@ -293,22 +302,23 @@
                 function toggleSound() {
                     soundEnabled = !soundEnabled;
                     const soundToggle = document.getElementById('sound-toggle');
-                    if (!soundToggle) {
-                        console.error('Sound toggle element not found');
-                        return;
+                    if (soundToggle) {
+                        soundToggle.textContent = soundEnabled ? 'Sound On' : 'Sound Off';
+                    } else {
+                        console.warn('Sound toggle element not found');
                     }
-                    soundToggle.textContent = soundEnabled ? 'Sound On' : 'Sound Off';
                 }
 
                 // Toggle hint on/off
                 function toggleHint() {
                     hintEnabled = !hintEnabled;
                     const hintToggle = document.getElementById('hint-toggle');
-                    if (!hintToggle) {
-                        console.error('Hint toggle element not found');
+                    if (hintToggle) {
+                        hintToggle.textContent = hintEnabled ? 'Hint On' : 'Hint Off';
+                    } else {
+                        console.warn('Hint toggle element not found');
                         return;
                     }
-                    hintToggle.textContent = hintEnabled ? 'Hint On' : 'Hint Off';
                     if (hintEnabled && gameActive && (gameMode !== 'ai' && (gameMode !== '1player' || currentPlayer === 'red'))) {
                         highlightBestMove();
                     } else {
@@ -360,8 +370,8 @@
                                                 start: { x: Math.min(d1.userData.x, d2.userData.x), y: Math.min(d1.userData.y, d2.userData.y) },
                                                 end: { x: Math.max(d1.userData.x, d2.userData.x), y: Math.max(d2.userData.y, d2.userData.y) }
                                             }];
-                                            for (x = 0; x < gridSize - 1; x++) {
-                                                for (y = 0; y < gridSize - 1; y++) {
+                                            for (let x = 0; x < gridSize - 1; x++) {
+                                                for (let y = 0; y < gridSize - 1; y++) {
                                                     if (hasBox(x, y, tempLines2) && !boxes.some(box => box.userData.x === x && box.userData.y === y)) {
                                                         givesBox = true;
                                                         break;
@@ -403,7 +413,7 @@
                 function showMessage(text, isReminder = false) {
                     const messageElement = document.getElementById('message');
                     if (!messageElement) {
-                        console.error('Message element not found');
+                        console.warn('Message element not found');
                         return;
                     }
                     messageElement.textContent = text;
@@ -418,8 +428,10 @@
                     }
                     messageElement.classList.add('flash');
                     setTimeout(() => {
-                        messageElement.style.display = 'none';
-                        messageElement.classList.remove('flash');
+                        if (messageElement) {
+                            messageElement.style.display = 'none';
+                            messageElement.classList.remove('flash');
+                        }
                     }, 1500);
                 }
 
@@ -449,7 +461,7 @@
                 function updatePointsDisplay() {
                     const pointsElement = document.getElementById('points-message');
                     if (!pointsElement) {
-                        console.error('Points message element not found');
+                        console.warn('Points message element not found');
                         return;
                     }
                     if (pointsMessages.length === 0) {
@@ -468,11 +480,12 @@
                 function toggleCamera() {
                     isFlyCamera = !isFlyCamera;
                     const cameraToggle = document.getElementById('camera-toggle');
-                    if (!cameraToggle) {
-                        console.error('Camera toggle element not found');
+                    if (cameraToggle) {
+                        cameraToggle.textContent = isFlyCamera ? 'Static Camera' : 'Fly Camera';
+                    } else {
+                        console.warn('Camera toggle element not found');
                         return;
                     }
-                    cameraToggle.textContent = isFlyCamera ? 'Static Camera' : 'Fly Camera';
                     if (!isFlyCamera) {
                         camera.position.set(0, 0, 12);
                         camera.lookAt(0, 0, 0);
@@ -497,7 +510,7 @@
 
                 // Calculate win probabilities for Red and Blue
                 function calculateWinProbabilities() {
-                    const totalBoxes = (gridSize - 1) * (gridSize - 1); // 16 for 5x5 grid
+                    const totalBoxes = (gridSize - 1) * (gridSize - 1);
                     const remainingBoxes = totalBoxes - (scores.red + scores.blue);
                     if (remainingBoxes <= 0) {
                         return { red: scores.red > scores.blue ? 100 : 0, blue: scores.blue > scores.red ? 100 : 0, tie: scores.red === scores.blue ? 100 : 0 };
@@ -559,11 +572,9 @@
                         isWelcomeScreen = false;
                         isFlyCamera = false;
                         const cameraToggle = document.getElementById('camera-toggle');
-                        if (!cameraToggle) {
-                            console.error('Camera toggle element not found');
-                            return;
+                        if (cameraToggle) {
+                            cameraToggle.textContent = 'Fly Camera';
                         }
-                        cameraToggle.textContent = 'Fly Camera';
                         camera.position.set(0, 0, 12);
                         camera.lookAt(0, 0, 0);
                         const welcome = document.getElementById('welcome');
@@ -597,6 +608,8 @@
                         }
                         const soundToggle = document.getElementById('sound-toggle');
                         if (soundToggle) soundToggle.style.display = 'block';
+                        const gameTitle = document.getElementById('game-title');
+                        if (gameTitle) gameTitle.textContent = 'Grid Wars';
                         startTime = Date.now();
                         lastSwitchTime = startTime;
                         lastMoveTime = startTime;
@@ -643,11 +656,11 @@
                 // Update move counter
                 function updateMoves() {
                     const movesElement = document.getElementById('moves');
-                    if (!movesElement) {
-                        console.error('Moves element not found');
-                        return;
+                    if (movesElement) {
+                        movesElement.textContent = `Moves: ${moveCount}`;
+                    } else {
+                        console.warn('Moves element not found');
                     }
-                    movesElement.textContent = `Moves: ${moveCount}`;
                 }
 
                 // Handle mouse/touch movement for preview line
@@ -687,9 +700,10 @@
                 }
 
                 // Add click and touch event listeners to buttons
-                function addButtonListeners(button, callback) {
+                function addButtonListeners(buttonId, callback) {
+                    const button = document.getElementById(buttonId);
                     if (!button) {
-                        console.error('Button element not found for listener');
+                        console.warn(`Button element not found: ${buttonId}`);
                         return;
                     }
                     button.addEventListener('click', (event) => handleButtonInteraction(event, callback));
@@ -701,19 +715,19 @@
                 }
 
                 // Bind button events
-                addButtonListeners(document.getElementById('one-player'), () => startGame('1player'));
-                addButtonListeners(document.getElementById('two-player'), () => startGame('2player'));
-                addButtonListeners(document.getElementById('ai-mode'), () => startGame('ai'));
-                addButtonListeners(document.getElementById('play-again'), () => resetGame(gameMode, false));
-                addButtonListeners(document.getElementById('exit-yes'), () => resetGame(null, true, false));
-                addButtonListeners(document.getElementById('exit-no'), () => {
+                addButtonListeners('one-player', () => startGame('1player'));
+                addButtonListeners('two-player', () => startGame('2player'));
+                addButtonListeners('ai-mode', () => startGame('ai'));
+                addButtonListeners('play-again', () => resetGame(gameMode, false));
+                addButtonListeners('exit-yes', () => resetGame(null, true, false));
+                addButtonListeners('exit-no', () => {
                     const exitConfirm = document.getElementById('exit-confirm');
                     if (exitConfirm) exitConfirm.style.display = 'none';
                 });
-                addButtonListeners(document.getElementById('camera-toggle'), toggleCamera);
-                addButtonListeners(document.getElementById('exit-button'), () => resetGame(null, true, true));
-                addButtonListeners(document.getElementById('sound-toggle'), toggleSound);
-                addButtonListeners(document.getElementById('hint-toggle'), toggleHint);
+                addButtonListeners('camera-toggle', toggleCamera);
+                addButtonListeners('exit-button', () => resetGame(null, true, true));
+                addButtonListeners('sound-toggle', toggleSound);
+                addButtonListeners('hint-toggle', toggleHint);
 
                 // Handle dot selection (click or tap)
                 function handleDotSelection(event) {
@@ -726,7 +740,7 @@
                             const clickedDot = intersects[0].object;
                             if (!selectedDot) {
                                 selectedDot = clickedDot;
-                                yellowOverlayDot = new THREE.Mesh(new THREE.SphereGeometry(0.25, 64, 64), yellowOverlayMaterial);
+                                yellowOverlayDot = new THREE.Mesh(new THREE.SphereGeometry(0.375, 64, 64), yellowOverlayMaterial);
                                 yellowOverlayDot.position.copy(clickedDot.position);
                                 yellowOverlayDot.position.z = 0.01;
                                 scene.add(yellowOverlayDot);
@@ -941,8 +955,8 @@
                                                     start: { x: Math.min(d1.userData.x, d2.userData.x), y: Math.min(d1.userData.y, d2.userData.y) },
                                                     end: { x: Math.max(d1.userData.x, d2.userData.x), y: Math.max(d2.userData.y, d2.userData.y) }
                                                 }];
-                                                for (x = 0; x < gridSize - 1; x++) {
-                                                    for (y = 0; y < gridSize - 1; y++) {
+                                                for (let x = 0; x < gridSize - 1; x++) {
+                                                    for (let y = 0; y < gridSize - 1; y++) {
                                                         if (hasBox(x, y, tempLines2) && !boxes.some(box => box.userData.x === x && box.userData.y === y)) {
                                                             givesBox = true;
                                                             break;
@@ -1038,7 +1052,7 @@
                 function updateTurnIndicator() {
                     const turnElement = document.getElementById('turn');
                     if (!turnElement) {
-                        console.error('Turn element not found');
+                        console.warn('Turn element not found');
                         return;
                     }
                     turnElement.textContent = `${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)}'s Turn`;
@@ -1206,6 +1220,8 @@
                         if (turnElement) turnElement.textContent = "Red's Turn";
                         const gameTimerElement = document.getElementById('game-timer');
                         if (gameTimerElement) gameTimerElement.textContent = "Game Time: 0s";
+                        const gameTitle = document.getElementById('game-title');
+                        if (gameTitle) gameTitle.textContent = 'Grid Wars';
                         dots.length = 0;
                         dotWobbleOffsets.length = 0;
                         for (let x = 0; x < gridSize; x++) {
