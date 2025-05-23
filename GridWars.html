@@ -27,7 +27,7 @@
         }
         #exit-confirm { display: none; }
         #welcome button, #game-over button, #camera-toggle, #undo-button, #exit-button, #sound-toggle, #hint-toggle, #exit-yes, #exit-no { 
-            margin: 10px; padding: 8px 16px; font-size: 14px; cursor: pointer; 
+            margin: 10px; padding: 6px 12px; font-size: 12px; cursor: pointer; 
             background: #00ff00; color: #000; border: none; border-radius: 8px; 
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5); transition: transform 0.2s; 
         }
@@ -41,34 +41,34 @@
             display: none; 
         }
         #game-title { 
-            color: #00ff00; font-size: 22px; text-shadow: 0 0 5px #000; 
+            color: #00ff00; font-size: 18px; text-shadow: 0 0 5px #000; 
             margin: 0; 
         }
         #game-timer { 
-            color: #fff; font-size: 16px; text-shadow: 0 0 5px #000; 
+            color: #fff; font-size: 14px; text-shadow: 0 0 5px #000; 
             margin: 5px 0; 
         }
         #turn { 
-            color: #fff; font-size: 18px; text-shadow: 0 0 5px #000; 
+            color: #fff; font-size: 16px; text-shadow: 0 0 5px #000; 
             margin: 5px 0; 
         }
         #moves { 
-            color: #fff; font-size: 16px; text-shadow: 0 0 5px #000; 
+            color: #fff; font-size: 14px; text-shadow: 0 0 5px #000; 
             margin: 5px 0; 
         }
         #games-won { 
-            color: #fff; font-size: 16px; text-shadow: 0 0 5px #000; 
+            color: #fff; font-size: 14px; text-shadow: 0 0 5px #000; 
             margin: 5px 0; 
         }
         #red-stats { 
-            position: absolute; top: 80px; left: 10px; 
-            color: #ff0000; font-size: 16px; text-shadow: 0 0 5px #000; 
+            position: absolute; top: 120px; left: 10px; 
+            color: #ff0000; font-size: 14px; text-shadow: 0 0 5px #000; 
             background: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 5px; 
             border: 1px solid rgba(255, 0, 0, 0.3); 
         }
         #blue-stats { 
-            position: absolute; top: 80px; right: 10px; 
-            color: #0000ff; font-size: 16px; text-shadow: 0 0 5px #000; text-align: right; 
+            position: absolute; top: 120px; right: 10px; 
+            color: #0000ff; font-size: 14px; text-shadow: 0 0 5px #000; text-align: right; 
             background: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 5px; 
             border: 1px solid rgba(0, 0, 255, 0.3); 
         }
@@ -192,6 +192,7 @@
         const boxes = [];
         let selectedDot = null;
         let yellowOverlayDot = null;
+        let previewLine = null;
         let currentPlayer = 'red';
         let scores = { red: 0, blue: 0 }; // Boxes formed
         let redScore = 0; // Points for lines, boxes, fast moves
@@ -593,6 +594,12 @@
             document.getElementById('moves').textContent = `Moves: ${moveCount}`;
         }
 
+        // Handle mouse movement for preview line
+        window.addEventListener('mousemove', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        });
+
         // Handle mouse clicks
         window.addEventListener('click', (event) => {
             if (!gameActive || (gameMode === '1player' && currentPlayer === 'blue') || gameMode === 'ai') return;
@@ -613,6 +620,13 @@
                     yellowOverlayDot.position.copy(clickedDot.position);
                     yellowOverlayDot.position.z = 0.01;
                     scene.add(yellowOverlayDot);
+                    // Initialize preview line
+                    const path = new THREE.LineCurve3(clickedDot.position, clickedDot.position);
+                    const geometry = new THREE.TubeGeometry(path, 32, 0.1, 8, false);
+                    const tubeMaterial = currentPlayer === 'red' ? redTubeMaterial.clone() : blueTubeMaterial.clone();
+                    previewLine = new THREE.Mesh(geometry, tubeMaterial);
+                    previewLine.position.z = 0.05;
+                    scene.add(previewLine);
                     highlightValidDots(clickedDot);
                 } else {
                     if (isValidConnection(selectedDot, clickedDot)) {
@@ -642,6 +656,11 @@
                         showMessage('Invalid move! Choose an adjacent, unconnected dot.');
                         playSound(200, 0.2, 'square');
                     }
+                    // Clean up preview line and overlays
+                    if (previewLine) {
+                        scene.remove(previewLine);
+                        previewLine = null;
+                    }
                     if (yellowOverlayDot) {
                         scene.remove(yellowOverlayDot);
                         yellowOverlayDot = null;
@@ -649,6 +668,18 @@
                     resetDotColors();
                     selectedDot = null;
                 }
+            } else if (selectedDot) {
+                // Clicked outside dots, cancel selection
+                if (previewLine) {
+                    scene.remove(previewLine);
+                    previewLine = null;
+                }
+                if (yellowOverlayDot) {
+                    scene.remove(yellowOverlayDot);
+                    yellowOverlayDot = null;
+                }
+                resetDotColors();
+                selectedDot = null;
             }
         });
 
@@ -968,6 +999,10 @@
                 scene.remove(hintLine);
                 hintLine = null;
             }
+            if (previewLine) {
+                scene.remove(previewLine);
+                previewLine = null;
+            }
             scene.children = scene.children.filter(child => !(child.isMesh && child.geometry.type === 'SphereGeometry' && child.material === glowMaterial));
             lines.length = 0;
             boxes.length = 0;
@@ -1178,6 +1213,23 @@
             }
         }
 
+        // Update preview line to follow mouse
+        function updatePreviewLine() {
+            if (previewLine && selectedDot) {
+                raycaster.setFromCamera(mouse, camera);
+                const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+                const intersectPoint = new THREE.Vector3();
+                raycaster.ray.intersectPlane(plane, intersectPoint);
+                scene.remove(previewLine);
+                const path = new THREE.LineCurve3(selectedDot.position, intersectPoint);
+                const geometry = new THREE.TubeGeometry(path, 32, 0.1, 8, false);
+                const tubeMaterial = currentPlayer === 'red' ? redTubeMaterial.clone() : blueTubeMaterial.clone();
+                previewLine = new THREE.Mesh(geometry, tubeMaterial);
+                previewLine.position.z = 0.05;
+                scene.add(previewLine);
+            }
+        }
+
         // Camera position (initial)
         camera.position.z = 12;
 
@@ -1189,6 +1241,7 @@
                 updateCamera();
                 if (gameActive) {
                     updateWobble();
+                    updatePreviewLine();
                     // Check for idle state (10 seconds since last move)
                     const now = Date.now();
                     if (now - lastIdleReminder > 10000 && gameActive && (gameMode !== 'ai' && (gameMode !== '1player' || currentPlayer === 'red'))) {
