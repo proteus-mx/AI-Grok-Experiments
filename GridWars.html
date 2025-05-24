@@ -19,21 +19,42 @@
             display: flex; flex-direction: column; justify-content: center; align-items: center; 
             font-family: 'Orbitron', sans-serif;
         }
-        #welcome, #exit-confirm, #settings-view { background: rgba(0, 0, 0, 0.85); }
+        #welcome, #exit-confirm, #settings-view { background: rgba(0, 0, 0, 0.65); }
         #game-over { background: rgba(0, 0, 0, 0.7); }
         #game-over > div {
             background: rgba(0, 0, 0, 0.5); padding: 20px; border: 1px solid rgba(255, 255, 255, 0.3); 
             border-radius: 10px; width: 80%;
         }
         #exit-confirm, #settings-view { display: none; }
-        #welcome button, #game-over button, #camera-toggle, #exit-button, #sound-toggle, #hint-toggle, #exit-yes, #exit-no, #settings-button, #settings-close, #submit-score { 
-            margin: 10px; padding: 6px 12px; font-size: 12px; cursor: pointer; 
+        #welcome button, #game-over button, #exit-button, #sound-toggle, #exit-yes, #exit-no, #settings-button, #settings-close, #submit-score, #hint-toggle { 
+            margin: 10px; padding: 8px 16px; font-size: 16px; font-weight: bold; cursor: pointer; 
             background: #00ff00; color: #000; border: none; border-radius: 8px; 
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5); transition: transform 0.2s; touch-action: none; 
             font-family: 'Orbitron', sans-serif;
         }
-        #welcome button:hover, #game-over button:hover, #camera-toggle:hover, #exit-button:hover, #sound-toggle:hover, #hint-toggle:hover, #exit-yes:hover, #exit-no:hover, #settings-button:hover, #settings-close:hover, #submit-score:hover { 
-            background: #00cc00; transform: scale(1.05); 
+        #play-again {
+            animation: throb 1s ease-in-out infinite;
+        }
+        #one-player {
+            animation: throb 2s ease-in-out infinite;
+            animation-delay: 0s;
+        }
+        #two-player {
+            animation: throb 2s ease-in-out infinite;
+            animation-delay: 0.33s;
+        }
+        #ai-mode {
+            animation: throb 2s ease-in-out infinite;
+            animation-delay: 0.66s;
+        }
+        #settings-button {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+        }
+        #hint-toggle {
+            transform: translateX(-50%);
+            margin: 0;
         }
         #game-stats-container { 
             position: absolute; top: 10px; left: 50%; transform: translateX(-50%); 
@@ -41,11 +62,17 @@
             border: 1px solid rgba(255, 255, 255, 0.3); text-align: center; display: none; 
             font-family: 'Orbitron', sans-serif;
         }
-        #game-title { color: #00ff00; font-size: 18px; text-shadow: 0 0 5px #000; margin: 0; }
+        #game-title { 
+            font-size: 24px; font-weight: bold; text-shadow: 0 0 5px #000; margin: 0; 
+            animation: colorChange 3s infinite;
+        }
+        #welcome h1 {
+            font-size: 46px;
+            animation: colorChange 3s infinite;
+        }
         #game-timer { color: #fff; font-size: 14px; text-shadow: 0 0 5px #000; margin: 5px 0; }
         #turn { color: #fff; font-size: 16px; text-shadow: 0 0 5px #000; margin: 5px 0; }
         #moves { color: #fff; font-size: 14px; text-shadow: 0 0 5px #000; margin: 5px 0; }
-        #games-won { color: #fff; font-size: 14px; text-shadow: 0 0 5px #000; margin: 5px 0; }
         #red-stats { 
             position: absolute; top: 120px; left: 10px; color: #ff0000; font-size: 14px; 
             text-shadow: 0 0 5px #000; background: rgba(0, 0, 0, 0.5); padding: 10px; 
@@ -60,12 +87,11 @@
         }
         #red-stats.flash, #blue-stats.flash { animation: flash 0.5s ease-in-out 3; }
         #button-container { 
-            position: absolute; bottom: 60px; right: 10px; display: none; display: flex; gap: 10px; 
+            position: absolute; bottom: 60px; right: 10px; display: none; gap: 10px; 
         }
         #exit-button-container {
             position: absolute; bottom: 60px; left: 10px; display: none;
         }
-        #camera-toggle, #exit-button, #sound-toggle, #hint-toggle { margin: 0; }
         #message { 
             position: absolute; bottom: 100px; left: 50%; transform: translate(-50%, 0); 
             font-size: 28px; display: none; text-shadow: 0 0 5px #000; padding: 10px 20px; 
@@ -88,6 +114,16 @@
         .tie-winner { color: #ffffff; }
         .flash { animation: flash 0.5s ease-in-out 3; }
         @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        @keyframes throb {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        @keyframes colorChange {
+            0% { color: #ff0000; }
+            33% { color: #00ff00; }
+            66% { color: #0000ff; }
+            100% { color: #ff0000; }
+        }
         #game-over { display: none; }
         #win-prob-bar { 
             position: absolute; bottom: 0; left: 0; width: 100%; height: 20px; display: none; 
@@ -119,7 +155,11 @@
 <body>
     <div id="welcome">
         <h1>Grid Wars</h1>
-        <p>Connect adjacent dots to form glowing lines. Complete a 1x1 square to claim it with your color (Red or Blue). Players keep their turn if they form a box; otherwise, the turn switches. In 1 Player mode, a smart AI plays as Blue. In AI Mode, both players are automated.</p>
+        <p>Connect adjacent dots to form glowing lines. </p>
+        <p>Complete a 1x1 square to claim it with your color (Red or Blue). </p>
+        <p>Players keep their turn if they form a box; otherwise, the turn switches. </p>
+        <p>In 1 Player mode, a smart AI plays as Blue.</p>
+        <p>In AI Mode, both players are automated.</p>
         <button id="one-player">1 Player</button>
         <button id="two-player">2 Player</button>
         <button id="ai-mode">AI Mode</button>
@@ -129,6 +169,7 @@
         <h2>Settings</h2>
         <label id="ai-speed-label" for="ai-speed-slider">AI Speed: 1.5s</label>
         <input type="range" id="ai-speed-slider" min="0.1" max="3" step="0.1" value="1.5">
+        <button id="sound-toggle">Sound On</button>
         <button id="settings-close">Close</button>
     </div>
     <div id="game-over">
@@ -139,8 +180,7 @@
                 <span class="red-stat">Red: 0 (Score: 0, Time: 0s, Moves: 0)</span><br>
                 <span class="blue-stat">Blue: 0 (Score: 0, Time: 0s, Moves: 0)</span><br>
                 <span class="neutral-stat">Total Moves: 0</span><br>
-                <span class="neutral-stat">Game Time: 0s</span><br>
-                <span class="neutral-stat">Games Won - Red: 0, Blue: 0, Tie: 0</span>
+                <span class="neutral-stat">Game Time: 0s</span>
             </div>
             <button id="play-again">Play Again</button>
             <button id="submit-score">Submit Score</button>
@@ -156,7 +196,6 @@
         <div id="game-timer" style="display: none;">Game Time: 0s</div>
         <div id="turn" style="display: none;">Red's Turn</div>
         <div id="moves" style="display: none;">Moves: 0</div>
-        <div id="games-won" style="display: none;">Games Won: Red 0, Blue 0, Tie 0</div>
     </div>
     <div id="red-stats" style="display: none;">Red: 0<br>Score: 0<br>Time: 0s<br>Moves: 0</div>
     <div id="blue-stats" style="display: none;">Blue: 0<br>Score: 0<br>Time: 0s<br>Moves: 0</div>
@@ -167,8 +206,6 @@
         <span style="position: absolute;">Winning Player Probability</span>
     </div>
     <div id="button-container">
-        <button id="camera-toggle">Fly Camera</button>
-        <button id="sound-toggle">Sound On</button>
         <button id="hint-toggle">Hint Off</button>
     </div>
     <div id="exit-button-container">
@@ -449,15 +486,6 @@
                 ).join('');
                 pointsElement.classList.add('flash');
             }
-            function toggleCamera() {
-                isFlyCamera = !isFlyCamera;
-                const cameraToggle = document.getElementById('camera-toggle');
-                if (cameraToggle) cameraToggle.textContent = isFlyCamera ? 'Static Camera' : 'Fly Camera';
-                if (!isFlyCamera) {
-                    camera.position.set(0, 0, 12);
-                    camera.lookAt(0, 0, 0);
-                }
-            }
             function checkDotConnectivity(dot) {
                 return dots.some(otherDot => isValidConnection(dot, otherDot));
             }
@@ -529,8 +557,6 @@
                 gameActive = true;
                 isWelcomeScreen = false;
                 isFlyCamera = false;
-                const cameraToggle = document.getElementById('camera-toggle');
-                if (cameraToggle) cameraToggle.textContent = 'Fly Camera';
                 camera.position.set(0, 0, 12);
                 camera.lookAt(0, 0, 0);
                 const welcome = document.getElementById('welcome');
@@ -545,8 +571,6 @@
                 if (turn) turn.style.display = 'block';
                 const moves = document.getElementById('moves');
                 if (moves) moves.style.display = 'block';
-                const gamesWon = document.getElementById('games-won');
-                if (gamesWon) gamesWon.style.display = 'block';
                 const redStats = document.getElementById('red-stats');
                 if (redStats) redStats.style.display = 'block';
                 const blueStats = document.getElementById('blue-stats');
@@ -566,8 +590,6 @@
                     const hintToggle = document.getElementById('hint-toggle');
                     if (hintToggle) hintToggle.style.display = 'block';
                 }
-                const soundToggle = document.getElementById('sound-toggle');
-                if (soundToggle) soundToggle.style.display = 'block';
                 const gameTitle = document.getElementById('game-title');
                 if (gameTitle) gameTitle.textContent = 'Grid Wars';
                 startTime = Date.now();
@@ -638,7 +660,6 @@
                 const exitConfirm = document.getElementById('exit-confirm');
                 if (exitConfirm) exitConfirm.style.display = 'none';
             });
-            addButtonListeners('camera-toggle', toggleCamera);
             addButtonListeners('exit-button', () => resetGame(null, true, true));
             addButtonListeners('sound-toggle', toggleSound);
             addButtonListeners('hint-toggle', toggleHint);
@@ -987,8 +1008,6 @@
                 if (redStats) redStats.innerHTML = `Red: ${scores.red}<br>Score: ${redScore}<br>Time: ${redTime}s<br>Moves: ${redMoves}`;
                 const blueStats = document.getElementById('blue-stats');
                 if (blueStats) blueStats.innerHTML = `Blue: ${scores.blue}<br>Score: ${blueScore}<br>Time: ${blueTime}s<br>Moves: ${blueMoves}`;
-                const gamesWon = document.getElementById('games-won');
-                if (gamesWon) gamesWon.textContent = `Games Won: Red ${gameStats.red}, Blue ${gameStats.blue}, Tie ${gameStats.tie}`;
                 const totalGames = gameStats.red + gameStats.blue + gameStats.tie;
                 const redPercent = totalGames > 0 ? (gameStats.red / totalGames * 100).toFixed(1) : 0;
                 const bluePercent = totalGames > 0 ? (gameStats.blue / totalGames * 100).toFixed(1) : 0;
@@ -1034,8 +1053,7 @@
                         <span class="red-stat">Red: ${scores.red} (Score: ${redScore}, Time: ${redTime}s, Moves: ${redMoves})</span><br>
                         <span class="blue-stat">Blue: ${scores.blue} (Score: ${blueScore}, Time: ${blueTime}s, Moves: ${blueMoves})</span><br>
                         <span class="neutral-stat">Total Moves: ${moveCount}</span><br>
-                        <span class="neutral-stat">Game Time: ${elapsed}s</span><br>
-                        <span class="neutral-stat">Games Won - Red: ${gameStats.red}, Blue: ${gameStats.blue}, Tie: ${gameStats.tie}</span>`;
+                        <span class="neutral-stat">Game Time: ${elapsed}s</span>`;
                 }
                 const gameOver = document.getElementById('game-over');
                 if (gameOver) gameOver.style.display = 'flex';
@@ -1061,8 +1079,6 @@
                 if (turn) turn.style.display = 'none';
                 const moves = document.getElementById('moves');
                 if (moves) moves.style.display = 'none';
-                const gamesWon = document.getElementById('games-won');
-                if (gamesWon) gamesWon.style.display = 'none';
                 const redStats = document.getElementById('red-stats');
                 if (redStats) redStats.style.display = 'none';
                 const blueStats = document.getElementById('blue-stats');
@@ -1115,8 +1131,6 @@
                 soundEnabled = true;
                 hintEnabled = false;
                 bestHintMove = null;
-                const cameraToggle = document.getElementById('camera-toggle');
-                if (cameraToggle) cameraToggle.textContent = 'Fly Camera';
                 const soundToggle = document.getElementById('sound-toggle');
                 if (soundToggle) soundToggle.textContent = 'Sound On';
                 const hintToggle = document.getElementById('hint-toggle');
