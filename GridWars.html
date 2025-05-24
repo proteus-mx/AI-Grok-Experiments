@@ -52,10 +52,6 @@
             bottom: 20px;
             right: 20px;
         }
-        #hint-toggle {
-            transform: translateX(-50%);
-            margin: 0;
-        }
         #game-stats-container { 
             position: absolute; top: 10px; left: 50%; transform: translateX(-50%); 
             background: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 5px; 
@@ -74,23 +70,23 @@
         #turn { color: #fff; font-size: 16px; text-shadow: 0 0 5px #000; margin: 5px 0; }
         #moves { color: #fff; font-size: 14px; text-shadow: 0 0 5px #000; margin: 5px 0; }
         #red-stats { 
-            position: absolute; top: 120px; left: 10px; color: #ff0000; font-size: 14px; 
+            position: absolute; top: 80px; left: 10px; color: #ff0000; font-size: 14px; 
             text-shadow: 0 0 5px #000; background: rgba(0, 0, 0, 0.5); padding: 10px; 
             border-radius: 5px; border: 1px solid rgba(255, 0, 0, 0.3); 
             font-family: 'Orbitron', sans-serif;
         }
         #blue-stats { 
-            position: absolute; top: 120px; right: 10px; color: #0000ff; font-size: 14px; 
+            position: absolute; top: 80px; right: 10px; color: #0000ff; font-size: 14px; 
             text-shadow: 0 0 5px #000; text-align: right; background: rgba(0, 0, 0, 0.5); 
             padding: 10px; border-radius: 5px; border: 1px solid rgba(0, 0, 255, 0.3); 
             font-family: 'Orbitron', sans-serif;
         }
         #red-stats.flash, #blue-stats.flash { animation: flash 0.5s ease-in-out 3; }
         #button-container { 
-            position: absolute; bottom: 60px; right: 10px; display: none; gap: 10px; 
+            position: absolute; bottom: 80px; right: 10px; display: none; gap: 10px; 
         }
         #exit-button-container {
-            position: absolute; bottom: 60px; left: 10px; display: none;
+            position: absolute; bottom: 80px; left: 10px; display: none;
         }
         #message { 
             position: absolute; bottom: 100px; left: 50%; transform: translate(-50%, 0); 
@@ -125,8 +121,13 @@
             100% { color: #ff0000; }
         }
         #game-over { display: none; }
+        #win-prob-text {
+            position: absolute; bottom: 80px; left: 0; width: 100%; color: #fff;
+            font-size: 10px; text-align: center; text-shadow: 0 0 2px #000;
+            font-family: 'Orbitron', sans-serif;
+        }
         #win-prob-bar { 
-            position: absolute; bottom: 0; left: 0; width: 100%; height: 20px; display: none; 
+            position: absolute; bottom: 60px; left: 0; width: 100%; height: 20px; display: none; 
             background: rgba(51, 51, 51, 0.5); font-size: 10px; color: #fff; 
             z-index: 10; display: flex; justify-content: center; align-items: center; 
             text-shadow: 0 0 2px #000; font-family: 'Orbitron', sans-serif;
@@ -134,6 +135,11 @@
         #win-prob-red { background: rgba(255, 0, 0, 0.5); height: 100%; float: left; }
         #win-prob-blue { background: rgba(0, 0, 255, 0.5); height: 100%; float: left; }
         #win-prob-tie { background: rgba(153, 153, 153, 0.5); height: 100%; float: left; }
+        #progress-text {
+            position: absolute; bottom: 40px; left: 0; width: 100%; color: #fff;
+            font-size: 10px; text-align: center; text-shadow: 0 0 2px #000;
+            font-family: 'Orbitron', sans-serif;
+        }
         #progress-bar { 
             position: absolute; bottom: 20px; left: 0; width: 100%; height: 20px; display: none; 
             background: transparent; font-size: 10px; color: #fff; text-align: center; 
@@ -155,14 +161,14 @@
 <body>
     <div id="welcome">
         <h1>Grid Wars</h1>
+        <button id="one-player">1 Player</button>
+        <button id="two-player">2 Player</button>
+        <button id="ai-mode">AI Mode</button>
         <p>Connect adjacent dots to form glowing lines. </p>
         <p>Complete a 1x1 square to claim it with your color (Red or Blue). </p>
         <p>Players keep their turn if they form a box; otherwise, the turn switches. </p>
         <p>In 1 Player mode, a smart AI plays as Blue.</p>
         <p>In AI Mode, both players are automated.</p>
-        <button id="one-player">1 Player</button>
-        <button id="two-player">2 Player</button>
-        <button id="ai-mode">AI Mode</button>
         <button id="settings-button">Settings</button>
     </div>
     <div id="settings-view">
@@ -170,7 +176,7 @@
         <label id="ai-speed-label" for="ai-speed-slider">AI Speed: 1.5s</label>
         <input type="range" id="ai-speed-slider" min="0.1" max="3" step="0.1" value="1.5">
         <button id="sound-toggle">Sound On</button>
-        <button id="settings-close">Close</button>
+        <button id="settings-close">Save</button>
     </div>
     <div id="game-over">
         <div>
@@ -182,8 +188,8 @@
                 <span class="neutral-stat">Total Moves: 0</span><br>
                 <span class="neutral-stat">Game Time: 0s</span>
             </div>
-            <button id="play-again">Play Again</button>
             <button id="submit-score">Submit Score</button>
+            <button id="play-again">Play Again</button>
         </div>
     </div>
     <div id="exit-confirm" style="display: none;">
@@ -199,11 +205,11 @@
     </div>
     <div id="red-stats" style="display: none;">Red: 0<br>Score: 0<br>Time: 0s<br>Moves: 0</div>
     <div id="blue-stats" style="display: none;">Blue: 0<br>Score: 0<br>Time: 0s<br>Moves: 0</div>
+    <div id="win-prob-text" style="display: none;">Winning Player Probability</div>
     <div id="win-prob-bar" style="display: none;">
         <div id="win-prob-red" style="width: 0%;"></div>
         <div id="win-prob-blue" style="width: 0%;"></div>
         <div id="win-prob-tie" style="width: 0%;"></div>
-        <span style="position: absolute;">Winning Player Probability</span>
     </div>
     <div id="button-container">
         <button id="hint-toggle">Hint Off</button>
@@ -213,11 +219,11 @@
     </div>
     <div id="message"></div>
     <div id="points-message"></div>
+    <div id="progress-text" style="display: none;">Games Won</div>
     <div id="progress-bar" style="display: none;">
         <div id="progress-red" style="width: 0%;"></div>
         <div id="progress-blue" style="width: 0%;"></div>
         <div id="progress-tie" style="width: 0%;"></div>
-        <span>Games Won</span>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
@@ -575,8 +581,12 @@
                 if (redStats) redStats.style.display = 'block';
                 const blueStats = document.getElementById('blue-stats');
                 if (blueStats) blueStats.style.display = 'block';
+                const winProbText = document.getElementById('win-prob-text');
+                if (winProbText) winProbText.style.display = 'block';
                 const winProbBar = document.getElementById('win-prob-bar');
                 if (winProbBar) winProbBar.style.display = 'block';
+                const progressText = document.getElementById('progress-text');
+                if (progressText) progressText.style.display = 'block';
                 const progressBar = document.getElementById('progress-bar');
                 if (progressBar) progressBar.style.display = 'block';
                 const buttonContainer = document.getElementById('button-container');
@@ -1083,8 +1093,12 @@
                 if (redStats) redStats.style.display = 'none';
                 const blueStats = document.getElementById('blue-stats');
                 if (blueStats) blueStats.style.display = 'none';
+                const winProbText = document.getElementById('win-prob-text');
+                if (winProbText) winProbText.style.display = 'none';
                 const winProbBar = document.getElementById('win-prob-bar');
                 if (winProbBar) winProbBar.style.display = 'none';
+                const progressText = document.getElementById('progress-text');
+                if (progressText) progressText.style.display = 'none';
                 const progressBar = document.getElementById('progress-bar');
                 if (progressBar) progressBar.style.display = 'none';
                 const buttonContainer = document.getElementById('button-container');
