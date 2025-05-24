@@ -729,7 +729,17 @@
                 if (settingsView) settingsView.style.display = 'none';
                 if (welcome) welcome.style.display = 'flex';
             });
+            
+            function submitScoreToGameCenter(score, leaderboardId) {
+                window.webkit?.messageHandlers.wordAIlyHandler.postMessage({
+                    action: "submitScore",
+                    score: score,
+                    leaderboardId: leaderboardId
+                });
+            }  
+            
             addButtonListeners('submit-score', () => {
+                submitScoreToGameCenter(redScore, "gridWarsimLeaderboard1");
                 showMessage('Submit score to Game Centre');
             });
             const aiSpeedSlider = document.getElementById('ai-speed-slider');
