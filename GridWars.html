@@ -13,26 +13,26 @@
             background: #000; 
         }
         canvas { display: block; }
-        #welcome, #game-over, #exit-confirm { 
+        #welcome, #game-over, #exit-confirm, #settings-view { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
             color: #fff; text-align: center; 
             display: flex; flex-direction: column; justify-content: center; align-items: center; 
             font-family: 'Orbitron', sans-serif;
         }
-        #welcome, #exit-confirm { background: rgba(0, 0, 0, 0.85); }
+        #welcome, #exit-confirm, #settings-view { background: rgba(0, 0, 0, 0.85); }
         #game-over { background: rgba(0, 0, 0, 0.7); }
         #game-over > div {
             background: rgba(0, 0, 0, 0.5); padding: 20px; border: 1px solid rgba(255, 255, 255, 0.3); 
             border-radius: 10px; width: 80%;
         }
-        #exit-confirm { display: none; }
-        #welcome button, #game-over button, #camera-toggle, #exit-button, #sound-toggle, #hint-toggle, #exit-yes, #exit-no { 
+        #exit-confirm, #settings-view { display: none; }
+        #welcome button, #game-over button, #camera-toggle, #exit-button, #sound-toggle, #hint-toggle, #exit-yes, #exit-no, #settings-button, #settings-close, #submit-score { 
             margin: 10px; padding: 6px 12px; font-size: 12px; cursor: pointer; 
             background: #00ff00; color: #000; border: none; border-radius: 8px; 
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5); transition: transform 0.2s; touch-action: none; 
             font-family: 'Orbitron', sans-serif;
         }
-        #welcome button:hover, #game-over button:hover, #camera-toggle:hover, #exit-button:hover, #sound-toggle:hover, #hint-toggle:hover, #exit-yes:hover, #exit-no:hover { 
+        #welcome button:hover, #game-over button:hover, #camera-toggle:hover, #exit-button:hover, #sound-toggle:hover, #hint-toggle:hover, #exit-yes:hover, #exit-no:hover, #settings-button:hover, #settings-close:hover, #submit-score:hover { 
             background: #00cc00; transform: scale(1.05); 
         }
         #game-stats-container { 
@@ -61,6 +61,9 @@
         #red-stats.flash, #blue-stats.flash { animation: flash 0.5s ease-in-out 3; }
         #button-container { 
             position: absolute; bottom: 60px; right: 10px; display: none; display: flex; gap: 10px; 
+        }
+        #exit-button-container {
+            position: absolute; bottom: 60px; left: 10px; display: none;
         }
         #camera-toggle, #exit-button, #sound-toggle, #hint-toggle { margin: 0; }
         #message { 
@@ -97,7 +100,7 @@
         #win-prob-tie { background: rgba(153, 153, 153, 0.5); height: 100%; float: left; }
         #progress-bar { 
             position: absolute; bottom: 20px; left: 0; width: 100%; height: 20px; display: none; 
-            background: rgba(51, 51, 51, 0.5); font-size: 10px; color: #fff; text-align: center; 
+            background: transparent; font-size: 10px; color: #fff; text-align: center; 
             display: flex; justify-content: center; align-items: center; text-shadow: 0 0 2px #000; 
             font-family: 'Orbitron', sans-serif;
         }
@@ -108,6 +111,9 @@
         .blue-stat { color: #0000ff; }
         .neutral-stat { color: #ffffff; }
         #winner-text { font-size: 36px; }
+        #settings-view h2 { font-size: 24px; margin-bottom: 20px; }
+        #ai-speed-slider { width: 200px; margin: 10px 0; touch-action: none; }
+        #ai-speed-label { font-size: 14px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -117,6 +123,13 @@
         <button id="one-player">1 Player</button>
         <button id="two-player">2 Player</button>
         <button id="ai-mode">AI Mode</button>
+        <button id="settings-button">Settings</button>
+    </div>
+    <div id="settings-view">
+        <h2>Settings</h2>
+        <label id="ai-speed-label" for="ai-speed-slider">AI Speed: 1.5s</label>
+        <input type="range" id="ai-speed-slider" min="0.1" max="3" step="0.1" value="1.5">
+        <button id="settings-close">Close</button>
     </div>
     <div id="game-over">
         <div>
@@ -130,6 +143,7 @@
                 <span class="neutral-stat">Games Won - Red: 0, Blue: 0, Tie: 0</span>
             </div>
             <button id="play-again">Play Again</button>
+            <button id="submit-score">Submit Score</button>
         </div>
     </div>
     <div id="exit-confirm" style="display: none;">
@@ -150,13 +164,15 @@
         <div id="win-prob-red" style="width: 0%;"></div>
         <div id="win-prob-blue" style="width: 0%;"></div>
         <div id="win-prob-tie" style="width: 0%;"></div>
-        <span>Winning Player Probability</span>
+        <span style="position: absolute;">Winning Player Probability</span>
     </div>
     <div id="button-container">
         <button id="camera-toggle">Fly Camera</button>
-        <button id="exit-button">Exit Game</button>
         <button id="sound-toggle">Sound On</button>
         <button id="hint-toggle">Hint Off</button>
+    </div>
+    <div id="exit-button-container">
+        <button id="exit-button">Exit Game</button>
     </div>
     <div id="message"></div>
     <div id="points-message"></div>
@@ -216,6 +232,7 @@
             let pointsMessages = [];
             let lastIdleReminder = 0;
             let wobbleTime = 0;
+            let aiSpeed = 1500;
             const dotWobbleOffsets = [];
             const starGeometry = new THREE.BufferGeometry();
             const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1, transparent: true });
@@ -254,7 +271,7 @@
             const blueTubeMaterial = new THREE.MeshPhongMaterial({ color: 0x0000ff, shininess: 100, specular: 0x555555, transparent: true });
             const hintTubeMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00, shininess: 100, specular: 0x555555, transparent: true });
             const raycaster = new THREE.Raycaster();
-            raycaster.params.Points.threshold = 0.25;
+            raycaster.params.Points.threshold = 0.5;
             const mouse = new THREE.Vector2();
             function disposeObject(obj) {
                 if (!obj) return;
@@ -382,7 +399,7 @@
                 messageElement.textContent = text;
                 messageElement.style.display = 'block';
                 messageElement.classList.remove('neutral-message', 'positive-message', 'red-message', 'blue-message');
-                if (text.includes('Invalid move')) {
+                if (text.includes('Choose an adjacent') || text.includes('Submit score')) {
                     messageElement.classList.add('neutral-message');
                 } else if (isReminder) {
                     messageElement.classList.add(currentPlayer === 'red' ? 'red-message' : 'blue-message');
@@ -518,6 +535,8 @@
                 camera.lookAt(0, 0, 0);
                 const welcome = document.getElementById('welcome');
                 if (welcome) welcome.style.display = 'none';
+                const settingsView = document.getElementById('settings-view');
+                if (settingsView) settingsView.style.display = 'none';
                 const statsContainer = document.getElementById('game-stats-container');
                 if (statsContainer) statsContainer.style.display = 'block';
                 const timer = document.getElementById('game-timer');
@@ -538,6 +557,8 @@
                 if (progressBar) progressBar.style.display = 'block';
                 const buttonContainer = document.getElementById('button-container');
                 if (buttonContainer) buttonContainer.style.display = 'flex';
+                const exitButtonContainer = document.getElementById('exit-button-container');
+                if (exitButtonContainer) exitButtonContainer.style.display = 'block';
                 if (mode === 'ai') {
                     const hintToggle = document.getElementById('hint-toggle');
                     if (hintToggle) hintToggle.style.display = 'none';
@@ -559,7 +580,7 @@
                 blueMoves = 0;
                 timerInterval = setInterval(updateTimer, 1000);
                 if (mode === 'ai') {
-                    aiMove();
+                    setTimeout(aiMove, aiSpeed);
                 } else if (hintEnabled) {
                     highlightBestMove();
                 }
@@ -621,6 +642,49 @@
             addButtonListeners('exit-button', () => resetGame(null, true, true));
             addButtonListeners('sound-toggle', toggleSound);
             addButtonListeners('hint-toggle', toggleHint);
+            addButtonListeners('settings-button', () => {
+                const welcome = document.getElementById('welcome');
+                const settingsView = document.getElementById('settings-view');
+                if (welcome) welcome.style.display = 'none';
+                if (settingsView) settingsView.style.display = 'flex';
+            });
+            addButtonListeners('settings-close', () => {
+                const welcome = document.getElementById('welcome');
+                const settingsView = document.getElementById('settings-view');
+                if (settingsView) settingsView.style.display = 'none';
+                if (welcome) welcome.style.display = 'flex';
+            });
+            addButtonListeners('submit-score', () => {
+                showMessage('Submit score to Game Centre');
+            });
+            const aiSpeedSlider = document.getElementById('ai-speed-slider');
+            const aiSpeedLabel = document.getElementById('ai-speed-label');
+            if (aiSpeedSlider && aiSpeedLabel) {
+                const updateSliderValue = (value) => {
+                    aiSpeed = parseFloat(value) * 1000;
+                    aiSpeedSlider.value = value;
+                    aiSpeedLabel.textContent = `AI Speed: ${parseFloat(value).toFixed(1)}s`;
+                };
+                aiSpeedSlider.addEventListener('input', () => {
+                    updateSliderValue(aiSpeedSlider.value);
+                });
+                aiSpeedSlider.addEventListener('touchstart', (event) => {
+                    event.preventDefault();
+                }, { passive: false });
+                aiSpeedSlider.addEventListener('touchmove', (event) => {
+                    event.preventDefault();
+                    const rect = aiSpeedSlider.getBoundingClientRect();
+                    const touchX = event.touches[0].clientX;
+                    const min = parseFloat(aiSpeedSlider.min);
+                    const max = parseFloat(aiSpeedSlider.max);
+                    const step = parseFloat(aiSpeedSlider.step);
+                    const relativeX = (touchX - rect.left) / rect.width;
+                    let value = min + relativeX * (max - min);
+                    value = Math.round(value / step) * step;
+                    value = Math.max(min, Math.min(max, value));
+                    updateSliderValue(value);
+                }, { passive: false });
+            }
             function handleDotSelection(event, isTouch = false, isTouchRelease = false) {
                 if (!gameActive || (gameMode === '1player' && currentPlayer === 'blue') || gameMode === 'ai') return;
                 updateMousePosition(event);
@@ -660,7 +724,7 @@
                             currentPlayer = currentPlayer === 'red' ? 'blue' : 'red';
                             updateTurnIndicator();
                             if (gameMode === '1player' && currentPlayer === 'blue') {
-                                setTimeout(aiMove, 500);
+                                setTimeout(aiMove, aiSpeed);
                             } else if (hintEnabled) {
                                 highlightBestMove();
                             }
@@ -668,7 +732,7 @@
                             highlightBestMove();
                         }
                     } else {
-                        showMessage('Invalid move! Choose an adjacent, unconnected dot.');
+                        showMessage('Choose an adjacent, unconnected dot.');
                         playSound(200, 0.2, 'square');
                     }
                     if (previewLine) {
@@ -722,9 +786,11 @@
                 dots.forEach(dot => {
                     if (isValidConnection(selected, dot)) {
                         dot.material = validDotMaterial;
+                        dot.scale.set(1.2, 1.2, 1.2);
                         dot.userData.isValid = true;
                     } else {
                         dot.material = checkDotConnectivity(dot) ? dotMaterial : dimDotMaterial;
+                        dot.scale.set(1, 1, 1);
                         dot.userData.isValid = false;
                     }
                 });
@@ -868,7 +934,7 @@
                         updateTurnIndicator();
                     }
                     if (gameMode === 'ai' || (gameMode === '1player' && currentPlayer === 'blue')) {
-                        setTimeout(aiMove, gameMode === 'ai' ? 50 : 500);
+                        setTimeout(aiMove, aiSpeed);
                     }
                 }
             }
@@ -1007,6 +1073,8 @@
                 if (progressBar) progressBar.style.display = 'none';
                 const buttonContainer = document.getElementById('button-container');
                 if (buttonContainer) buttonContainer.style.display = 'none';
+                const exitButtonContainer = document.getElementById('exit-button-container');
+                if (exitButtonContainer) exitButtonContainer.style.display = 'none';
                 const message = document.getElementById('message');
                 if (message) message.style.display = 'none';
                 const pointsMessage = document.getElementById('points-message');
@@ -1157,7 +1225,7 @@
                 const flashOpacity = 0.3 + 0.7 * (Math.sin(throbTime * 2) + 1) / 2;
                 dots.forEach(dot => {
                     if (dot.userData.isValid) {
-                        dot.scale.set(scale, scale, scale);
+                        dot.scale.set(1.2 * scale, 1.2 * scale, 1.2 * scale);
                         dot.material.opacity = flashOpacity;
                         dot.material.transparent = true;
                     } else {
