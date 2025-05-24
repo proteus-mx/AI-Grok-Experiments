@@ -65,6 +65,7 @@
         #welcome h1 {
             font-size: 46px;
             animation: colorChange 3s infinite;
+            margin: 0
         }
         #game-timer { color: #fff; font-size: 14px; text-shadow: 0 0 5px #000; margin: 5px 0; }
         #turn { color: #fff; font-size: 16px; text-shadow: 0 0 5px #000; margin: 5px 0; }
@@ -157,18 +158,61 @@
         #ai-speed-slider { width: 200px; margin: 10px 0; touch-action: none; }
         #ai-speed-label { font-size: 14px; margin-bottom: 10px; }
     </style>
+
 </head>
+
+
+
 <body>
+
+    <script>
+        function print(text, speed = 50, callback = null, className = '') {
+            let i = 0;
+            terminal.innerHTML += className ? `<br><span class="${className}">` : '<br>';
+            const interval = setInterval(() => {
+                if (i < text.length) {
+                    terminal.innerHTML += text[i] ;
+                    terminal.scrollTop = terminal.scrollHeight;
+                    i++;
+                } else {
+                    clearInterval(interval);
+                    terminal.innerHTML += className ? '</span><br>' : '<br>';
+                    if (callback) callback();
+                }
+            }, speed);
+        }
+    </script>
+
     <div id="welcome">
         <h1>Grid Wars</h1>
+        <h3>Every line matters!</h3>
         <button id="one-player">1 Player</button>
         <button id="two-player">2 Player</button>
         <button id="ai-mode">AI Mode</button>
-        <p>Connect adjacent dots to form glowing lines. </p>
-        <p>Complete a 1x1 square to claim it with your color (Red or Blue). </p>
-        <p>Players keep their turn if they form a box; otherwise, the turn switches. </p>
-        <p>In 1 Player mode, a smart AI plays as Blue.</p>
-        <p>In AI Mode, both players are automated.</p>
+        <h3>Instructions</h3>
+        <div id="terminal" style="font-size:x-small;"></div>
+        <script>       
+            print("Connect adjacent dots to form glowing lines.", 25, () => {
+                print("Complete a square to claim it with your color.", 25, () => {
+                    print("Red and Blue players take turns.", 25, () => {
+                        print("In AI Mode, both players are automated.", 25, () => {
+                            print("In 1 Player mode, a smart AI plays as Blue.", 25, () => {
+                                print("In 2 Player mode, you play against another human.", 25, () => {
+                                    print("Click on a dot to select it, then click an adjacent dot to connect them.", 25, () => {
+                                        print("You can only connect dots that are adjacent and not already connected.", 25, () => {
+                                            print("Complete a square to score points and take another turn.", 25, () => {
+                                                print("The player with the most squares wins!", 25);
+                                            });
+                                        });
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            }, 'terminal-text');
+        </script>
+
         <button id="settings-button">Settings</button>
     </div>
     <div id="settings-view">
