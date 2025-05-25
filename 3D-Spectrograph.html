@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Audio Spectrograph</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #title { 
+            position: absolute; top: 10px; left: 50%; transform: translateX(-50%); 
+            color: white; font-family: 'Orbitron', sans-serif; font-size: 24px; 
+            text-align: center; background: rgba(0, 0, 0, 0.7); padding: 5px 10px; 
+            transition: color 0.5s ease; 
+        }
+        #description { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); color: white; font-family: 'Orbitron', sans-serif; font-size: 14px; text-align: center; background: rgba(0, 0, 0, 0.7); padding: 5px 10px; width: 300px; }
+        #stats { position: absolute; top: 200px; left: 10px; color: white; font-family: 'Orbitron', sans-serif; font-size: 14px; background: rgba(0, 0, 0, 0.7); padding: 10px; border-radius: 8px; width: fit-content; }
+        #waveformCanvas { position: absolute; top: 200px; right: 10px; width: 230px; height: 180px; background: rgba(0, 0, 0, 0.7); border-radius: 8px; }
+        #toggleSoundButton, #toggleCameraButton, #birdsEyeButton, #sideViewButton { 
+            position: absolute; left: 10px; padding: 8px; font-size: 14px; width: 140px; cursor: pointer; 
+            border-radius: 8px; border: none; background: #333; color: white; text-align: center; 
+            font-family: 'Orbitron', sans-serif; 
+        }
+        #toggleSoundButton { bottom: 110px; }
+        #toggleCameraButton { bottom: 180px; }
+        #birdsEyeButton { bottom: 250px; }
+        #sideViewButton { bottom: 320px; }
+        #gridSizeSlider { position: absolute; bottom: 70px; left: 10px; width: 150px; }
+        #sphereSizeSlider { position: absolute; bottom: 40px; left: 10px; width: 150px; }
+        #colorSlider { position: absolute; bottom: 10px; left: 10px; width: 150px; }
+        #gridSizeLabel { position: absolute; bottom: 90px; left: 10px; color: white; font-family: 'Orbitron', sans-serif; font-size: 14px; }
+        #sphereSizeLabel { position: absolute; bottom: 60px; left: 10px; color: white; font-family: 'Orbitron', sans-serif; font-size: 14px; }
+        #colorLabel { position: absolute; bottom: 30px; left: 10px; color: white; font-family: 'Orbitron', sans-serif; font-size: 14px; }
+        #centralObjectBox { position: absolute; bottom: 10px; right: 10px; width: 50vw; height: 50vw; background: transparent; border-radius: 8px; }
+        #gradientCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
+    </style>
+</head>
+<body>
+    <canvas id="gradientCanvas"></canvas>
+    <div id="title">3D Audio Spectrograph</div>
+    <div id="description">Visualize sound as a 3D grid of spheres and a central 3D object, with height and color reflecting frequency and amplitude. Toggle between random sounds or microphone input, adjust grid/sphere size, and switch camera views.</div>
+    <div id="stats"></div>
+    <canvas id="waveformCanvas"></canvas>
+    <div id="centralObjectBox"></div>
+    <button id="toggleSoundButton">Switch to Microphone</button>
+    <button id="toggleCameraButton">Toggle Flying Camera</button>
+    <button id="birdsEyeButton">Birds Eye View</button>
+    <button id="sideViewButton">Side View</button>
+    <div id="gridSizeLabel">Grid Size</div>
+    <input type="range" id="gridSizeSlider" min="16" max="64" step="8" value="32">
+    <div id="sphereSizeLabel">Sphere Size</div>
+    <input type="range" id="sphereSizeSlider" min="0.2" max="1.0" step="0.1" value="0.8">
+    <div id="colorLabel">Sphere Resting Color</div>
+    <input type="range" id="colorSlider" min="0" max="1" step="0.01" value="0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Gradient background
+        const gradientCanvas = document.getElementById('gradientCanvas');
+        gradientCanvas.width = window.innerWidth;
+        gradientCanvas.height = window.innerHeight;
+        const ctx = gradientCanvas.getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, gradientCanvas.height);
+        gradient.addColorStop(0, '#1a1a1a');
+        gradient.addColorStop(1, '#000000');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, gradientCanvas.width, gradientCanvas.height);
+
+        // Waveform canvas
+        const waveformCanvas = document.getElementById('waveformCanvas');
+        waveformCanvas.width = 230;
+        waveformCanvas.height = 180;
+        const waveCtx = waveformCanvas.getContext('2d');
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Secondary scene for central object
+        const centralScene = new THREE.Scene();
+        const centralCamera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+        centralCamera.position.set(0, 0, 150);
+        centralCamera.lookAt(0, 0, 0);
+        const centralCanvas = document.createElement('canvas');
+        const boxWidth = window.innerWidth * 0.5;
+        centralCanvas.width = boxWidth;
+        centralCanvas.height = boxWidth;
+        document.getElementById('centralObjectBox').appendChild(centralCanvas);
+        const centralRenderer = new THREE.WebGLRenderer({ canvas: centralCanvas, alpha: true });
+        centralRenderer.setSize(boxWidth, boxWidth);
+
+        // Central object lighting
+        const centralLight = new THREE.PointLight(0xffffff, 1.5, 3000);
+        centralLight.position.set(90, 90, 90);
+        centralScene.add(centralLight);
+        centralScene.add(new THREE.AmbientLight(0x404040));
+
+        // Camera setup
+        let cameraMode = 'static';
+        let cameraAngle = 0;
+        camera.position.set(40, 40, 40);
+        camera.lookAt(0, 0, 0);
+
+        // Lighting
+        const light = new THREE.PointLight(0xffffff, 1.5, 100);
+        light.position.set(20, 20, 20);
+        scene.add(light);
+        scene.add(new THREE.AmbientLight(0x404040));
+
+        // Grid setup
+        let gridSize = 32;
+        let spacing = 1.2;
+        let sphereSize = 0.8;
+        let restingColor = 0;
+        let spheres = [];
+        let targetHeights = [];
+        let geometry = new THREE.SphereGeometry(sphereSize, 16, 16);
+        // Central object setup
+        let centralObject = null;
+        let centralWireframe = null;
+        let currentGeometryType = 'torusKnot';
+        const geometries = {
+            torusKnot: new THREE.TorusKnotGeometry(30, 12, 64, 16),
+            dodecahedron: new THREE.DodecahedronGeometry(42),
+            icosahedron: new THREE.IcosahedronGeometry(42)
+        };
+        const centralMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x00ff00, 
+            specular: 0x555555, 
+            shininess: 30, 
+            transparent: true, 
+            opacity: 0.6 
+        });
+        const wireframeMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xffffff, // Initial color, updated dynamically
+            wireframe: true 
+        });
+        function updateCentralObjectGeometry(type) {
+            if (centralObject) centralScene.remove(centralObject);
+            if (centralWireframe) centralScene.remove(centralWireframe);
+            centralObject = new THREE.Mesh(geometries[type], centralMaterial);
+            centralWireframe = new THREE.Mesh(geometries[type], wireframeMaterial);
+            centralScene.add(centralObject);
+            centralScene.add(centralWireframe);
+            currentGeometryType = type;
+        }
+        updateCentralObjectGeometry('torusKnot');
+
+        function createGrid(newSize, newSphereSize, newRestingColor) {
+            spheres.forEach(row => row.forEach(sphere => scene.remove(sphere)));
+            spheres = [];
+            targetHeights = [];
+            gridSize = newSize;
+            sphereSize = newSphereSize;
+            restingColor = newRestingColor;
+            spacing = 80 / gridSize;
+            geometry = new THREE.SphereGeometry(sphereSize, 16, 16);
+            for (let x = 0; x < gridSize; x++) {
+                spheres[x] = [];
+                targetHeights[x] = [];
+                for (let z = 0; z < gridSize; z++) {
+                    const material = new THREE.MeshPhongMaterial({ 
+                        color: new THREE.Color(restingColor, restingColor, restingColor), 
+                        specular: 0x555555, 
+                        shininess: 30 
+                    });
+                    const sphere = new THREE.Mesh(geometry, material);
+                    sphere.position.set(x * spacing - (gridSize * spacing) / 2, 0, z * spacing - (gridSize * spacing) / 2);
+                    scene.add(sphere);
+                    spheres[x][z] = sphere;
+                    targetHeights[x][z] = 0;
+                }
+            }
+            camera.position.set(gridSize * 1.25, gridSize * 1.25, gridSize * 1.25);
+            light.position.set(gridSize * 0.625, gridSize * 0.625, gridSize * 0.625);
+        }
+        createGrid(gridSize, sphereSize, restingColor);
+
+        // Audio setup
+        const audioContext = new AudioContext();
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        const frequencyData = new Uint8Array(analyser.frequencyBinCount);
+        const timeDomainData = new Uint8Array(analyser.frequencyBinCount);
+        let currentSoundType = 'None';
+        let isRandomSound = true;
+        let oscillator = null;
+        let microphoneSource = null;
+        let errorMessage = '';
+
+        // Random sound generation
+        function playRandomSound() {
+            if (!isRandomSound) return;
+            oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            const types = ['sine', 'square', 'triangle', 'sawtooth'];
+            currentSoundType = types[Math.floor(Math.random() * 4)];
+            oscillator.type = currentSoundType;
+            const freq = 100 + Math.random() * 2000;
+            oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+            gainNode.gain.setValueAtTime(0.1 + Math.random() * 0.2, audioContext.currentTime);
+            oscillator.connect(gainNode);
+            gainNode.connect(analyser);
+            analyser.connect(audioContext.destination);
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.3 + Math.random() * 0.5);
+            setTimeout(playRandomSound, 400 + Math.random() * 600);
+        }
+
+        // Microphone input
+        async function startMicrophone() {
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Microphone access not supported in this browser');
+                }
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                microphoneSource = audioContext.createMediaStreamSource(stream);
+                microphoneSource.connect(analyser);
+                currentSoundType = 'Microphone';
+                errorMessage = '';
+            } catch (err) {
+                errorMessage = 'Microphone access denied or unavailable. Please ensure HTTPS or localhost and allow microphone permissions.';
+                currentSoundType = 'None';
+                isRandomSound = true;
+                toggleSoundButton.textContent = 'Switch to Microphone';
+                playRandomSound();
+            }
+        }
+
+        // Toggle sound source
+        const toggleSoundButton = document.getElementById('toggleSoundButton');
+        toggleSoundButton.addEventListener('click', () => {
+            isRandomSound = !isRandomSound;
+            toggleSoundButton.textContent = isRandomSound ? 'Switch to Microphone' : 'Switch to Random Sound';
+            errorMessage = '';
+            if (isRandomSound) {
+                if (microphoneSource) {
+                    microphoneSource.disconnect();
+                    microphoneSource.mediaStream.getTracks().forEach(track => track.stop());
+                    microphoneSource = null;
+                }
+                currentSoundType = 'None';
+                analyser.disconnect();
+                analyser.connect(audioContext.destination);
+                playRandomSound();
+            } else {
+                if (oscillator) {
+                    oscillator.stop();
+                    oscillator = null;
+                }
+                analyser.disconnect();
+                analyser.connect(audioContext.destination);
+                startMicrophone();
+            }
+        });
+
+        // Camera controls
+        const toggleCameraButton = document.getElementById('toggleCameraButton');
+        toggleCameraButton.addEventListener('click', () => {
+            cameraMode = cameraMode === 'flying' ? 'static' : 'flying';
+            toggleCameraButton.textContent = cameraMode === 'flying' ? 'Toggle Static Camera' : 'Toggle Flying Camera';
+            if (cameraMode === 'static') {
+                camera.position.set(gridSize * 1.25, gridSize * 1.25, gridSize * 1.25);
+                camera.lookAt(0, 0, 0);
+            }
+        });
+
+        const birdsEyeButton = document.getElementById('birdsEyeButton');
+        birdsEyeButton.addEventListener('click', () => {
+            cameraMode = 'birdsEye';
+            toggleCameraButton.textContent = 'Toggle Flying Camera';
+            camera.position.set(0, gridSize * 2, 0);
+            camera.lookAt(0, 0, 0);
+        });
+
+        const sideViewButton = document.getElementById('sideViewButton');
+        sideViewButton.addEventListener('click', () => {
+            cameraMode = 'sideView';
+            toggleCameraButton.textContent = 'Toggle Flying Camera';
+            camera.position.set(gridSize * 1.5, gridSize * 0.5, 0);
+            camera.lookAt(0, 0, 0);
+        });
+
+        // Grid size slider
+        const gridSizeSlider = document.getElementById('gridSizeSlider');
+        gridSizeSlider.addEventListener('input', () => {
+            const newSize = parseInt(gridSizeSlider.value);
+            createGrid(newSize, sphereSize, restingColor);
+        });
+
+        // Sphere size slider
+        const sphereSizeSlider = document.getElementById('sphereSizeSlider');
+        sphereSizeSlider.addEventListener('input', () => {
+            sphereSize = parseFloat(sphereSizeSlider.value);
+            createGrid(gridSize, sphereSize, restingColor);
+        });
+
+        // Color slider
+        const colorSlider = document.getElementById('colorSlider');
+        colorSlider.addEventListener('input', () => {
+            restingColor = parseFloat(colorSlider.value);
+            createGrid(gridSize, sphereSize, restingColor);
+        });
+
+        // Title color animation
+        const titleElement = document.getElementById('title');
+        let hue = 0;
+        function animateTitleColor() {
+            hue = (hue + 1) % 360;
+            titleElement.style.color = `hsl(${hue}, 100%, 70%)`;
+        }
+
+        playRandomSound();
+
+        // Stats display
+        const statsDiv = document.getElementById('stats');
+        function updateStats() {
+            const peakFreqIndex = frequencyData.indexOf(Math.max(...frequencyData));
+            const peakFreq = peakFreqIndex * audioContext.sampleRate / analyser.fftSize;
+            const avgAmplitude = frequencyData.reduce((a, b) => a + b, 0) / frequencyData.length;
+            statsDiv.innerHTML = `
+                <span style="color: #ff5555;">Peak Frequency:</span> ${peakFreq.toFixed(0)} Hz<br>
+                <span style="color: #55ff55;">Average Amplitude:</span> ${avgAmplitude.toFixed(2)}<br>
+                <span style="color: #5555ff;">Sound Source:</span> ${currentSoundType}<br>
+                <span style="color: #ffaa55;">Grid Size:</span> ${gridSize}x${gridSize}<br>
+                <span style="color: #55aaff;">Sphere Size:</span> ${sphereSize.toFixed(1)}<br>
+                <span style="color: #aa55ff;">Resting Color:</span> ${restingColor.toFixed(2)}<br>
+                <span style="color: #ff55aa;">Camera Mode:</span> ${cameraMode}<br>
+                <span style="color: #55ffaa;">X:</span> Grid column (frequency mapping)<br>
+                <span style="color: #aaff55;">Z:</span> Grid row (frequency mapping)<br>
+                <span style="color: #ff5555;">Y:</span> Sphere height (amplitude)<br>
+                ${errorMessage ? '<span style="color: #ff5555;">Error:</span> ' + errorMessage : ''}
+            `;
+        }
+
+        // Animation loop with waveform, central object, and title color
+        function animate() {
+            requestAnimationFrame(animate);
+            analyser.getByteFrequencyData(frequencyData);
+            analyser.getByteTimeDomainData(timeDomainData);
+            const freqBinCount = Math.min(frequencyData.length, gridSize * gridSize);
+
+            // Draw waveform
+            waveCtx.clearRect(0, 0, waveformCanvas.width, waveformCanvas.height);
+            waveCtx.beginPath();
+            waveCtx.strokeStyle = 'white';
+            waveCtx.lineWidth = 2;
+            const sliceWidth = waveformCanvas.width / timeDomainData.length;
+            for (let i = 0; i < timeDomainData.length; i++) {
+                const v = timeDomainData[i] / 128.0;
+                const y = v * waveformCanvas.height / 2;
+                if (i === 0) {
+                    waveCtx.moveTo(0, y);
+                } else {
+                    waveCtx.lineTo(i * sliceWidth, y);
+                }
+            }
+            waveCtx.lineTo(waveformCanvas.width, waveformCanvas.height / 2);
+            waveCtx.stroke();
+
+            // Update spheres
+            for (let x = 0; x < gridSize; x++) {
+                for (let z = 0; z < gridSize; z++) {
+                    const index = Math.floor((x + z * gridSize) / (gridSize * gridSize) * freqBinCount);
+                    const freqValue = frequencyData[index] / 255;
+                    const timeValue = timeDomainData[index % timeDomainData.length] / 128;
+                    const targetHeight = freqValue * 10 * (1 + timeValue * 0.5);
+                    targetHeights[x][z] = targetHeight;
+                    spheres[x][z].position.y += (targetHeight - spheres[x][z].position.y) * 0.1;
+                    const hue = (index / freqBinCount) * 0.7;
+                    const saturation = Math.min(1, freqValue);
+                    const lightness = Math.min(0.5, timeValue * 0.5);
+                    const color = new THREE.Color().setHSL(hue, saturation, lightness);
+                    spheres[x][z].material.color = freqValue > 0.1 ? color : new THREE.Color(restingColor, restingColor, restingColor);
+                }
+            }
+
+            // Update central object
+            const centralFreqIndex = frequencyData.indexOf(Math.max(...frequencyData));
+            const centralFreqValue = frequencyData[centralFreqIndex] / 255;
+            const centralTimeValue = timeDomainData[centralFreqIndex % timeDomainData.length] / 128;
+            let newGeometryType = 'torusKnot';
+            if (centralFreqValue > 0.7) newGeometryType = 'icosahedron';
+            else if (centralFreqValue > 0.4) newGeometryType = 'dodecahedron';
+            if (newGeometryType !== currentGeometryType) updateCentralObjectGeometry(newGeometryType);
+            const scale = 1 + centralFreqValue;
+            centralObject.scale.set(scale, scale, scale);
+            centralWireframe.scale.copy(centralObject.scale);
+            centralObject.rotation.x += centralFreqValue * 0.03;
+            centralObject.rotation.y += centralTimeValue * 0.05;
+            centralWireframe.rotation.copy(centralObject.rotation);
+            const centralHue = (centralFreqIndex / freqBinCount) * 0.7;
+            const centralColor = new THREE.Color().setHSL(centralHue, Math.min(1, centralFreqValue), Math.min(0.5, centralTimeValue * 0.5));
+            centralObject.material.color = centralColor;
+            wireframeMaterial.color = new THREE.Color().setHSL(centralHue, Math.min(1, centralFreqValue), Math.min(0.8, centralTimeValue * 0.8));
+
+            if (cameraMode === 'flying') {
+                cameraAngle += 0.01;
+                camera.position.set(
+                    Math.sin(cameraAngle) * gridSize * 1.5,
+                    gridSize * 1.25,
+                    Math.cos(cameraAngle) * gridSize * 1.5
+                );
+                camera.lookAt(0, 0, 0);
+            }
+            animateTitleColor();
+            updateStats();
+            renderer.render(scene, camera);
+            centralRenderer.render(centralScene, centralCamera);
+        }
+
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            gradientCanvas.width = window.innerWidth;
+            gradientCanvas.height = window.innerHeight;
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, gradientCanvas.width, gradientCanvas.height);
+            const boxWidth = window.innerWidth * 0.5;
+            centralCanvas.width = boxWidth;
+            centralCanvas.height = boxWidth;
+            centralRenderer.setSize(boxWidth, boxWidth);
+            centralCamera.aspect = 1;
+            centralCamera.updateProjectionMatrix();
+            waveformCanvas.width = 230;
+        });
+    </script>
+</body>
+</html>
