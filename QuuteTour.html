@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Famous Quote Tour</title>
+  <style>
+    body { margin: 0; }
+    canvas { display: block; }
+    #title {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 10px 20px;
+      font-family: fantasy, sans-serif;
+      font-size: 24px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    #quotePanel {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 15px;
+      max-width: 400px;
+      font-family: fantasy, sans-serif;
+      font-size: 16px;
+      border-radius: 8px;
+      text-align: center;
+      display: none;
+    }
+    #quotePanel h3 {
+      margin: 0 0 10px 0;
+      font-size: 18px;
+    }
+    #quoteListButton {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 10px 15px;
+      font-family: fantasy, sans-serif;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #quoteListWindow {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      padding: 20px;
+      max-width: 70%;
+      max-height: 80vh;
+      overflow-y: auto;
+      font-family: fantasy, sans-serif;
+      font-size: 32px;
+      border-radius: 8px;
+      text-align: left;
+      width: 80%
+    }
+    #quoteListWindow h3 {
+      margin: 0 0 10px 0;
+      font-size: 32px;
+      text-align: center;
+    }
+    #quoteListWindow ul {
+      list-style: none;
+      padding: 0;
+      text-align: center;
+
+    }
+    #quoteListWindow li {
+      margin: 10px 0;
+      padding: 10px;
+
+    }
+  </style>
+</head>
+<body>
+  <div id="title">Famous Quote Tour</div>
+  <div id="quotePanel"><h3>Famous Quote Tour</h3><div id="quoteContent"></div></div>
+  <button id="quoteListButton">Show All Quotes</button>
+  <div id="quoteListWindow">
+    <h3>All Quotes</h3>
+    <ul id="quoteList"></ul>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/controls/OrbitControls.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/postprocessing/EffectComposer.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/postprocessing/RenderPass.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/shaders/CopyShader.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/postprocessing/ShaderPass.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/shaders/FXAAShader.min.js"></script>
+  <script>
+    // Scene setup
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    // Anti-aliasing post-processing
+    const composer = new THREE.EffectComposer(renderer);
+    const renderPass = new THREE.RenderPass(scene, camera);
+    composer.addPass(renderPass);
+    const fxaaPass = new THREE.ShaderPass(THREE.FXAAShader);
+    fxaaPass.uniforms['resolution'].value.set(1 / window.innerWidth, 1 / window.innerHeight);
+    composer.addPass(fxaaPass);
+
+    // OrbitControls for user interaction
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enabled = false;
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+
+    // Spotlight attached to camera
+    const spotlight = new THREE.SpotLight(0xffffff, 0.1);
+    spotlight.angle = Math.PI / 6; // 30-degree cone
+    spotlight.distance = 50;
+    spotlight.penumbra = 0.2;
+    camera.add(spotlight);
+    spotlight.position.set(0, 0, 0);
+    scene.add(camera);
+
+    // Ground plane
+    const groundTexture = new THREE.TextureLoader().load('https://threejs.org/examples/textures/terrain/grasslight-big.jpg');
+    groundTexture.wrapS = groundTexture.wrapT = THREE.RepeatWrapping;
+    groundTexture.repeat.set(15, 15);
+    const groundMaterial = new THREE.MeshStandardMaterial({ map: groundTexture });
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(150, 150), groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // Day-like skybox
+    const skyboxLoader = new THREE.CubeTextureLoader();
+    skyboxLoader.setPath('https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/textures/cube/Park2/');
+    const skyboxTexture = skyboxLoader.load([
+      'posx.jpg', 'negx.jpg', 'posy.jpg', 'negy.jpg', 'posz.jpg', 'negz.jpg'
+    ], () => {
+      scene.background = skyboxTexture;
+      composer.render();
+    }, undefined, (err) => {
+      console.error('Skybox loading error:', err);
+    });
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    directionalLight.position.set(20, 30, 20);
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
+    directionalLight.shadow.camera.left = -75;
+    directionalLight.shadow.camera.right = 75;
+    directionalLight.shadow.camera.top = 75;
+    directionalLight.shadow.camera.bottom = -75;
+    directionalLight.shadow.camera.near = 0.5;
+    directionalLight.shadow.camera.far = 100;
+    scene.add(directionalLight);
+
+    // Quotes data with creation dates
+    const quotes = [
+  {
+    text: "Be the change you wish to see in the world.",
+    author: "Mahatma Gandhi",
+    date: "1947",
+    info: "Indian lawyer and anti-colonial nationalist who led India to independence through nonviolent resistance."
+  },
+  {
+    text: "I have a dream.",
+    author: "Martin Luther King Jr.",
+    date: "1963",
+    info: "American civil rights leader known for his role in advancing civil rights using nonviolent civil disobedience."
+  },
+  {
+    text: "To be or not to be, that is the question.",
+    author: "William Shakespeare",
+    date: "1600",
+    info: "English playwright and poet widely regarded as the greatest writer in the English language."
+  },
+  {
+    text: "Stay hungry, stay foolish.",
+    author: "Steve Jobs",
+    date: "2005",
+    info: "Co-founder of Apple Inc. and a pioneer of the personal computer revolution."
+  },
+  {
+    text: "The only thing we have to fear is fear itself.",
+    author: "Franklin D. Roosevelt",
+    date: "1933",
+    info: "32nd President of the United States, led the country during the Great Depression and World War II."
+  },
+  {
+    text: "Imagination is more important than knowledge.",
+    author: "Albert Einstein",
+    date: "1931",
+    info: "Theoretical physicist who developed the theory of relativity and is considered one of the most influential scientists."
+  },
+  {
+    text: "Ask not what your country can do for you...",
+    author: "John F. Kennedy",
+    date: "1961",
+    info: "35th President of the United States, known for inspiring speeches and handling of the Cold War crisis."
+  },
+  {
+    text: "Life is what happens when you're busy making other plans.",
+    author: "John Lennon",
+    date: "1980",
+    info: "English singer and co-founder of The Beatles, influential in music and peace activism."
+  },
+  {
+    text: "In the middle of difficulty lies opportunity.",
+    author: "Albert Einstein",
+    date: "Unknown",
+    info: "Theoretical physicist who developed the theory of relativity and is considered one of the most influential scientists."
+  },
+  {
+    text: "The future belongs to those who believe in the beauty of their dreams.",
+    author: "Eleanor Roosevelt",
+    date: "Unknown",
+    info: "American political figure, diplomat, and activist, and the longest-serving First Lady of the United States."
+  },
+  {
+    text: "Do one thing every day that scares you.",
+    author: "Eleanor Roosevelt",
+    date: "Unknown",
+    info: "American political figure, diplomat, and activist, and the longest-serving First Lady of the United States."
+  },
+  {
+    text: "All we are saying is give peace a chance.",
+    author: "John Lennon",
+    date: "1969",
+    info: "English singer and co-founder of The Beatles, influential in music and peace activism."
+  },
+  {
+    text: "The unexamined life is not worth living.",
+    author: "Socrates",
+    date: "399 BC",
+    info: "Classical Greek philosopher credited as a founder of Western philosophy."
+  },
+  {
+    text: "I think, therefore I am.",
+    author: "René Descartes",
+    date: "1637",
+    info: "French philosopher and mathematician regarded as a father of modern Western philosophy."
+  },
+  {
+    text: "You must be the change you wish to see in the world.",
+    author: "Mahatma Gandhi",
+    date: "1947",
+    info: "Indian lawyer and anti-colonial nationalist who led India to independence through nonviolent resistance."
+  },
+  {
+    text: "No one can make you feel inferior without your consent.",
+    author: "Eleanor Roosevelt",
+    date: "Unknown",
+    info: "American political figure, diplomat, and activist, and the longest-serving First Lady of the United States."
+  },
+  {
+    text: "Success is not final, failure is not fatal.",
+    author: "Winston Churchill",
+    date: "1940",
+    info: "British Prime Minister during WWII, known for his leadership and stirring wartime speeches."
+  },
+  {
+    text: "The only way to do great work is to love what you do.",
+    author: "Steve Jobs",
+    date: "2005",
+    info: "Co-founder of Apple Inc. and a pioneer of the personal computer revolution."
+  },
+  {
+    text: "Not all those who wander are lost.",
+    author: "J.R.R. Tolkien",
+    date: "1954",
+    info: "English writer, best known for authoring 'The Lord of the Rings' and 'The Hobbit'."
+  },
+  {
+    text: "It always seems impossible until it's done.",
+    author: "Nelson Mandela",
+    date: "Unknown",
+    info: "South African anti-apartheid revolutionary and the first black president of South Africa."
+  }
+];
+
+    // Shuffle array function
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    // Create quote boards with minimum spacing and text fitting
+    const quoteBoards = [];
+    const minDistance = 10;
+    const positions = [];
+
+    function isPositionValid(x, z) {
+      return positions.every(pos => Math.sqrt((x - pos.x) ** 2 + (z - pos.z) ** 2) >= minDistance);
+    }
+
+    function wrapText(ctx, text, maxWidth, maxLines = 2) {
+      const words = text.split(' ');
+      let line = '';
+      const lines = [];
+      let fontSize = 48;
+
+      if (text.length > 50) {
+        fontSize = 46;
+      }
+      if (text.length > 80) {
+        fontSize = 32;
+      }
+
+      ctx.font = `${fontSize}px "fantasy", cursive`;
+
+      for (let i = 0; i < words.length && lines.length < maxLines; i++) {
+        const testLine = line + words[i] + ' ';
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && i > 0 && lines.length < maxLines - 1) {
+          lines.push(line);
+          line = words[i] + ' ';
+        } else {
+          line = testLine;
+        }
+      }
+      if (lines.length < maxLines) {
+        lines.push(line);
+      }
+      return { lines, fontSize };
+    }
+
+    // Subtle light colors
+    const pastelColors = [
+      'rgba(240, 248, 255, 0.9)', // AliceBlue
+      'rgba(245, 245, 220, 0.9)', // Beige
+      'rgba(240, 255, 240, 0.9)', // Honeydew
+      'rgba(245, 245, 220, 0.9)', // Ivory
+      'rgba(240, 255, 245, 0.9)', // MintCream
+    ];
+
+    // Enhanced sparkle effect
+    const sparkles = [];
+    class Sparkle {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.alpha = Math.random() * 0.5;
+        this.scale = Math.random() * 2 + 1; // Varied sizes 1-3px
+        this.velocity = Math.random() * 0.03 - 0.015; // Smoother fading
+        this.driftX = (Math.random() - 0.5) * 0.5; // Slight drift
+        this.driftY = (Math.random() - 0.5) * 0.5;
+        this.lifetime = Math.random() * 50 + 50; // Longer lifetime
+        this.age = 0;
+        this.color = Math.random() < 0.3 ? 'rgba(255, 215, 0, 0.8)' : 'black'; // Some golden sparkles
+      }
+
+      update() {
+        this.alpha += this.velocity;
+        this.x += this.driftX;
+        this.y += this.driftY;
+        if (this.alpha > 1) this.alpha = 1;
+        if (this.alpha < 0) this.alpha = 0;
+        this.age++;
+      }
+
+      isAlive() {
+        return this.age < this.lifetime;
+      }
+
+      draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.scale, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    function createQuoteCanvas(quote, clickCount = 0, typedText = '', isBack = false) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 768;
+      canvas.height = 384;
+      const ctx = canvas.getContext('2d');
+
+      const frameCanvas = document.createElement('canvas');
+      frameCanvas.width = 768;
+      frameCanvas.height = 384;
+      const frameCtx = frameCanvas.getContext('2d');
+      frameCtx.fillStyle = '#1C2526';
+      frameCtx.beginPath();
+      frameCtx.moveTo(10, 0);
+      frameCtx.lineTo(758, 0);
+      frameCtx.quadraticCurveTo(768, 0, 768, 10);
+      frameCtx.lineTo(768, 374);
+      frameCtx.quadraticCurveTo(768, 384, 758, 384);
+      frameCtx.lineTo(10, 384);
+      frameCtx.quadraticCurveTo(0, 384, 0, 374);
+      frameCtx.lineTo(0, 10);
+      frameCtx.quadraticCurveTo(0, 0, 10, 0);
+      frameCtx.fill();
+      frameCtx.clearRect(20, 20, 728, 344);
+      frameCtx.fillStyle = clickCount === 2 ? 'rgba(255, 0, 0, 0.8)' : quote.backgroundColor;
+      frameCtx.fillRect(20, 20, 728, 344);
+
+      ctx.drawImage(frameCanvas, 0, 0);
+      ctx.fillStyle = 'black';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      if (isBack) {
+        // Mirror canvas horizontally to correct text orientation
+        ctx.scale(-1, 1);
+        ctx.translate(-canvas.width, 0);
+        ctx.font = `18px "fantasy", cursive`;
+        
+        ctx.fillText(`${quote.author}: ${quote.info}`, canvas.width / 2, canvas.height / 2);
+        ctx.scale(-1, 1);
+        ctx.translate(canvas.width, 0);
+      } else {
+
+        ctx.font = `16px "fantasy", cursive`;
+        ctx.fillText(`Created: ${quote.date}`, canvas.width / 2, canvas.height - 290);
+
+        const { lines, fontSize } = wrapText(ctx, typedText || quote.text, canvas.width - 40);
+        ctx.font = `${fontSize}px "fantasy", cursive`;
+        const lineHeight = fontSize * 1.2;
+        const totalHeight = lines.length * lineHeight;
+        let y = canvas.height / 2 - totalHeight / 2 + lineHeight / 2;
+
+        // Add sparkles around text more frequently
+        if (Math.random() < 0.3) {
+          const textWidth = ctx.measureText(lines[0]).width;
+          const textX = canvas.width / 2;
+          const textY = y;
+          for (let i = 0; i < 3; i++) {
+            sparkles.push(new Sparkle(
+              textX + textWidth / 2 * (Math.random() - 0.5),
+              textY + (Math.random() - 0.5) * fontSize
+            ));
+          }
+        }
+
+        // Update and draw sparkles
+        for (let i = sparkles.length - 1; i >= 0; i--) {
+          sparkles[i].update();
+          sparkles[i].draw(ctx);
+          if (!sparkles[i].isAlive()) {
+            sparkles.splice(i, 1);
+          }
+        }
+
+        lines.forEach(line => {
+          ctx.fillText(line, canvas.width / 2, y);
+          y += lineHeight;
+        });
+
+        ctx.font = `24px "fantasy", cursive`;
+        ctx.fillText(`- ${quote.author}`, canvas.width / 2, canvas.height - 60);
+      }
+
+      return canvas;
+    }
+
+    quotes.forEach((quote, index) => {
+      quote.backgroundColor = pastelColors[Math.floor(Math.random() * pastelColors.length)];
+      const canvas = createQuoteCanvas(quote);
+      const texture = new THREE.CanvasTexture(canvas);
+      const material = new THREE.MeshStandardMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
+      const geometry = new THREE.PlaneGeometry(7.5, 3.75);
+      const board = new THREE.Mesh(geometry, material);
+      board.castShadow = true;
+      board.receiveShadow = true;
+
+      let x, z;
+      do {
+        x = Math.random() * 130 - 65;
+        z = Math.random() * 130 - 65;
+      } while (!isPositionValid(x, z));
+      positions.push({ x, z });
+
+      board.position.set(x, 6.0, z);
+      board.userData = { originalTexture: texture, clickCount: 0, index, typedText: '', isBack: false, targetRotation: 0 };
+      scene.add(board);
+      quoteBoards.push(board);
+    });
+
+    // Randomize flight path
+    const flightOrder = shuffle([...Array(quoteBoards.length).keys()]);
+
+    // Quote panel update
+    const quotePanel = document.getElementById('quoteContent');
+    function updateQuotePanel(index) {
+      const quote = quotes[quoteBoards[flightOrder[index]].userData.index];
+      quotePanel.innerHTML = `"${quote.text}"<br>- ${quote.author}`;
+    }
+
+    // Quote list window
+    const quoteListButton = document.getElementById('quoteListButton');
+    const quoteListWindow = document.getElementById('quoteListWindow');
+    const quoteList = document.getElementById('quoteList');
+    
+    quotes.forEach(quote => {
+      const li = document.createElement('li');
+      li.innerHTML = `"${quote.text}" <br> <span style='font-size:large'>- ${quote.author}, ${quote.date}</span>`;
+      quoteList.appendChild(li);
+    });
+
+    quoteListButton.addEventListener('click', () => {
+      quoteListWindow.style.display = quoteListWindow.style.display === 'block' ? 'none' : 'block';
+    });
+
+    // Typewriter effect
+    function typeQuote(board, quote, callback) {
+      const fullText = quote.text;
+      let currentText = '';
+      let charIndex = 0;
+
+      function type() {
+        if (charIndex < fullText.length) {
+          currentText += fullText[charIndex];
+          board.userData.typedText = currentText;
+          const canvas = createQuoteCanvas(quote, 0, currentText, board.userData.isBack);
+          board.material.map = new THREE.CanvasTexture(canvas);
+          board.material.needsUpdate = true;
+          charIndex++;
+          setTimeout(type, 50);
+        } else {
+          board.userData.typedText = fullText;
+          if (callback) callback();
+        }
+      }
+      type();
+    }
+
+    // Raycaster for clicking
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let lastClickTime = 0;
+    const doubleClickThreshold = 300;
+    let isPaused = false;
+
+    window.addEventListener('click', (event) => {
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(quoteBoards);
+      if (intersects.length > 0) {
+        const board = intersects[0].object;
+        const currentTime = Date.now();
+        const isDoubleClick = currentTime - lastClickTime < doubleClickThreshold;
+        board.userData.clickCount = isDoubleClick ? 2 : 1;
+        lastClickTime = currentTime;
+
+        isPaused = true;
+        controls.enabled = true;
+        controls.target.copy(board.position);
+
+        const index = quoteBoards.indexOf(board);
+        if (!isDoubleClick) {
+          board.userData.isBack = !board.userData.isBack;
+          board.userData.targetRotation = board.userData.isBack ? Math.PI : 0;
+        }
+
+        const canvas = createQuoteCanvas(quotes[index], isDoubleClick ? 2 : 0, board.userData.typedText || quotes[index].text, board.userData.isBack);
+        board.material.map = new THREE.CanvasTexture(canvas);
+        board.material.needsUpdate = true;
+
+        updateQuotePanel(quoteBoards.indexOf(board));
+      } else if (!quoteListWindow.contains(event.target) && event.target !== quoteListButton) {
+        isPaused = false;
+        controls.enabled = false;
+        quoteListWindow.style.display = 'none';
+      }
+    });
+
+    // Camera animation
+    let currentQuoteIndex = 0;
+    let state = 'zooming';
+    let timer = 0;
+    const zoomDuration = 4;
+    const panDuration = 10;
+    const flyDuration = 4;
+
+    function animateCamera() {
+      if (isPaused) {
+        controls.update();
+      }
+
+      const currentQuote = flightOrder[currentQuoteIndex];
+      const board = quoteBoards[currentQuote];
+      const targetPos = board.position.clone();
+      targetPos.y += 1;
+
+      // Update spotlight to point at current quote
+      spotlight.target.position.copy(targetPos);
+      spotlight.target.updateMatrixWorld();
+
+      // Smoothly rotate board if needed
+      board.rotation.y += (board.userData.targetRotation - board.rotation.y) * 0.1;
+
+      // Update sparkles for current board
+      const canvas = createQuoteCanvas(quotes[board.userData.index], board.userData.clickCount, board.userData.typedText, board.userData.isBack);
+      board.material.map = new THREE.CanvasTexture(canvas);
+      board.material.needsUpdate = true;
+
+      if (state === 'zooming') {
+        camera.position.lerp(new THREE.Vector3(targetPos.x, targetPos.y, targetPos.z + 7), 0.05);
+        camera.lookAt(targetPos);
+        timer += 1 / 60;
+        if (timer === 1 / 60) {
+          board.userData.typedText = '';
+          board.userData.isBack = false;
+          board.userData.targetRotation = 0;
+          typeQuote(board, quotes[board.userData.index], () => {});
+        }
+        if (timer >= zoomDuration) {
+          state = 'panning';
+          timer = 0;
+          updateQuotePanel(currentQuoteIndex);
+        }
+      } else if (state === 'panning') {
+        camera.position.x = targetPos.x - 2 + (timer / panDuration) * 4;
+        camera.position.z = targetPos.z + 7;
+        camera.lookAt(targetPos);
+        timer += 1 / 60;
+        if (timer >= panDuration) {
+          state = 'flying';
+          timer = 0;
+          currentQuoteIndex = (currentQuoteIndex + 1) % quoteBoards.length;
+        }
+      } else if (state === 'flying') {
+        const nextQuote = flightOrder[currentQuoteIndex];
+        const nextBoard = quoteBoards[nextQuote];
+        const nextPos = nextBoard.position.clone();
+        nextPos.y += 1;
+        camera.position.lerp(new THREE.Vector3(nextPos.x, nextPos.y + 5, nextPos.z + 15), 0.05);
+        camera.lookAt(nextPos);
+        timer += 1 / 60;
+        if (timer >= flyDuration) {
+          state = 'zooming';
+          timer = 0;
+        }
+      }
+    }
+
+    // Animation loop
+    camera.position.set(0, 5, 10);
+    function animate() {
+      requestAnimationFrame(animate);
+      animateCamera();
+      composer.render();
+    }
+    animate();
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      fxaaPass.uniforms['resolution'].value.set(1 / window.innerWidth, 1 / window.innerHeight);
+      composer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
