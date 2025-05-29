@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elemental Fire Simulation</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+
+        }
+        #controls label, #controls button { display: block; margin: 5px 0; }
+        #title {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-family: monospace;
+            font-size: 18px;
+            text-shadow: 0 0 5px black;
+        }
+        #description {
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-family: monospace;
+            font-size: 10px;
+            text-shadow: 0 0 5px black;
+            text-align: center;
+            max-width: 600px;
+        }
+        .element-label {
+            position: absolute;
+            font-family: monospace;
+            font-size: 16px;
+            text-align: center;
+            text-shadow: 0 0 5px black;
+            transform: translateX(-50%);
+        }
+    </style>
+</head>
+<body>
+    <div id="title">Elemental Fire Simulation</div>
+    <div id="description">Observe the flame colors of 10 chemical elements in rainbow order (red to violet). Adjust flame size with the slider, toggle fly-around camera, or drag mouse to rotate view.</div>
+    <div id="controls">
+        <label>Flame Size: <input type="range" id="flameSize" min="0.5" max="3" step="0.1" value="1"></label>
+        <button id="toggleCamera">Toggle Fly Camera</button>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        camera.position.set(0, 1, 20);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1, 20);
+        pointLight.position.set(0, 2, 5);
+        scene.add(pointLight);
+
+        // Flame colors for elements (based on flame test colors)
+        const flameColors = {
+            lithium: { r: 1, g: 0.1, b: 0.1 }, // Crimson red
+            strontium: { r: 1, g: 0.14, b: 0.0 }, // Scarlet red
+            calcium: { r: 1, g: 0.5, b: 0 }, // Orange-red
+            sodium: { r: 1, g: 0.9, b: 0 }, // Bright yellow
+            copper: { r: 0, g: 0.8, b: 0.5 }, // Green
+            boron: { r: 0, g: 1, b: 0 }, // Bright green
+            barium: { r: 0.6, g: 1, b: 0.6 }, // Pale green
+            cesium: { r: 0.4, g: 0.6, b: 1 }, // Blue
+            rubidium: { r: 0.9, g: 0.2, b: 0.5 }, // Red-violet
+            potassium: { r: 0.8, g: 0.4, b: 1 } // Lilac
+        };
+
+        // Particle systems and labels for each element, in rainbow order
+        const elements = ['lithium', 'strontium', 'calcium', 'sodium', 'copper', 'boron', 'barium', 'cesium', 'rubidium', 'potassium'];
+        const particleSystems = {};
+        const particles = {};
+        const labels = {};
+        const noise = new SimplexNoise();
+        let flameSize = 1;
+        let flyCamera = false;
+        let cameraAngle = 0;
+
+        // Mouse controls
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let phi = Math.PI / 2;
+        let theta = 0;
+
+        function createFlame(element, xOffset) {
+            const particleCount = 15000; // Number of particles per flame
+            const particlesGeometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            const sizes = new Float32Array(particleCount);
+            const velocities = new Float32Array(particleCount * 3);
+            const opacities = new Float32Array(particleCount);
+
+            const color = flameColors[element];
+            for (let i = 0; i < particleCount; i++) {
+                
+                positions[i * 3] = xOffset + (Math.random() - 0.5) * 0.3;
+                positions[i * 3 + 1] = (Math.random() - 0.5) * 0.3;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 0.3;
+
+                colors[i * 3] = color.r + (Math.random() - 0.5) * 0.1;
+                colors[i * 3 + 1] = color.g + (Math.random() - 0.5) * 0.1;
+                colors[i * 3 + 2] = color.b + (Math.random() - 0.5) * 0.1;
+                sizes[i] = Math.random() * 0.3 + 0.01;
+
+                /* Cool effec:
+                velocities[i * 3] = (Math.random() - 0.5) * 0.02;
+                velocities[i * 3 + 1] = (Math.random() - 0.5) * 0.02;
+                velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.02;
+                */
+
+                velocities[i * 3] = (Math.random() - 0.5) * 0.02;
+                velocities[i * 3 + 1] = 0.05 + Math.random() * 0.05;
+                velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.02;
+
+                opacities[i] = 1.0;
+                
+            }
+
+            particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            particlesGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, ));
+            particlesGeometry.setAttribute('opacity', new THREE.Float32BufferAttribute(opacities, 1));
+
+            const particleMaterial = new THREE.PointsMaterial({
+                vertexColors: true,
+                size: 0.15, // Base size for particles
+                transparent: true,
+                opacity: 0.2,// Base opacity
+                blending: THREE.AdditiveBlending,
+                vertexShader: `
+                    attribute float size;
+                    attribute float opacity;
+                    varying float vOpacity;
+                    void main() {
+                        vOpacity = opacity;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                        gl_PointSize = size * 300.0;
+                    }
+                `,
+                fragmentShader: `
+                    uniform vec3 color;
+                    varying float vOpacity;
+                    void main() {
+                        gl_FragColor = vec4(color, vOpacity);
+                    }
+                `
+            });
+
+            const system = new THREE.Points(particlesGeometry, particleMaterial);
+            system.position.x = xOffset
+            scene.add(system);
+            particleSystems[element] = system;
+            particles[element] = { positions: particlesGeometry.attributes.position.array, velocities, opacities: particlesGeometry.attributes.opacity.array };
+
+            // Add element label
+            const label = document.createElement('div');
+            label.className = 'element-label';
+            label.textContent = element.charAt(0).toUpperCase() + element.slice(1);
+            label.style.color = `rgb(${color.r * 255}, ${color.g * 255}, ${color.b * 255})`; // Match flame color
+            document.body.appendChild(label);
+            labels[element] = label;
+            updateLabelPosition(label, xOffset);
+        }
+
+        function updateLabelPosition(label, xOffset) {
+            const vector = new THREE.Vector3(xOffset, -1.0, 0); // Below flame base, centered
+            vector.project(camera);
+            const x = (vector.x * 1 + 0.5) * window.innerWidth;
+            const y = (-vector.y * 1 + 0.45) * window.innerHeight;
+            label.style.left = `${x}px`;
+            label.style.top = `${y}px`;
+        }
+
+        // Create flames for all elements in rainbow order
+        elements.forEach((element, index) => {
+            createFlame(element, (index - 4.5) * 2.5);
+        });
+
+        // Controls
+        const flameSizeSlider = document.getElementById('flameSize');
+        flameSizeSlider.addEventListener('input', (e) => {
+            flameSize = parseFloat(e.target.value);
+        });
+
+        const toggleCameraButton = document.getElementById('toggleCamera');
+        toggleCameraButton.addEventListener('click', () => {
+            flyCamera = !flyCamera;
+            if (!flyCamera) {
+                camera.position.set(0, 1, 20);
+                phi = Math.PI / 2;
+                theta = 0;
+            }
+        });
+
+        // Mouse controls
+        document.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging && !flyCamera) {
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+                theta -= deltaX * 0.005;
+                phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi + deltaY * 0.005));
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+                const radius = 20;
+                camera.position.x = radius * Math.sin(phi) * Math.cos(theta);
+                camera.position.y = radius * Math.cos(phi);
+                camera.position.z = radius * Math.sin(phi) * Math.sin(theta);
+                camera.lookAt(0, 0, 0);
+            }
+        });
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        // Animation loop
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.01;
+
+            // Fly-around camera
+            if (flyCamera) {
+                cameraAngle += 0.01;
+                camera.position.x = Math.sin(cameraAngle) * 20;
+                camera.position.z = Math.cos(cameraAngle) * 20;
+                camera.position.y = 1 + Math.sin(cameraAngle * 0.5) * 2;
+                camera.lookAt(0, 0, 0);
+            }
+
+            // Update flames
+            elements.forEach(element => {
+                const particleArray = particles[element].positions;
+                const velocities = particles[element].velocities;
+                const opacities = particles[element].opacities;
+                for (let i = 0; i < particleArray.length / 3; i++) {
+                    const x = particleArray[i * 3];
+                    const y = particleArray[i * 3 + 1];
+                    const z = particleArray[i * 3 + 2];
+                    const noiseValue = noise.noise3D(x * 0.5, y * 0.5, time) * 0.1;
+                    particleArray[i * 3] += velocities[i * 3] + noiseValue;
+                    particleArray[i * 3 + 1] += velocities[i * 3 + 1] * flameSize;
+                    particleArray[i * 3 + 2] += velocities[i * 3 + 2] + noiseValue;
+                    
+                    opacities[i] = Math.exp(-3 * (y + 0.5) / 6.5); // Dimmer top
+
+                    if (particleArray[i * 3 + 1] > 6) {
+                        particleArray[i * 3] = particleSystems[element].position.x + (Math.random() - 0.5) * 0.3;
+                        particleArray[i * 3 + 1] = -0.5;
+                        particleArray[i * 3 + 2] = (Math.random() - 0.5) * 0.3;
+
+                        velocities[i * 3] = (Math.random() - 0.5) * 0.02;
+                        velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.02;
+                        
+                        opacities[i] = 1.0;
+                    }
+                }
+                particleSystems[element].geometry.attributes.position.needsUpdate = true;
+                particleSystems[element].geometry.attributes.opacity.needsUpdate = true;
+                particleSystems[element].scale.set(flameSize, flameSize, flameSize);
+            });
+
+            // Update label positions
+            elements.forEach((element, index) => {
+                updateLabelPosition(labels[element], (index - 4.5) * 2.5);
+            });
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
