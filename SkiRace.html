@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ski Race - V0.9.1</title>
+    <title>Ski Race - V0.9.3 (31 May)</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -33,7 +33,7 @@
             top: 10px;
             left: 10px;
             color: white;
-            font-family: Arial, sans-serif;
+            font-family: chaulkboard, sans-serif;
             font-size: 14px;
             text-shadow: 1px 1px 2px black;
             background: rgba(0, 0, 0, 0.3);
@@ -50,19 +50,17 @@
             display: none;
         }
         #bonus, #flagHit, #penalty, #npcHit {
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            top: 10%;
+            left: 35%;
+            text-align: center;
         }
         #correct {
-            top: 50%;
-            transform: translateY(-50%);
-        }
-        #correct.left {
-            left: 20px;
-        }
-        #correct.right {
-            right: 20px;
+            top: 20%;
+            left: 25%;
+            text-align: center;
+            color: green;
+            font-size: 24px;
+
         }
         #finishMessage {
             bottom: 100px;
@@ -74,10 +72,11 @@
             color: red;
         }
         #penalty {
-            color: orange;
-        }
-        #correct {
-            color: green;
+          top: 25%;
+          left: 20%;
+          color: orange;
+          font-size: 24px;
+
         }
         .mini-score {
             position: absolute;
@@ -106,6 +105,7 @@
             text-align: center;
             font-family: Arial, sans-serif;
             display: none;
+            border-radius: 5px;
         }
         #welcome {
             position: absolute;
@@ -118,11 +118,12 @@
             text-align: center;
             font-family: Arial, sans-serif;
             max-width: 500px;
+            border-radius: 5px;
         }
         #toggleCamera {
             position: absolute;
             bottom: 20px;
-            left: 10px;
+            right: 10px;
             padding: 10px;
             background: #4CAF50;
             color: white;
@@ -150,10 +151,10 @@
         }
         #progressBar {
             position: absolute;
-            bottom: 100px;
+            bottom: 4px;
             left: 10px;
-            width: 20px;
-            height: 60%;
+            width: 97%;
+            height: 8px;
             background: rgba(0, 0, 0, 0.3);
             border: 2px solid white;
             border-radius: 5px;
@@ -161,7 +162,8 @@
         }
         #progressFill {
             width: 100%;
-            background: white;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.8);
             border-radius: 3px;
             transition: height 0.2s;
             position: absolute;
@@ -175,9 +177,6 @@
             color: white;
             border: none;
             border-radius: 5px;
-        }
-        button:hover {
-            background: #45a049;
         }
     </style>
 </head>
@@ -203,9 +202,13 @@
     <div id="welcome">
         <h1>Downhill Ski Challenge</h1>
         <p>Ski down steep slopes, weaving through flags, avoiding skiers, and collecting items to score points. Avoid hitting flags to keep your lives!</p>
+        <p>Use the joystick to control your skier. Collect speed boosts and lives, and throw snowballs at other skiers to score points.</p>
+        <p>Can you reach the finish line with the highest score?</p>
+        <p>Press the "Start Game" button to begin!</p>
+
         <button onclick="startGame()">Start Game</button>
     </div>
-    <button id="toggleCamera" onclick="toggleCamera()">Camera: Default</button>
+    <button id="toggleCamera" onclick="toggleCamera()">Camera: Player</button>
     <canvas id="miniMap"></canvas>
     <canvas id="sideView"></canvas>
     <div id="progressBar"><div id="progressFill"></div></div>
@@ -227,8 +230,13 @@
         let flyAroundAngle = 0;
         let snowballCooldown = 0;
         let miniMapZoom = 2.0;
+        let playerPosition = 0;
+        let finishLinePos = 185 // Finish line position
 
         function createSkier(isNPC = false, colorIndex = 0) {
+
+          const getRandomColor = () => Math.floor(Math.random() * 0xFFFFFF);
+
             const skierGroup = new THREE.Group();
             const helmetGeometry = new THREE.SphereGeometry(0.32, 32, 32);
             const helmetMaterial = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.2 });
@@ -241,7 +249,7 @@
             goggles.position.set(0, 2.1, 0.3);
             skierGroup.add(goggles);
             const torsoGeometry = new THREE.CylinderGeometry(0.4, 0.4, 1, 32);
-            const torsoColor = isNPC ? (colorIndex % 2 === 0 ? 0xFF0000 : 0x0000FF) : 0xFF3333;
+            const torsoColor = isNPC ? getRandomColor() : 0xFF3333;
             const torsoMaterial = new THREE.MeshStandardMaterial({ color: torsoColor, roughness: 0.5 });
             const torso = new THREE.Mesh(torsoGeometry, torsoMaterial);
             torso.position.set(0, 1.5, 0);
@@ -375,7 +383,7 @@
                 knockOverTimer: 0, 
                 spinAngle: 0, 
                 trails: { left: [], right: [] },
-                lateralOffset: Math.random() * 100
+                lateralOffset: (Math.random() * 100 )
             };
             return npc;
         }
@@ -414,7 +422,7 @@
             const targetVel = new THREE.Vector3(-target.userData.speed, 0, Math.sin(time * 0.5 + target.userData.lateralOffset) * 2);
             const relativeVel = targetVel.clone().sub(new THREE.Vector3(-currentSpeed, 0, 0));
             const dist = startPos.distanceTo(targetPos); 
-            const timeToHit = dist / 40; // speed of snowball
+            const timeToHit = dist / 40; // speed of snowball (40)
             const predictedPos = targetPos.clone().add(relativeVel.multiplyScalar(timeToHit)); // predict target position
             snowball.position.copy(startPos); 
             snowball.userData = { 
@@ -619,7 +627,7 @@
 
             // Finish line
             miniMapCtx.fillStyle = 'green';
-            const finishX = centerX + (-1850 - skier.position.x) * scaleX;
+            const finishX = centerX + (-finishLinePos - skier.position.x) * scaleX;
             const finishZ = centerY - (0 - skier.position.z) * scaleY;
             if (finishX > 0 && finishX < miniMap.width) {
                 miniMapCtx.fillRect(finishX - 0.5, finishZ - 12.5 * scaleY, 1, 25 * scaleY);
@@ -664,14 +672,15 @@
             sideViewCtx.fillStyle = 'yellow';
             const playerX = (mapWidth + skier.position.x) * scaleX;
             const playerY = sideView.height - (skier.position.y - minTerrainHeight) * scaleY;
+
             sideViewCtx.beginPath();
             sideViewCtx.arc(playerX, playerY, 3, 0, Math.PI * 2);
             sideViewCtx.fill();
             sideViewCtx.strokeStyle = 'green';
             sideViewCtx.lineWidth = 2;
             sideViewCtx.beginPath();
-            const finishX = (mapWidth - 1850) * scaleX;
-            const finishHeight = terrain.geometry.attributes.position.array[Math.floor((-1850 / -2000) * segments) * (100 + 1) * 3 + 2] || 0;
+            const finishX = (mapWidth - finishLinePos) * scaleX;
+            const finishHeight = terrain.geometry.attributes.position.array[Math.floor((-finishLinePos / -2000) * segments) * (100 + 1) * 3 + 2] || 0;
             const finishY = sideView.height - (finishHeight - minTerrainHeight) * scaleY;
             sideViewCtx.moveTo(finishX, sideView.height);
             sideViewCtx.lineTo(finishX, finishY - 10);
@@ -703,10 +712,12 @@
 
         function showCorrectMessage(isBlue) {
             const correctEl = document.getElementById('correct');
-            correctEl.textContent = 'Correct!';
-            correctEl.className = 'left';
-            if (!isBlue) correctEl.classList.add('right');
-            correctEl.style.display = 'block';
+            if (isBlue) {
+              correctEl.textContent = 'Correct side of blue flag! +100';
+            } else {
+              correctEl.textContent = 'Correct side of red flag! +100';
+            }
+           correctEl.style.display = 'block';
             setTimeout(() => correctEl.style.display = 'none', 1000);
         }
 
@@ -722,17 +733,17 @@
 
         function showNPCHitMessage() {
             const npcHitEl = document.getElementById('npcHit');
-            npcHitEl.textContent = 'NPC Hit! +50';
+            npcHitEl.textContent = 'Skier Hit! +50';
             npcHitEl.style.display = 'block';
             setTimeout(() => npcHitEl.style.display = 'none', 1000);
         }
 
         function updateProgressBar() {
             if (!skier) return;
-            const totalDistance = 1850;
+            const totalDistance = finishLinePos;
             const currentDistance = Math.max(0, -skier.position.x);
             const progress = (currentDistance / totalDistance) * 100;
-            document.getElementById('progressFill').style.height = `${progress}%`;
+            document.getElementById('progressFill').style.width = `${progress}%`;
         }
 
         function isNPCTargetable(npc) {
@@ -753,7 +764,7 @@
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x87CEEB);
             scene.fog = new THREE.Fog(0x87CEEB, 20, 150);
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+            camera = new THREE.PerspectiveCamera(75, (window.innerWidth / window.innerHeight ), 0.1, 2000);
             camera.position.set(10, 5, 0);
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -796,7 +807,7 @@
             for (let i = 0; i < 100; i++) {
                 const x = -Math.random() * 1900;
                 const z = (Math.random() - 0.5) * 80;
-                if (Math.abs(z) > 15 && Math.abs(x + 1850) > 50) {
+                if (Math.abs(z) > 15 && Math.abs(x + finishLinePos) > 50) {
                     const tree = createTree(x, z);
                     trees.push(tree);
                     scene.add(tree);
@@ -804,12 +815,13 @@
             }
             npcs = [];
             npcTrails = [];
-            for (let i = 0; i < 40; i++) {
-                const x = -Math.random() * 1800;
+            noOfNPCs = level * 10; // Increase number of NPCs with level
+            for (let i = 0; i < noOfNPCs; i++) {
+                const x = (-Math.random() * 1 ) + 10; // 1800;
                 const z = (Math.random() - 0.5) * 30;
                 const npc = createNPC(x, z, i);
                 npcs.push(npc);
-                npcTrails.push({ left: [], right: [] });
+                npcTrails.push({ left: [], right: [] }); 
                 scene.add(npc);
             }
             collectables = [];
@@ -828,11 +840,11 @@
                 collectables.push(collectable);
                 scene.add(collectable);
             }
-            const finishHeight = getTerrainHeight(-1850);
+            const finishHeight = getTerrainHeight(-finishLinePos);
             const finishGeometry = new THREE.BoxGeometry(2, 0.2, 50);
             const finishMaterial = new THREE.MeshStandardMaterial({ color: 0x00FF00 });
             finishLine = new THREE.Mesh(finishGeometry, finishMaterial);
-            finishLine.position.set(-1850, finishHeight + 0.1, 0);
+            finishLine.position.set(-finishLinePos, finishHeight + 0.1, 0);
             finishLine.rotation.y = Math.PI;
             scene.add(finishLine);
             const floorGeometry = new THREE.PlaneGeometry(10, 50);
@@ -846,25 +858,24 @@
             const poleGeometry = new THREE.CylinderGeometry(0.1, 0.1, 4, 16);
             const poleMaterial = new THREE.MeshStandardMaterial({ color: 0x666666 });
             const leftPole = new THREE.Mesh(poleGeometry, poleMaterial);
-            leftPole.position.set(-1850, finishHeight + 2, -25);
+            leftPole.position.set(-finishLinePos, finishHeight + 2, -25);
             scene.add(leftPole);
             flagpoles.push(leftPole);
             const rightPole = new THREE.Mesh(poleGeometry, poleMaterial);
-            rightPole.position.set(-1850, finishHeight + 2, 25);
+            rightPole.position.set(-finishLinePos, finishHeight + 2, 25);
             scene.add(rightPole);
             flagpoles.push(rightPole);
             const flagGeometry = new THREE.PlaneGeometry(2, 1.5);
             const flagMaterial = new THREE.MeshStandardMaterial({ map: createCheckeredTexture(), side: THREE.DoubleSide });
             const leftFlag = new THREE.Mesh(flagGeometry, flagMaterial);
-            leftFlag.position.set(-1850, finishHeight + 3, -24.5);
+            leftFlag.position.set(-finishLinePos, finishHeight + 3, -24.5);
             leftFlag.rotation.y = 0;
             scene.add(leftFlag);
             const rightFlag = new THREE.Mesh(flagGeometry, flagMaterial);
-            rightFlag.position.set(-1850, finishHeight + 3, 24.5);
+            rightFlag.position.set(-finishLinePos, finishHeight + 3, 24.5);
             rightFlag.rotation.y = Math.PI;
             scene.add(rightFlag);
             const ambientLight = new THREE.AmbientLight(0x606060);
-            //ambientLight.castShadow = true;
             scene.add(ambientLight);
             const directionalLight = new THREE.DirectionalLight(0xFFFFFF, 0.7);
             directionalLight.position.set(10, 20, 10);
@@ -872,8 +883,8 @@
             scene.add(directionalLight);
             skiTrails = { left: [], right: [] };
             mainTrails = { left: [], right: [] };
-            score = 0;
-            snowballAmmo = 20;
+            //score = 0;
+            snowballAmmo = 200;
             snowballsUsed = 0;
             npcsHit = 0;
             throwTimer = 0;
@@ -914,8 +925,8 @@
                 joystick.y = y;
             }
             document.getElementById('knob').style.transform = `translate(${joystick.x}px, ${joystick.y}px)`;
-            joystick.x /= 25;
-            joystick.y /= 25;
+            joystick.x /= 15;
+            joystick.y /= 50;
         }
 
         function resetJoystick() {
@@ -933,7 +944,7 @@
                 document.getElementById('toggleCamera').textContent = 'Camera: Fly-Around';
             } else {
                 cameraMode = 'default';
-                document.getElementById('toggleCamera').textContent = 'Camera: Default';
+                document.getElementById('toggleCamera').textContent = 'Camera: Player';
             }
         }
 
@@ -1029,7 +1040,7 @@
 
         function showFlagHit() {
             const flagHitEl = document.getElementById('flagHit');
-            flagHitEl.textContent = 'Flag Hit!';
+            flagHitEl.textContent = 'Flag Hit! Life lost! '; // Lose points and/or life
             flagHitEl.style.display = 'block';
             setTimeout(() => flagHitEl.style.display = 'none', 1000);
             screenShake.active = true;
@@ -1043,7 +1054,7 @@
 
         function showPenalty() {
             const penaltyEl = document.getElementById('penalty');
-            penaltyEl.textContent = '-50';
+            penaltyEl.textContent = 'Penalty (wrong side of flag): -50'; // Left of blue, right of red
             penaltyEl.style.display = 'block';
             setTimeout(() => penaltyEl.style.display = 'none', 1000);
         }
@@ -1086,16 +1097,8 @@
                 camera.lookAt(skier.position);
                 
             } else if (cameraMode === 'default' && !screenShake.active) {
-                //const isSteep = skier.position.x > -300 && skier.position.x < -250 ||
-                //                skier.position.x > -500 && skier.position.x < -450 ||
-                //                skier.position.x > -700 && skier.position.x < -650;
-                //if (isSteep) {
-                //    camera.position.set(skier.position.x + 10, skier.position.y + 10, skier.position.z);
-                //    camera.lookAt(skier.position.x - 5, skier.position.y, skier.position.z);
-                //} else {
-                    camera.position.set(skier.position.x + 10, skier.position.y + 5, skier.position.z );
-                    camera.lookAt(skier.position);
-                //}
+                camera.position.set(skier.position.x + 10, skier.position.y + 5, skier.position.z );
+                camera.lookAt(skier.position);
             } else if (cameraMode === 'flyAround') {
                 flyAroundAngle += delta * 0.75; // Adjust the speed of the fly-around effect
                 const radius = 25;
@@ -1155,14 +1158,14 @@
                 const dist = skier.position.distanceTo(collectable.position);
                 if (dist < 3) {
                     if (collectable.userData.type === 'speed') {
-                        speedBoostTimer = 5;
+                        speedBoostTimer = 2;
                         showBonus('Speed Up!');
                     } else if (collectable.userData.type === 'life') {
                         lives++;
                         showBonus('+1 Life');
                     } else if (collectable.userData.type === 'snowball') {
-                        snowballAmmo += 5;
-                        showBonus('+5 Snowballs');
+                        snowballAmmo += 10;
+                        showBonus('+10 Snowballs');
                     }
                     scene.remove(collectable);
                     collectables.splice(index, 1);
@@ -1253,11 +1256,11 @@
 
                     if (autoThrow && snowballAmmo > 0 && snowballCooldown <= 0) {
                         let target = null;
-                        let minDist = Infinity;
+                        let minDist = Infinity; 
                         npcs.forEach(npc => {
                             if (isNPCTargetable(npc)) {
                                 const dist = skier.position.distanceTo(npc.position);
-                                if (dist < minDist) {
+                                if (dist < minDist) { 
                                     minDist = dist;
                                     target = npc;
                                 }
@@ -1266,15 +1269,15 @@
                         if (target) {
                             snowballAmmo--;
                             snowballsUsed++;
-                            throwTimer = 0.5; // throw animation duration
+                            throwTimer = 0.5; // throw animation duration (0.5)
                             const snowball = createSnowball(target);
                             snowballs.push(snowball);
                             scene.add(snowball);
-                            snowballCooldown = 0.2; // cooldown for next snowball
+                            snowballCooldown = 0.2; // cooldown for next snowball (0.2)
                         }
                     }
                     if (skidTimer <= 0) {
-                        const baseSpeed = 20;
+                        const baseSpeed = 10;
                         currentSpeed = baseSpeed - joystick.y * 20 + (speedBoostTimer > 0 ? 10 : 0);
                         currentSpeed = Math.max(0, Math.min(50, currentSpeed));
                         speedBoostTimer = Math.max(0, speedBoostTimer - delta);
@@ -1301,22 +1304,26 @@
                     flags.forEach((flag, index) => {
                         if (!flag) return;
                         const dist = skier.position.distanceTo(flag.position);
-                        if (dist < 1) {
-                            lives--;
+                        
+                        if (dist < 1.5) {
+                            lives--; // Lose a life for hitting a flag
                             knockOverFlag(flag);
                             showFlagHit();
                             stumbleTimer = 1.0;
                             flags.splice(index, 1);
                             setTimeout(() => scene.remove(flag), 1000);
                             if (lives <= 0) endGame();
-                        } else if (dist < 2 && flag.position.x > skier.position.x) {
+                        } 
+                        // Check if skier is on the correct side of the flag
+                        else if (dist < 10 && flag.position.x > skier.position.x) { 
                             const isBlue = flag.material.color.getHex() === 0x0000FF;
                             const isCorrectSide = isBlue ? skier.position.z > flag.position.z : skier.position.z < flag.position.z;
                             if (isCorrectSide) {
                                 score += 100;
-                                showBonus('+100');
+                                //showBonus('Correct side +100');
                                 showMiniScore('+100', flag.position.x, flag.position.z, false);
                                 showCorrectMessage(isBlue);
+                            
                             } else {
                                 score = Math.max(0, score - 50);
                                 showPenalty();
@@ -1335,50 +1342,48 @@
                             stumbleTimer = 1.0;
                         }
                     });
-                    const finishDistance = Math.abs(skier.position.x - (-1850));
+                    const finishDistance = Math.abs(skier.position.x - (-finishLinePos));
                     if (finishDistance <= 200 && skidTimer <= 0) {
                         showFinishMessage(finishDistance);
                     } else {
                         hideFinishMessage();
                     }
-                    if (skier.position.x < -1850 && skidTimer <= 0) {
+                    if (skier.position.x < -finishLinePos && skidTimer <= 0) {
                         skidTimer = 4;
                         joystick.x = 0;
                         joystick.y = 0;
                         document.getElementById('knob').style.transform = 'translate(0px, 0px)';
                     }
-                    const finishHeight = getTerrainHeight(-1850);
+                    const finishHeight = getTerrainHeight(-finishLinePos);
                     const altitude = terrainHeight - finishHeight;
                     document.getElementById('stats').innerHTML = `
-                        <span style="color: yellow; font-size: 32px;">Score: ${score}</span><br>
-                        <span style="color: orange; font-size: 32px;">Time: ${time.toFixed(1)}s</span><br>
-                        <span >Speed: ${currentSpeed.toFixed(1)} m/s</span><br>
-                        <span >Lives: ${lives}</span><br>
-                        <span >Snowballs: ${snowballAmmo}</span><br>
-                        <span >Altitude: ${altitude.toFixed(1)} m</span><br>
-                        <span >Snowballs Used: ${snowballsUsed}</span><br>
-                        <span >Skiers Hit: ${npcsHit}</span><br>
-                        <span >Level: ${level}</span><br>
-                        <span ">Camera: ${cameraMode}</span><br>
-                        <span style="color: white;">Auto Play: ${autoPlay ? 'On' : 'Off'}</span><br>
+                        <span  style="font-size: 12px;" >Level: ${level} Lives: ${lives}</span><br/>
+                        <span style="color: yellow; font-size: 20px;">Score: ${score}</span><br/>
+                        <span style="color: orange; font-size: 16px;">Time: ${time.toFixed(1)}s</span><br/><br/>
+                        Position: ${playerPosition}
+                        <br/><br/>
+                        <span>Speed:<br/>
+                          &nbsp;&nbsp;${currentSpeed.toFixed(1)} m/s </span><br/>
+                          &nbsp;&nbsp;<span style="font-size: 12px;">Boast: ${speedBoostTimer.toFixed(1)} s</span><br/><br/>
+                        
+                        <span >Snowballs:<br/>
+                          &nbsp;&nbsp;Ammo: ${snowballAmmo}<br/>
+                          &nbsp;&nbsp;Thrown: ${snowballsUsed}</span><br>
+                          &nbsp;&nbsp;Hit: ${npcsHit} (${((npcsHit/snowballsUsed) * 10).toFixed(1)}%)</span><br>
+                        </span><br>
+                        <span>
+                          Skiers<br/>
+                          &nbsp;&nbsp;Total: ${npcs.length} Hit: ${npcsHit}
+                          </span>                          
+                          <br><br>
+                        <span >Altitude:<br>
+                          &nbsp;&nbsp;${altitude.toFixed(1)} m</span>
+                          <br><br>
+                        <span style="color: white;">Finish line:<br>
+                          &nbsp;&nbsp;${finishDistance.toFixed()} m</span>
 
-                        <span style="color: white;">Auto Throw: ${autoThrow ? 'On' : 'Off'}</span><br>
-                        <span style="color: white;">Skid Timer: ${skidTimer.toFixed(1)}</span><br>
-                        <span style="color: white;">Stumble Timer: ${stumbleTimer.toFixed(1)}</span><br>
-                        <span style="color: white;">Speed Boost Timer: ${speedBoostTimer.toFixed(1)}</span><br>
-                        <span style="color: white;">Throw Timer: ${throwTimer.toFixed(1)}</span><br>
-                        <span style="color: white;">Screen Shake Timer: ${screenShake.timer.toFixed(1)}</span><br>
-                        <span style="color: white;">Joystick X: ${joystick.x.toFixed(2)}</span><br>
-                        <span style="color: white;">Joystick Y: ${joystick.y.toFixed(2)}</span><br>
-                        <span style="color: white;">Camera Position: (${camera.position.x.toFixed(1)}, ${camera.position.y.toFixed(1)}, ${camera.position.z.toFixed(1)})</span><br>
-                        <span style="color: white;">Skier Position: (${skier.position.x.toFixed(1)}, ${skier.position.y.toFixed(1)}, ${skier.position.z.toFixed(1)})</span><br>
-                        <span style="color: white;">Snowballs Used: ${snowballsUsed}</span><br>
-                        <span style="color: white;">Snowballs Left: ${snowballAmmo}</span><br>  
-                        <span style="color: white;">Snowballs Thrown: ${snowballsUsed}</span><br>
-                        <span style="color: white;">Snowballs Hit: ${npcsHit}</span><br>
-                        <span style="color: white;">Snowballs Missed: ${snowballs.length}</span><br>
-                        <span style="color: white;">Distance to Finish: ${finishDistance.toFixed()} m</span><br>
                     `;
+                    updateLeaderboard();
                     updateMiniMap();
                     updateSideView();
                     updateProgressBar();
@@ -1401,17 +1406,18 @@
             gameOver = true;
             document.getElementById('levelComplete').style.display = 'block';
             document.getElementById('levelStats').innerHTML = `
-                <span style="color: cyan;">Level: ${level}</span><br>
-                <span style="color: yellow; font-size: 32px;">Score: ${score}</span><br>
-                <span style="color: orange; font-size: 32px;">Time: ${time.toFixed(1)}s</span><br>
-                <span style="color: white;">Speed: ${currentSpeed.toFixed(1)} m/s</span><br>
-                <span style="color: magenta;">Snowballs Used: ${snowballsUsed}</span><br>
-                <span style="color: white;">NPCs Hit: ${npcsHit}</span>
+                <span style="color: cyan;">Level: ${level}&nbsp;&nbsp;Lives: ${lives}</span><br>
+                <span style="color: yellow; font-size: 32px;">Score: ${score}</span><br/>
+                <span style="color: orange; font-size: 28px;">Time: ${time.toFixed(1)}s</span><br/><br/>
+                <span style="color: white;">Snowballs Used: ${snowballsUsed}</span><br/>
+                <span style="color: white;">Skiers Hit: ${npcsHit}</span>
             `;
             document.getElementById('miniMap').style.display = 'none';
             document.getElementById('sideView').style.display = 'none';
             document.getElementById('progressBar').style.display = 'none';
             document.getElementById('toggleCamera').style.display = 'none';
+            document.getElementById('stats').style.display = 'none';
+            
         }
 
         function endGame() {
@@ -1423,19 +1429,55 @@
                 Time: ${time.toFixed(1)}s<br>
                 Speed: ${currentSpeed.toFixed(1)} m/s<br>
                 Snowballs Used: ${snowballsUsed}<br>
-                NPCs Hit: ${npcsHit}
+                Skiers Hit: ${npcsHit}
             `;
             document.getElementById('miniMap').style.display = 'none';
             document.getElementById('sideView').style.display = 'none';
             document.getElementById('progressBar').style.display = 'none';
             document.getElementById('toggleCamera').style.display = 'none';
         }
+        function updateLeaderboard() {
+          const finishX = -finishLinePos;
+          let leaderboard = [
+              { name: "Player", distance: Math.abs(skier.position.x - finishX), finished: skier.position.x <= finishX }
+          ];
+          
+          npcs.forEach((npc, index) => {
+              if (!npc.userData.knockedOver) {
+                  leaderboard.push({
+                      name: `NPC ${index + 1}`,
+                      distance: Math.abs(npc.position.x - finishX),
+                      finished: npc.position.x <= finishX
+                  });
+              }
+          });
+
+          leaderboard.sort((a, b) => {
+              if (a.finished && !b.finished) return -1;
+              if (!a.finished && b.finished) return 1;
+              return a.distance - b.distance;
+          });
+
+          // Limit to top 5
+          leaderboard = leaderboard.slice(0, 40);
+
+          // Find player's position
+          playerPosition = leaderboard.findIndex(entry => entry.name === "Player") + 1;
+
+          const leaderboardText = leaderboard.map((entry, index) => 
+              `${index + 1}. ${entry.name}: ${entry.finished ? "🏁 Finished " : entry.distance.toFixed(0) + "m"}` +
+              (entry.name === "Player" ? "⛷️ (You)" : "")
+          ).join("<br>");
+
+          document.getElementById('stats').innerHTML += `<br><br><span>Leaderboard:<br>${leaderboardText}</span>`;
+      }
 
         function nextLevel() {
+            finishLinePos = finishLinePos + 200; // Move finish line further back
             gameOver = false;
             level++;
             lives = 3;
-            score = 0;
+            //score = 0;
             time = 0;
             currentSpeed = 0;
             snowballAmmo = 20;
@@ -1480,7 +1522,7 @@
             gameOver = false;
             level = 1;
             lives = 3;
-            score = 0;
+            //score = 0;
             time = 0;
             currentSpeed = 0;
             snowballAmmo = 20;
