@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>4x4 Trippy Animation Grid</title>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+    }
+    .canvas-tile {
+      margin: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<script>
+  const gridRows = 3;
+  const gridCols = 3;
+  const canvasSize = 400;
+
+  function createTileAnimation(container, options) {
+    return new p5(p => {
+      let x = 0, u = 0, v = 0, f = 0;
+      let n = options.n;
+      let speed = options.speed;
+      let hue = options.hue;
+      let autoHue = options.autoHue;
+
+      p.setup = () => {
+        p.createCanvas(canvasSize, canvasSize).parent(container);
+        p.colorMode(p.HSB);
+        p.noFill();
+      };
+
+      p.draw = () => {
+        if (autoHue) hue = (hue + 0.5) % 360;
+        let r = p.TWO_PI / n;
+        p.background(0, 0.1);
+        let cx = p.width / 2;
+        let cy = p.height / 2;
+
+        for (let i = 0; i < n; i++) {
+          for (let j = 0; j < 55; j += 0.1) {
+            u = p.sin(i + v + f) - p.sin(r * i + x - 99 * f);
+            v = p.cos(i + v + f) - p.cos(r * i + x - 99 * f);
+            x = u + f;
+            let X = cx + 99 * u;
+            let Y = cy + 99 * v;
+            p.stroke((hue + j * 3) % 360, 100, 100);
+            p.line(X, Y, X + 1, Y + 1);
+          }
+        }
+
+        f += speed;
+      };
+    });
+  }
+
+  // Create 4x4 grid of animated canvases
+  for (let row = 0; row < gridRows; row++) {
+    for (let col = 0; col < gridCols; col++) {
+      const container = document.createElement('div');
+      container.classList.add('canvas-tile');
+      document.body.appendChild(container);
+
+      createTileAnimation(container, {
+        n: Math.floor(20 + Math.random() * 5),       // pattern complexity
+        speed: 0.0001 + Math.random() * 0.00015,         // speed
+        hue: Math.floor(Math.random() * 560),            // initial hue
+        autoHue: true                                    // enable auto hue
+      });
+    }
+  }
+</script>
+
+</body>
+</html>
