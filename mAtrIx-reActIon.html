@@ -1,264 +1,499 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Matrix Reaction Game</title>
-    <style>
-        body {
-            margin: 0;
-            background: #000;
-            color: #0f0;
-            font-family: 'Courier New', monospace;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        #game-container {
-            position: relative;
-            width: 800px;
-            height: 600px;
-            border: 2px solid #0f0;
-            background: #111;
-            display: none;
-        }
-        #stats {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px;
-            border: 1px solid #0f0;
-        }
-        #stats p {
-            margin: 5px 0;
-        }
-        .target {
-            position: absolute;
-            width: 50px;
-            height: 50px;
-            background: radial-gradient(circle, #0f0, #050);
-            border-radius: 50%;
-            cursor: crosshair;
-            box-shadow: 0 0 10px #0f0;
-            transition: all 0.2s;
-        }
-        .hit {
-            background: radial-gradient(circle, #fff, #0f0);
-            box-shadow: 0 0 20px #fff;
-        }
-        .miss {
-            background: radial-gradient(circle, #f00, #500);
-            box-shadow: 0 0 20px #f00;
-        }
-        .matrix-bg {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0.1;
-            pointer-events: none;
-        }
-        #game-over {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
-            padding: 20px;
-            border: 2px solid #0f0;
-            text-align: center;
-            display: none;
-            max-width: 600px;
-        }
-        #restart-btn {
-            background: #0f0;
-            color: #000;
-            border: none;
-            padding: 10px 20px;
-            cursor: pointer;
-            margin-top: 10px;
-            font-family: 'Courier New', monospace;
-        }
-        #restart-btn:hover {
-            background: #0c0;
-        }
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            margin-top: 20px;
-        }
-        th, td {
-            border: 1px solid #0f0;
-            padding: 5px;
-            text-align: center;
-        }
-        .highlight {
-            font-weight: bold;
-            color: #0ff;
-        }
-        #loading-screen {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            width: 800px;
-            height: 600px;
-        }
-        #loading-screen h1 {
-            font-size: 48px;
-            margin-bottom: 20px;
-        }
-        #loading-screen p {
-            font-size: 16px;
-            max-width: 600px;
-            margin: 0 auto 20px;
-        }
-        #loading-screen #countdown {
-            font-size: 24px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matrix Reaction Game V2</title>
+<style>
+    body {
+        margin: 0;
+        background: #000;
+        color: #0f0;
+        font-family: 'Courier New', monospace;
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+    #game-container {
+        position: relative;
+        width: 800px;
+        height: 600px;
+        border: 3px solid #0f0;
+        background: #111;
+        display: none;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+    }
+    #stats {
+        position: absolute;
+        top: 15px;
+        left: 15px;
+        background: rgba(0, 0, 0, 0.85);
+        padding: 15px;
+        border: 2px solid #0f0;
+        border-radius: 8px;
+        font-size: 14px;
+        box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        z-index: 10;
+        display: none;
+    }
+    #stats p {
+        margin: 8px 0;
+        display: flex;
+        justify-content: space-between;
+    }
+    #stats span {
+        color: #0ff;
+        font-weight: bold;
+    }
+    .target {
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        background: radial-gradient(circle, #0f0, #050);
+        border-radius: 50%;
+        cursor: crosshair;
+        box-shadow: 0 0 15px #0f0, inset 0 0 5px rgba(0, 255, 0, 0.7);
+        transition: all 0.2s ease-in-out;
+        z-index: 5;
+    }
+    .target:hover {
+        transform: scale(1.1);
+    }
+    .hit {
+        background: radial-gradient(circle, #fff, #0f0);
+        box-shadow: 0 0 25px #fff, inset 0 0 10px #fff;
+    }
+    .miss {
+        background: radial-gradient(circle, #f00, #500);
+        box-shadow: 0 0 25px #f00;
+    }
+    .matrix-bg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.1;
+        pointer-events: none;
+        transition: opacity 0.3s;
+        z-index: 1;
+    }
+    #game-over {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.99);
+        padding: 30px;
+        border: 3px solid #0f0;
+        border-radius: 10px;
+        text-align: center;
+        display: none;
+        max-width: 600px;
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
+        z-index: 15;
+    }
+    #welcome-screen {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.9);
+        padding: 50px;
+        border: 3px solid #0f0;
+        border-radius: 10px;
+        text-align: center;
+        max-width: 800px;
+        width: 95%;
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
+        z-index: 10;
+    }
+    #welcome-screen h1 {
+        font-size: 64px;
+        margin-bottom: 20px;
+        text-shadow: 0 0 10px #0f0;
+        animation: flicker 1.5s infinite alternate;
+    }
+    #welcome-screen p {
+        font-size: 20px;
+        max-width: 700px;
+        margin: 0 auto 20px;
+        line-height: 1.5;
+    }
+    #start-btn, #restart-btn {
+        background: #0f0;
+        color: #000;
+        border: none;
+        padding: 15px 30px;
+        cursor: pointer;
+        margin-top: 20px;
+        font-family: 'Courier New', monospace;
+        font-size: 18px;
+        border-radius: 5px;
+        transition: background 0.3s, transform 0.2s;
+    }
+    #start-btn:hover, #restart-btn:hover {
+        background: #0cc;
+        transform: scale(1.05);
+    }
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-top: 20px;
+        font-size: 14px;
+    }
+    th, td {
+        border: 2px solid #0f0;
+        padding: 8px;
+        text-align: center;
+    }
+    th {
+        background: rgba(0, 255, 0, 0.1);
+    }
+    .highlight {
+        font-weight: bold;
+        color: #0ff;
+        text-shadow: 0 0 5px #0ff;
+    }
+    #loading-screen {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        width: 800px;
+        height: 600px;
+        background: rgba(0, 0, 0, 0.9);
+        border: 3px solid #0f0;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        display: none;
+        z-index: 10;
+    }
+    #loading-screen h1 {
+        font-size: 48px;
+        margin-bottom: 20px;
+        text-shadow: 0 0 10px #0f0;
+        animation: flicker 1.5s infinite alternate;
+    }
+    #loading-screen p {
+        font-size: 16px;
+        max-width: 600px;
+        margin: 0 auto 20px;
+        line-height: 1.5;
+    }
+    #loading-screen #countdown {
+        font-size: 64px;
+        font-weight: bold;
+        color: #0ff;
+        text-shadow: 0 0 5px #0ff;
+    }
+    #restart-countdown-screen {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        width: 800px;
+        height: 600px;
+        background: rgba(0, 0, 0, 0.9);
+        border: 3px solid #0f0;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        display: none;
+        z-index: 10;
+    }
+    #restart-countdown-screen h1 {
+        font-size: 48px;
+        margin-bottom: 20px;
+        text-shadow: 0 0 10px #0f0;
+        animation: flicker 1.5s infinite alternate;
+    }
+    #restart-countdown-screen #countdown {
+        font-size: 64px;
+        font-weight: bold;
+        color: #0ff;
+        text-shadow: 0 0 5px #0ff;
+    }
+    #control-panel {
+        position: absolute;
+        bottom: 15px;
+        left: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        background: rgba(0, 0, 0, 0.85);
+        padding: 10px;
+        border: 2px solid #0f0;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        z-index: 10;
+        display: none;
+    }
+    #welcome-screen #control-panel {
+        position: static;
+        margin: 20px auto;
+    }
+    #control-panel label {
+        margin-right: 10px;
+        font-size: 14px;
+    }
+    #brightness-slider, #hue-slider, #welcome-brightness-slider, #welcome-hue-slider {
+        width: 100px;
+        accent-color: #0f0;
+    }
+    .bonus-message, .stat-message {
+        position: absolute;
+        color: #0ff;
+        font-size: 14px;
+        font-weight: bold;
+        text-shadow: 0 0 5px #0ff;
+        animation: fadeOut 1s ease-out forwards;
+        z-index: 20;
+        pointer-events: none;
+    }
+    #toggle-stats-btn, #toggle-controls-btn {
+        position: absolute;
+        background: #0f0;
+        color: #000;
+        border: none;
+        padding: 5px 10px;
+        cursor: pointer;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        border-radius: 5px;
+        transition: background 0.3s;
+        z-index: 15;
+    }
+    #toggle-stats-btn:hover, #toggle-controls-btn:hover {
+        background: #0cc;
+    }
+    #toggle-stats-btn {
+        top: 5px;
+        left: 5px;
+    }
+    #toggle-controls-btn {
+        bottom: 5px;
+        left: 5px;
+    }
+    @keyframes fadeOut {
+        0% { opacity: 1; transform: translateY(0); }
+        100% { opacity: 0; transform: translateY(-20px); }
+    }
+    @keyframes flicker {
+        0% { opacity: 1; }
+        50% { opacity: 0.7; }
+        100% { opacity: 1; }
+    }
+</style>
 </head>
 <body>
-    <div id="loading-screen">
-        <canvas id="matrix-bg-loading" class="matrix-bg"></canvas>
-        <h1>mAtrIx reActIon</h1>
-        <p>Test your hand to eye coordination and reaction time, tap the objects as they appear as fast as you can. You’ll get a score and average reaction time. Try and beat your best</p>
-        <div id="countdown">5</div>
-    </div>
-    <div id="game-container">
-        <canvas id="matrix-bg" class="matrix-bg"></canvas>
-        <div id="stats">
-            <p>Overall Time: <span id="overall-time">0</span>s</p>
-            <p>Last Reaction Time: <span id="reaction-time">0</span>ms</p>
-            <p>Best Reaction Time: <span id="best-reaction-time">0</span>ms</p>
-            <p>Average Reaction Time: <span id="avg-reaction-time">0</span>ms</p>
-            <p>Score: <span id="score">0</span></p>
-            <p>Targets Left: <span id="targets-left">10</span></p>
+<div id="welcome-screen">
+    <canvas id="matrix-bg-welcome" class="matrix-bg"></canvas>
+    <h1>mAtrIx reActIon</h1>
+    <p>Welcome to the Matrix Reaction Game! Test your hand-eye coordination and reaction speed. Click or tap the glowing targets as they appear to score points. The faster you react and the closer to the center you click, the higher your score. Game stats tracked: Score, Overall Time, Last/Best/Average Reaction Time, Last/Best/Average Accuracy, and Targets Left. Try to beat your best score and stats!</p>
+    <div id="control-panel">
+        <div>
+            <label for="welcome-brightness-slider">Matrix Brightness:</label>
+            <input type="range" id="welcome-brightness-slider" min="0.05" max="0.5" step="0.01" value="0.1">
         </div>
-        <div id="game-over">
-            <canvas id="matrix-bg-game-over" class="matrix-bg"></canvas>
-            <h1>GAME OVER</h1>
-            <p>Final Score: <span id="final-score">0</span></p>
-            <p>Total Time: <span id="final-time">0</span>s</p>
-            <p>Best Reaction Time: <span id="final-best-reaction">0</span>ms</p>
-            <p>Average Reaction Time: <span id="final-avg-reaction">0</span>ms</p>
-            <div id="previous-results"></div>
-            <button id="restart-btn">Restart</button>
+        <div>
+            <label for="welcome-hue-slider">Matrix Hue:</label>
+            <input type="range" id="welcome-hue-slider" min="0" max="360" step="1" value="120">
         </div>
     </div>
-    <script>
-        const container = document.getElementById('game-container');
-        const loadingScreen = document.getElementById('loading-screen');
-        const gameOverScreen = document.getElementById('game-over');
-        const stats = {
-            overallTime: document.getElementById('overall-time'),
-            reactionTime: document.getElementById('reaction-time'),
-            bestReactionTime: document.getElementById('best-reaction-time'),
-            avgReactionTime: document.getElementById('avg-reaction-time'),
-            score: document.getElementById('score'),
-            targetsLeft: document.getElementById('targets-left')
-        };
-        const finalStats = {
-            score: document.getElementById('final-score'),
-            time: document.getElementById('final-time'),
-            bestReaction: document.getElementById('final-best-reaction'),
-            avgReaction: document.getElementById('final-avg-reaction')
-        };
-        const previousResults = document.getElementById('previous-results');
-        const restartBtn = document.getElementById('restart-btn');
-        const countdownDisplay = document.getElementById('countdown');
+    <button id="start-btn">Start Game</button>
+</div>
+<div id="loading-screen">
+    <canvas id="matrix-bg-loading" class="matrix-bg"></canvas>
+    <h1>mAtrIx reActIon</h1>
+    <p>Test your hand-eye coordination and reaction speed. Click or tap the glowing targets as they appear. Beat your best score and stats!</p>
+    <div id="countdown">3</div>
+</div>
+<div id="restart-countdown-screen">
+    <canvas id="matrix-bg-restart" class="matrix-bg"></canvas>
+    <h1>Restarting Game</h1>
+    <div id="countdown">3</div>
+</div>
+<div id="game-container">
+    <canvas id="matrix-bg" class="matrix-bg"></canvas>
+    <button id="toggle-stats-btn">Show Stats</button>
+    <button id="toggle-controls-btn">Show Controls</button>
+    <div id="stats">
+        <p>Overall Time: <span id="overall-time">0</span>s</p>
+        <p>Last Reaction: <span id="reaction-time">0</span>ms</p>
+        <p>Best Reaction: <span id="best-reaction-time">0</span>ms</p>
+        <p>Avg Reaction: <span id="avg-reaction-time">0</span>ms</p>
+        <p>Last Accuracy: <span id="last-accuracy">0</span>%</p>
+        <p>Best Accuracy: <span id="best-accuracy">0</span>%</p>
+        <p>Avg Accuracy: <span id="accuracy">0</span>%</p>
+        <p>Score: <span id="score">0</span></p>
+        <p>Targets Left: <span id="targets-left">10</span></p>
+    </div>
+    <div id="control-panel">
+        <div>
+            <label for="brightness-slider">Matrix Brightness:</label>
+            <input type="range" id="brightness-slider" min="0.05" max="0.5" step="0.01" value="0.1">
+        </div>
+        <div>
+            <label for="hue-slider">Matrix Hue:</label>
+            <input type="range" id="hue-slider" min="0" max="360" step="1" value="120">
+        </div>
+    </div>
+    <div id="game-over">
+        <canvas id="matrix-bg-game-over" class="matrix-bg"></canvas>
+        <h1>GAME OVER</h1>
+        <p>Final Score: <span id="final-score">0</span></p>
+        <p>Total Time: <span id="final-time">0</span>s</p>
+        <p>Best Reaction: <span id="final-best-reaction">0</span>ms</p>
+        <p>Average Reaction: <span id="final-avg-reaction">0</span>ms</p>
+        <p>Best Accuracy: <span id="final-best-accuracy">0</span>%</p>
+        <p>Average Accuracy: <span id="final-accuracy">0</span>%</p>
+        <div id="previous-results"></div>
+        <button id="restart-btn">Restart</button>
+    </div>
+</div>
+<script>
+    const container = document.getElementById('game-container');
+    const welcomeScreen = document.getElementById('welcome-screen');
+    const loadingScreen = document.getElementById('loading-screen');
+    const restartCountdownScreen = document.getElementById('restart-countdown-screen');
+    const gameOverScreen = document.getElementById('game-over');
+    const stats = {
+        overallTime: document.getElementById('overall-time'),
+        reactionTime: document.getElementById('reaction-time'),
+        bestReactionTime: document.getElementById('best-reaction-time'),
+        avgReactionTime: document.getElementById('avg-reaction-time'),
+        lastAccuracy: document.getElementById('last-accuracy'),
+        bestAccuracy: document.getElementById('best-accuracy'),
+        accuracy: document.getElementById('accuracy'),
+        score: document.getElementById('score'),
+        targetsLeft: document.getElementById('targets-left')
+    };
+    const finalStats = {
+        score: document.getElementById('final-score'),
+        time: document.getElementById('final-time'),
+        bestReaction: document.getElementById('final-best-reaction'),
+        avgReaction: document.getElementById('final-avg-reaction'),
+        bestAccuracy: document.getElementById('final-best-accuracy'),
+        accuracy: document.getElementById('final-accuracy')
+    };
+    const previousResults = document.getElementById('previous-results');
+    const restartBtn = document.getElementById('restart-btn');
+    const startBtn = document.getElementById('start-btn');
+    const loadingCountdownDisplay = document.querySelector('#loading-screen #countdown');
+    const restartCountdownDisplay = document.querySelector('#restart-countdown-screen #countdown');
+    const brightnessSlider = document.getElementById('brightness-slider');
+    const hueSlider = document.getElementById('hue-slider');
+    const welcomeBrightnessSlider = document.getElementById('welcome-brightness-slider');
+    const welcomeHueSlider = document.getElementById('welcome-hue-slider');
+    const matrixCanvases = document.querySelectorAll('.matrix-bg');
+    const toggleStatsBtn = document.getElementById('toggle-stats-btn');
+    const toggleControlsBtn = document.getElementById('toggle-controls-btn');
 
-        // Matrix Background Setup
-        const canvases = [
-            { id: 'matrix-bg-loading', width: 800, height: 600 },
-            { id: 'matrix-bg', width: 800, height: 600 },
-            { id: 'matrix-bg-game-over', width: 600, height: 600 }
-        ];
-        const contexts = {};
-        const drops = {};
+    // Matrix Background Setup
+    const canvases = [
+        { id: 'matrix-bg-welcome', width: 800, height: 800 },
+        { id: 'matrix-bg-loading', width: 800, height: 600 },
+        { id: 'matrix-bg-restart', width: 800, height: 600 },
+        { id: 'matrix-bg', width: 800, height: 600 },
+        { id: 'matrix-bg-game-over', width: 600, height: 600 }
+    ];
+    const contexts = {};
+    const drops = {};
+    const speeds = {};
 
-        canvases.forEach(canvas => {
-            const c = document.getElementById(canvas.id);
-            const ctx = c.getContext('2d');
-            c.width = canvas.width;
-            c.height = canvas.height;
-            contexts[canvas.id] = ctx;
-            drops[canvas.id] = Array(Math.floor(canvas.width / 14)).fill(0);
+    canvases.forEach(canvas => {
+        const c = document.getElementById(canvas.id);
+        const ctx = c.getContext('2d');
+        c.width = canvas.width;
+        c.height = canvas.height;
+        contexts[canvas.id] = ctx;
+        drops[canvas.id] = Array(Math.floor(canvas.width / 14)).fill(0);
+        speeds[canvas.id] = Array(Math.floor(canvas.width / 14)).fill(0).map(() => Math.random() * 0.5 + 0.5);
+    });
+
+    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZあいうえおカキクケコ';
+    const fontSize = 14;
+
+    function drawMatrix(canvasId) {
+        const ctx = contexts[canvasId];
+        const canvas = document.getElementById(canvasId);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.font = `${fontSize}px monospace`;
+        const hue = canvasId === 'matrix-bg-welcome' ? welcomeHueSlider.value : hueSlider.value;
+        drops[canvasId].forEach((y, i) => {
+            const speed = speeds[canvasId][i];
+            const opacity = Math.min(1, y / 20);
+            ctx.fillStyle = `hsla(${hue}, 100%, 50%, ${opacity})`;
+            const text = chars[Math.floor(Math.random() * chars.length)];
+            const x = i * fontSize;
+            ctx.fillText(text, x, y * fontSize);
+            if (y * fontSize > canvas.height && Math.random() > 0.95) {
+                drops[canvasId][i] = 0;
+                speeds[canvasId][i] = Math.random() * 0.5 + 0.5;
+            }
+            drops[canvasId][i] += speed;
         });
+    }
+    setInterval(() => {
+        drawMatrix('matrix-bg-welcome');
+        drawMatrix('matrix-bg-loading');
+        drawMatrix('matrix-bg-restart');
+        drawMatrix('matrix-bg');
+        drawMatrix('matrix-bg-game-over');
+    }, 50);
 
-        const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        const fontSize = 14;
+    // Brightness and Hue Sliders
+    function updateMatrixStyles() {
+        matrixCanvases.forEach(canvas => {
+            const brightness = canvas.id === 'matrix-bg-welcome' ? welcomeBrightnessSlider.value : brightnessSlider.value;
+            canvas.style.opacity = brightness;
+        });
+    }
 
-        function drawMatrix(canvasId) {
-            const ctx = contexts[canvasId];
-            const canvas = document.getElementById(canvasId);
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#0f0';
-            ctx.font = `${fontSize}px monospace`;
-            drops[canvasId].forEach((y, i) => {
-                const text = chars[Math.floor(Math.random() * chars.length)];
-                const x = i * fontSize;
-                ctx.fillText(text, x, y * fontSize);
-                if (y * fontSize > canvas.height && Math.random() > 0.975) drops[canvasId][i] = 0;
-                drops[canvasId][i]++;
-            });
-        }
-        setInterval(() => {
-            drawMatrix('matrix-bg-loading');
-            drawMatrix('matrix-bg');
-            drawMatrix('matrix-bg-game-over');
-        }, 50);
+    brightnessSlider.addEventListener('input', updateMatrixStyles);
+    welcomeBrightnessSlider.addEventListener('input', updateMatrixStyles);
+    hueSlider.addEventListener('input', () => {
+        document.querySelectorAll('.matrix-bg:not(#matrix-bg-welcome)').forEach(canvas => {
+            drawMatrix(canvas.id);
+        });
+    });
+    welcomeHueSlider.addEventListener('input', () => {
+        drawMatrix('matrix-bg-welcome');
+    });
 
-        // Loading Screen Countdown
-        let countdown = 5;
+    // Toggle Stats and Controls
+    toggleStatsBtn.addEventListener('click', () => {
+        const statsDiv = document.getElementById('stats');
+        statsDiv.style.display = statsDiv.style.display === 'none' ? 'block' : 'none';
+        toggleStatsBtn.textContent = statsDiv.style.display === 'none' ? 'Show Stats' : 'Hide Stats';
+    });
+
+    toggleControlsBtn.addEventListener('click', () => {
+        const controlPanel = container.querySelector('#control-panel');
+        controlPanel.style.display = controlPanel.style.display === 'none' ? 'flex' : 'none';
+        toggleControlsBtn.textContent = controlPanel.style.display === 'none' ? 'Show Controls' : 'Hide Controls';
+    });
+
+    // Start Button
+    startBtn.addEventListener('click', () => {
+        welcomeScreen.style.display = 'none';
+        loadingScreen.style.display = 'block';
+        startLoadingCountdown();
+    });
+
+    // Loading Screen Countdown
+    function startLoadingCountdown() {
+        let countdown = 3;
+        loadingCountdownDisplay.textContent = countdown;
         const countdownInterval = setInterval(() => {
             countdown--;
-            countdownDisplay.textContent = countdown;
+            loadingCountdownDisplay.textContent = countdown;
             if (countdown <= 0) {
                 clearInterval(countdownInterval);
                 loadingScreen.style.display = 'none';
@@ -266,70 +501,91 @@
                 startGame();
             }
         }, 1000);
+    }
 
-        // Game Logic
-        let gameState = {
-            overallStart: Date.now(),
-            reactionTimes: [],
-            bestReactionTime: Infinity,
-            score: 0,
-            isTargetActive: false,
-            targetsSpawned: 0,
-            maxTargets: 10,
-            gameOver: false
-        };
-        let previousGames = [];
-        let timerInterval;
-
-        function spawnTarget() {
-            if (gameState.isTargetActive || gameState.gameOver) return;
-            if (gameState.targetsSpawned >= gameState.maxTargets) {
-                endGame();
-                return;
+    // Restart Countdown
+    function startRestartCountdown() {
+        let countdown = 3;
+        restartCountdownDisplay.textContent = countdown;
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            restartCountdownDisplay.textContent = countdown;
+            if (countdown <= 0) {
+                clearInterval(countdownInterval);
+                restartCountdownScreen.style.display = 'none';
+                resetGame();
             }
-            gameState.isTargetActive = true;
-            gameState.targetsSpawned++;
-            stats.targetsLeft.textContent = gameState.maxTargets - gameState.targetsSpawned;
-            const target = document.createElement('div');
-            target.className = 'target';
-            const maxX = container.offsetWidth - 50;
-            const maxY = container.offsetHeight - 50;
-            const x = Math.random() * maxX;
-            const y = Math.random() * maxY;
-            target.style.left = `${x}px`;
-            target.style.top = `${y}px`;
-            const startTime = Date.now();
-            container.appendChild(target);
+        }, 1000);
+    }
 
-            setTimeout(() => {
-                if (target.parentNode) {
-                    target.className = 'target miss';
-                    setTimeout(() => {
-                        if (target.parentNode) {
-                            container.removeChild(target);
-                            gameState.isTargetActive = false;
-                            setTimeout(spawnTarget, Math.random() * 5000);
-                        }
-                    }, 200);
-                }
-            }, 3000);
+    // Game Logic
+    let gameState = {
+        overallStart: Date.now(),
+        reactionTimes: [],
+        bestReactionTime: Infinity,
+        accuracies: [],
+        bestAccuracy: 0,
+        score: 0,
+        isTargetActive: false,
+        targetsSpawned: 0,
+        maxTargets: 10,
+        gameOver: false
+    };
+    let previousGames = [];
+    let timerInterval;
 
-            target.addEventListener('click', () => {
-                if (gameState.gameOver) return;
-                target.className = 'target hit';
-                const reactionTime = Date.now() - startTime;
-                gameState.reactionTimes.push(reactionTime);
-                if (reactionTime < gameState.bestReactionTime) {
-                    gameState.bestReactionTime = reactionTime;
-                    stats.bestReactionTime.textContent = reactionTime;
-                }
-                stats.reactionTime.textContent = reactionTime;
-                stats.avgReactionTime.textContent = Math.round(
-                    gameState.reactionTimes.reduce((a, b) => a + b, 0) / gameState.reactionTimes.length
+    function showBonusMessage(x, y, points, type) {
+        const message = document.createElement('div');
+        message.className = 'bonus-message';
+        message.textContent = `+${points} ${type} Bonus!`;
+        message.style.left = `${x}px`;
+        message.style.top = `${y}px`;
+        container.appendChild(message);
+        setTimeout(() => {
+            if (message.parentNode) container.removeChild(message);
+        }, 1000);
+    }
+
+    function showStatMessage(x, y, text) {
+        const message = document.createElement('div');
+        message.className = 'stat-message';
+        message.textContent = text;
+        message.style.left = `${x}px`;
+        message.style.top = `${y}px`;
+        container.appendChild(message);
+        setTimeout(() => {
+            if (message.parentNode) container.removeChild(message);
+        }, 1000);
+    }
+
+    function spawnTarget() {
+        if (gameState.isTargetActive || gameState.gameOver) return;
+        if (gameState.targetsSpawned >= gameState.maxTargets) {
+            endGame();
+            return;
+        }
+        gameState.isTargetActive = true;
+        gameState.targetsSpawned++;
+        stats.targetsLeft.textContent = gameState.maxTargets - gameState.targetsSpawned;
+        const target = document.createElement('div');
+        target.className = 'target';
+        const maxX = container.offsetWidth - 50;
+        const maxY = container.offsetHeight - 50;
+        const x = Math.random() * maxX;
+        const y = Math.random() * maxY;
+        target.style.left = `${x}px`;
+        target.style.top = `${y}px`;
+        const startTime = Date.now();
+        container.appendChild(target);
+
+        setTimeout(() => {
+            if (target.parentNode) {
+                target.className = 'target miss';
+                gameState.accuracies.push(0);
+                stats.lastAccuracy.textContent = 0;
+                stats.accuracy.textContent = Math.round(
+                    gameState.accuracies.reduce((a, b) => a + b, 0) / gameState.accuracies.length
                 );
-                const points = Math.max(1000 - reactionTime, 100);
-                gameState.score += points;
-                stats.score.textContent = gameState.score;
                 setTimeout(() => {
                     if (target.parentNode) {
                         container.removeChild(target);
@@ -337,118 +593,225 @@
                         setTimeout(spawnTarget, Math.random() * 5000);
                     }
                 }, 200);
-            });
-        }
+            }
+        }, 3000);
 
-        function updateTimers() {
+        target.addEventListener('click', (e) => {
             if (gameState.gameOver) return;
-            const now = Date.now();
-            stats.overallTime.textContent = Math.floor((now - gameState.overallStart) / 1000);
-        }
-
-        function endGame() {
-            gameState.gameOver = true;
-            clearInterval(timerInterval);
-            previousGames.push({
-                score: gameState.score,
-                time: Math.floor((Date.now() - gameState.overallStart) / 1000),
-                avgReaction: parseInt(stats.avgReactionTime.textContent) || 0,
-                bestReaction: gameState.bestReactionTime === Infinity ? 0 : gameState.bestReactionTime
-            });
-            finalStats.score.textContent = gameState.score;
-            finalStats.time.textContent = Math.floor((Date.now() - gameState.overallStart) / 1000);
-            finalStats.bestReaction.textContent = gameState.bestReactionTime === Infinity ? '0' : gameState.bestReactionTime;
-            finalStats.avgReaction.textContent = stats.avgReactionTime.textContent;
-            if (previousGames.length > 0) {
-                const maxScore = Math.max(...previousGames.map(g => g.score));
-                const minAvgReaction = Math.min(...previousGames.map(g => g.avgReaction));
-                const minBestReaction = Math.min(...previousGames.map(g => g.bestReaction || Infinity));
-                let table = `
-                    <table>
-                        <tr>
-                            <th>Game</th>
-                            <th>Score</th>
-                            <th>Time (s)</th>
-                            <th>Best Reaction (ms)</th>
-                            <th>Avg Reaction (ms)</th>
-                        </tr>
-                `;
-                previousGames.forEach((game, index) => {
-                    const scoreClass = game.score === maxScore ? 'highlight' : '';
-                    const bestReactionClass = game.bestReaction === minBestReaction ? 'highlight' : '';
-                    const avgReactionClass = game.avgReaction === minAvgReaction ? 'highlight' : '';
-                    table += `
-                        <tr>
-                            <td>${index + 1}</td>
-                            <td class="${scoreClass}">${game.score}</td>
-                            <td>${game.time}</td>
-                            <td class="${bestReactionClass}">${game.bestReaction}</td>
-                            <td class="${avgReactionClass}">${game.avgReaction}</td>
-                        </tr>
-                    `;
-                });
-                table += '</table>';
-                previousResults.innerHTML = table;
+            target.className = 'target hit';
+            const reactionTime = Date.now() - startTime;
+            gameState.reactionTimes.push(reactionTime);
+            if (reactionTime < gameState.bestReactionTime) {
+                gameState.bestReactionTime = reactionTime;
+                stats.bestReactionTime.textContent = reactionTime;
             }
-            gameOverScreen.style.display = 'block';
-        }
+            stats.reactionTime.textContent = reactionTime;
+            stats.avgReactionTime.textContent = Math.round(
+                gameState.reactionTimes.reduce((a, b) => a + b, 0) / gameState.reactionTimes.length
+            );
 
-        function resetGame() {
-            gameState = {
-                overallStart: Date.now(),
-                reactionTimes: [],
-                bestReactionTime: Infinity,
-                score: 0,
-                isTargetActive: false,
-                targetsSpawned: 0,
-                maxTargets: 10,
-                gameOver: false
-            };
-            stats.overallTime.textContent = '0';
-            stats.reactionTime.textContent = '0';
-            stats.bestReactionTime.textContent = '0';
-            stats.avgReactionTime.textContent = '0';
-            stats.score.textContent = '0';
-            stats.targetsLeft.textContent = '10';
-            gameOverScreen.style.display = 'none';
-            timerInterval = setInterval(updateTimers, 1000);
-            spawnTarget();
-        }
+            // Calculate accuracy
+            const rect = target.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const clickX = e.clientX;
+            const clickY = e.clientY;
+            const distance = Math.sqrt(Math.pow(clickX - centerX, 2) + Math.pow(clickY - centerY, 2));
+            const maxDistance = 25; // Half of target width/height
+            const accuracy = Math.max(0, 100 - (distance / maxDistance) * 100);
+            gameState.accuracies.push(accuracy);
+            stats.lastAccuracy.textContent = Math.round(accuracy);
+            if (accuracy > gameState.bestAccuracy) {
+                gameState.bestAccuracy = accuracy;
+                stats.bestAccuracy.textContent = Math.round(accuracy);
+            }
+            stats.accuracy.textContent = Math.round(
+                gameState.accuracies.reduce((a, b) => a + b, 0) / gameState.accuracies.length
+            );
 
-        function startGame() {
-            timerInterval = setInterval(updateTimers, 1000);
-            spawnTarget();
-        }
+            // Show stats at click position
+            const clickPosX = clickX - container.getBoundingClientRect().left;
+            const clickPosY = clickY - container.getBoundingClientRect().top;
+            showStatMessage(clickPosX, clickPosY - 60, `${reactionTime}ms`);
+            showStatMessage(clickPosX, clickPosY - 80, `${Math.round(accuracy)}%`);
 
-        restartBtn.addEventListener('click', resetGame);
-        restartBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            resetGame();
-        });
+            let points = Math.max(1000 - reactionTime, 100);
+            let bonusY = clickPosY;
+            if (reactionTime < 300) {
+                const bonus = 500;
+                points += bonus;
+                showBonusMessage(clickPosX, bonusY, bonus, "Reaction");
+                bonusY -= 40;
+            }
+            if (accuracy > 90) {
+                const bonus = 300;
+                points += bonus;
+                showBonusMessage(clickPosX, bonusY, bonus, "Accuracy");
+            }
 
-        // Touch Support for Targets
-        container.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            const targets = document.getElementsByClassName('target');
-            for (let target of targets) {
-                const rect = target.getBoundingClientRect();
-                if (
-                    touch.clientX >= rect.left &&
-                    touch.clientX <= rect.right &&
-                    touch.clientY >= rect.top &&
-                    touch.clientY <= rect.bottom
-                ) {
-                    target.click();
+            gameState.score += points;
+            stats.score.textContent = gameState.score;
+            setTimeout(() => {
+                if (target.parentNode) {
+                    container.removeChild(target);
+                    gameState.isTargetActive = false;
+                    setTimeout(spawnTarget, Math.random() * 5000);
                 }
-            }
+            }, 200);
         });
+    }
 
-        // Resize
-        window.addEventListener('resize', () => {
-            canvas.width = container.offsetWidth;
-            canvas.height = container.offsetHeight;
+    function updateTimers() {
+        if (gameState.gameOver) return;
+        const now = Date.now();
+        stats.overallTime.textContent = Math.floor((now - gameState.overallStart) / 1000);
+    }
+
+    function endGame() {
+        gameState.gameOver = true;
+        clearInterval(timerInterval);
+        previousGames.push({
+            score: gameState.score,
+            time: Math.floor((Date.now() - gameState.overallStart) / 1000),
+            avgReaction: parseInt(stats.avgReactionTime.textContent) || 0,
+            bestReaction: gameState.bestReactionTime === Infinity ? 0 : gameState.bestReactionTime,
+            bestAccuracy: parseInt(stats.bestAccuracy.textContent) || 0,
+            accuracy: parseInt(stats.accuracy.textContent) || 0
         });
-    </script>
+        finalStats.score.textContent = gameState.score;
+        finalStats.time.textContent = Math.floor((Date.now() - gameState.overallStart) / 1000);
+        finalStats.bestReaction.textContent = gameState.bestReactionTime === Infinity ? '0' : gameState.bestReactionTime;
+        finalStats.avgReaction.textContent = stats.avgReactionTime.textContent;
+        finalStats.bestAccuracy.textContent = stats.bestAccuracy.textContent;
+        finalStats.accuracy.textContent = stats.accuracy.textContent;
+        if (previousGames.length > 0) {
+            const maxScore = Math.max(...previousGames.map(g => g.score));
+            const minAvgReaction = Math.min(...previousGames.map(g => g.avgReaction));
+            const minBestReaction = Math.min(...previousGames.map(g => g.bestReaction || Infinity));
+            const maxBestAccuracy = Math.max(...previousGames.map(g => g.bestAccuracy));
+            const maxAccuracy = Math.max(...previousGames.map(g => g.accuracy));
+            let table = `
+                <table>
+                    <tr>
+                        <th>Game</th>
+                        <th>Score</th>
+                        <th>Time (s)</th>
+                        <th>Best Reaction (ms)</th>
+                        <th>Avg Reaction (ms)</th>
+                        <th>Best Accuracy (%)</th>
+                        <th>Avg Accuracy (%)</th>
+                    </tr>
+            `;
+            previousGames.forEach((game, index) => {
+                const scoreClass = game.score === maxScore ? 'highlight' : '';
+                const bestReactionClass = game.bestReaction === minBestReaction ? 'highlight' : '';
+                const avgReactionClass = game.avgReaction === minAvgReaction ? 'highlight' : '';
+                const bestAccuracyClass = game.bestAccuracy === maxBestAccuracy ? 'highlight' : '';
+                const accuracyClass = game.accuracy === maxAccuracy ? 'highlight' : '';
+                table += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td class="${scoreClass}">${game.score}</td>
+                        <td>${game.time}</td>
+                        <td class="${bestReactionClass}">${game.bestReaction}</td>
+                        <td class="${avgReactionClass}">${game.avgReaction}</td>
+                        <td class="${bestAccuracyClass}">${game.bestAccuracy}</td>
+                        <td class="${accuracyClass}">${game.accuracy}</td>
+                    </tr>
+                `;
+            });
+            table += '</table>';
+            previousResults.innerHTML = table;
+        }
+        gameOverScreen.style.display = 'block';
+    }
+
+    function resetGame() {
+        gameState = {
+            overallStart: Date.now(),
+            reactionTimes: [],
+            bestReactionTime: Infinity,
+            accuracies: [],
+            bestAccuracy: 0,
+            score: 0,
+            isTargetActive: false,
+            targetsSpawned: 0,
+            maxTargets: 10,
+            gameOver: false
+        };
+        stats.overallTime.textContent = '0';
+        stats.reactionTime.textContent = '0';
+        stats.bestReactionTime.textContent = '0';
+        stats.avgReactionTime.textContent = '0';
+        stats.lastAccuracy.textContent = '0';
+        stats.bestAccuracy.textContent = '0';
+        stats.accuracy.textContent = '0';
+        stats.score.textContent = '0';
+        stats.targetsLeft.textContent = '10';
+        gameOverScreen.style.display = 'none';
+        container.style.display = 'block';
+        timerInterval = setInterval(updateTimers, 1000);
+        spawnTarget();
+    }
+
+    function startGame() {
+        timerInterval = setInterval(updateTimers, 1000);
+        spawnTarget();
+    }
+
+    restartBtn.addEventListener('click', () => {
+        gameOverScreen.style.display = 'none';
+        restartCountdownScreen.style.display = 'block';
+        startRestartCountdown();
+    });
+
+    restartBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        gameOverScreen.style.display = 'none';
+        restartCountdownScreen.style.display = 'block';
+        startRestartCountdown();
+    });
+
+    // Touch Support for Targets
+    container.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const targets = document.getElementsByClassName('target');
+        for (let target of targets) {
+            const rect = target.getBoundingClientRect();
+            if (
+                touch.clientX >= rect.left &&
+                touch.clientX <= rect.right &&
+                touch.clientY >= rect.top &&
+                touch.clientY <= rect.bottom
+            ) {
+                const clickEvent = new Event('click');
+                clickEvent.clientX = touch.clientX;
+                clickEvent.clientY = touch.clientY;
+                target.dispatchEvent(clickEvent);
+            }
+        }
+    });
+
+    // Touch Support for Start Button
+    startBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        welcomeScreen.style.display = 'none';
+        loadingScreen.style.display = 'block';
+        startLoadingCountdown();
+    });
+
+    // Resize
+    window.addEventListener('resize', () => {
+        const matrixCanvas = document.getElementById('matrix-bg');
+        if (matrixCanvas) {
+            matrixCanvas.width = container.offsetWidth;
+            matrixCanvas.height = container.offsetHeight;
+        }
+    });
+
+    // Initialize matrix styles
+    updateMatrixStyles();
+</script>
 </body>
 </html>
