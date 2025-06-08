@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <style>
+    body { 
+      margin: 0; 
+      font-family: 'Segoe UI', Arial, sans-serif; 
+      background: linear-gradient(135deg, #e0e7ff, #e6e6e6); 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      min-height: 100vh; 
+      color: #2d3748;
+    }
+    .container { 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      padding: 20px; 
+      max-width: 500px; 
+      width: 100%; 
+    }
+    .controls { 
+      background: rgba(255, 255, 255, 0.95); 
+      padding: 20px; 
+      border-radius: 12px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
+      width: 100%; 
+      margin-bottom: 20px; 
+      border: 1px solid #e2e8f0;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
+    }
+    .slider-container { 
+      display: grid; 
+      grid-template-columns: 140px 1fr 60px; 
+      align-items: center; 
+      margin: 12px 0; 
+      font-size: 14px; 
+    }
+    label { 
+      font-weight: 600; 
+      color: #2d3748; 
+      text-align: left; 
+    }
+    input[type="range"] { 
+      -webkit-appearance: none; 
+      width: 100%; 
+      height: 8px; 
+      background: #e2e8f0; 
+      border-radius: 5px; 
+      outline: none; 
+      transition: background 0.2s; 
+    }
+    input[type="range"]::-webkit-slider-thumb { 
+      -webkit-appearance: none; 
+      width: 16px; 
+      height: 16px; 
+      background: #4a5568; 
+      border-radius: 50%; 
+      cursor: pointer; 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2); 
+    }
+    input[type="range"]:hover::-webkit-slider-thumb { 
+      background: #2d3748; 
+    }
+    span { 
+      text-align: right; 
+      color: #4a5568; 
+      font-weight: 500; 
+    }
+    canvas { 
+      border: 3px solid #2d3748; 
+      border-radius: 8px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+    }
+    h1 { 
+      font-size: 24px; 
+      margin: 20px 0; 
+      color: #1a202c; 
+      text-align: center; 
+    }
+    button {
+      padding: 10px 20px;
+      background: #4a5568;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: background 0.2s;
+      margin: 10px 0;
+    }
+    button:hover {
+      background: #2d3748;
+    }
+    .settings-btn {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: #4a5568;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .settings-btn:hover {
+      background: #2d3748;
+    }
+    .message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 0, 0, 0.8);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      font-size: 24px;
+      font-weight: bold;
+      text-align: center;
+      display: none;
+    }
+    .level-message {
+      background: rgba(0, 128, 0, 0.8);
+    }
+    .game-over {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      padding: 30px;
+      border-radius: 12px;
+      text-align: center;
+      display: none;
+      width: 300px;
+    }
+    .game-over h2 {
+      margin: 0 0 20px;
+      font-size: 28px;
+    }
+    .game-over p {
+      margin: 10px 0;
+      font-size: 16px;
+    }
+    @media (max-width: 500px) {
+      .container { padding: 10px; }
+      .slider-container { grid-template-columns: 100px 1fr 50px; font-size: 12px; }
+      .controls { padding: 15px; }
+      .game-over { width: 80%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Spider Chase Game</h1>
+    <button id="gameModeBtn">Toggle Game Mode: OFF</button>
+    <div id="score-level">Score: 0 | Level: 1 | Collectables: 0</div>
+    <div id="caughtMessage" class="message">Prey Caught!</div>
+    <div id="levelMessage" class="message level-message">Level Up!</div>
+    <div id="gameOver" class="game-over">
+      <h2>Game Over!</h2>
+      <p id="finalScore">Score: 0</p>
+      <p id="finalLevel">Level: 1</p>
+      <p id="finalCollectables">Collectables: 0</p>
+      <p id="survivalTime">Time Survived: 0s</p>
+      <button id="restartBtn">Restart Game</button>
+    </div>
+    <button id="settingsBtn" class="settings-btn">⚙️</button>
+    <div id="controls" class="controls">
+      <div class="slider-container">
+        <label for="speed">Base Speed:</label>
+        <input type="range" id="speed" min="0.001" max="0.05" step="0.001" value="0.005">
+        <span id="speed-value">0.005</span>
+      </div>
+      <div class="slider-container">
+        <label for="radius">Spider Radius:</label>
+        <input type="range" id="radius" min="5" max="50" step="1" value="12">
+        <span id="radius-value">12</span>
+      </div>
+      <div class="slider-container">
+        <label for="spiders">Base Spiders:</label>
+        <input type="range" id="spiders" min="1" max="20" step="1" value="10">
+        <span id="spiders-value">10</span>
+      </div>
+      <div class="slider-container">
+        <label for="hue">Target Hue:</label>
+        <input type="range" id="hue" min="0" max="360" step="1" value="0">
+        <span id="hue-value">0</span>
+      </div>
+      <div class="slider-container">
+        <label for="targetSize">Target Size:</label>
+        <input type="range" id="targetSize" min="1" max="10" step="0.5" value="2">
+        <span id="targetSize-value">2</span>
+      </div>
+      <div class="slider-container">
+        <label for="legLength">Leg Length:</label>
+        <input type="range" id="legLength" min="5" max="30" step="1" value="12">
+        <span id="legLength-value">12</span>
+      </div>
+      <div class="slider-container">
+        <label for="noiseScale">Noise Scale:</label>
+        <input type="range" id="noiseScale" min="0.5" max="2" step="0.1" value="1">
+        <span id="noiseScale-value">1</span>
+      </div>
+      <div class="slider-container">
+        <label for="bgBrightness">Background:</label>
+        <input type="range" id="bgBrightness" min="0" max="100" step="1" value="0">
+        <span id="bgBrightness-value">0</span>
+      </div>
+      <div class="slider-container">
+        <label for="spiderIntel">Spider Intelligence:</label>
+        <input type="range" id="spiderIntel" min="0" max="1" step="0.01" value="0">
+        <span id="spiderIntel-value">0</span>
+      </div>
+      <div class="slider-container">
+        <label for="preySpeed">Prey Speed:</label>
+        <input type="range" id="preySpeed" min="0.01" max="0.1" step="0.01" value="0.05">
+        <span id="preySpeed-value">0.05</span>
+      </div>
+      <div class="slider-container">
+        <label for="preyWings">Prey Wings:</label>
+        <input type="range" id="preyWings" min="0.5" max="2" step="0.1" value="1">
+        <span id="preyWings-value">1</span>
+      </div>
+    </div>
+  </div>
+<script>
+let f = 0;
+let speedSlider, radiusSlider, spiderSlider, hueSlider, targetSizeSlider, legLengthSlider, noiseScaleSlider, bgBrightnessSlider, spiderIntelSlider, preySpeedSlider, preyWingsSlider;
+let gameMode = false;
+let targetPos = { x: 0, y: 0 };
+let currentPos = { x: 0, y: 0 };
+let caught = false;
+let caughtTimer = 0;
+let level = 1;
+let score = 0;
+let collectables = 0;
+let levelTimer = 0;
+let levelMessageTimer = 0;
+let gameOver = false;
+let startTime = 0;
+let endTime = 0;
+let independentSpiders = [];
+let wingAngle = 0;
+let collectableItems = [];
+let showSettings = false;
+
+function setup() {
+  createCanvas(400, 400);
+  colorMode(HSB, 360, 100, 100);
+  speedSlider = select('#speed');
+  radiusSlider = select('#radius');
+  spiderSlider = select('#spiders');
+  hueSlider = select('#hue');
+  targetSizeSlider = select('#targetSize');
+  legLengthSlider = select('#legLength');
+  noiseScaleSlider = select('#noiseScale');
+  bgBrightnessSlider = select('#bgBrightness');
+  spiderIntelSlider = select('#spiderIntel');
+  preySpeedSlider = select('#preySpeed');
+  preyWingsSlider = select('#preyWings');
+
+  speedSlider.input(() => select('#speed-value').html(speedSlider.value()));
+  radiusSlider.input(() => select('#radius-value').html(radiusSlider.value()));
+  spiderSlider.input(() => select('#spiders-value').html(spiderSlider.value()));
+  hueSlider.input(() => select('#hue-value').html(hueSlider.value()));
+  targetSizeSlider.input(() => select('#targetSize-value').html(targetSizeSlider.value()));
+  legLengthSlider.input(() => select('#legLength-value').html(legLengthSlider.value()));
+  noiseScaleSlider.input(() => select('#noiseScale-value').html(noiseScaleSlider.value()));
+  bgBrightnessSlider.input(() => select('#bgBrightness-value').html(bgBrightnessSlider.value()));
+  spiderIntelSlider.input(() => select('#spiderIntel-value').html(spiderIntelSlider.value()));
+  preySpeedSlider.input(() => select('#preySpeed-value').html(preySpeedSlider.value()));
+  preyWingsSlider.input(() => select('#preyWings-value').html(preyWingsSlider.value()));
+
+  select('#gameModeBtn').mousePressed(() => {
+    gameMode = !gameMode;
+    select('#gameModeBtn').html(`Toggle Game Mode: ${gameMode ? 'ON' : 'OFF'}`);
+    if (gameMode) {
+      startTime = millis();
+      level = 1;
+      score = 0;
+      collectables = 0;
+      levelTimer = 0;
+      gameOver = false;
+      independentSpiders = [{ offset: random(1000), speed: parseFloat(speedSlider.value()) }];
+      collectableItems = [{ x: random(50, 350), y: random(50, 350) }];
+      select('#score-level').html(`Score: ${score} | Level: ${level} | Collectables: ${collectables}`);
+      select('#gameOver').style('display', 'none');
+    } else {
+      caught = false;
+      gameOver = false;
+      select('#caughtMessage').style('display', 'none');
+      select('#gameOver').style('display', 'none');
+    }
+  });
+
+  select('#restartBtn').mousePressed(() => {
+    gameOver = false;
+    caught = false;
+    level = 1;
+    score = 0;
+    collectables = 0;
+    levelTimer = 0;
+    startTime = millis();
+    independentSpiders = [{ offset: random(1000), speed: parseFloat(speedSlider.value()) }];
+    collectableItems = [{ x: random(50, 350), y: random(50, 350) }];
+    select('#caughtMessage').style('display', 'none');
+    select('#gameOver').style('display', 'none');
+    select('#score-level').html(`Score: ${score} | Level: ${level} | Collectables: ${collectables}`);
+    gameMode = true;
+    select('#gameModeBtn').html(`Toggle Game Mode: ON`);
+  });
+
+  select('#settingsBtn').mousePressed(() => {
+    showSettings = !showSettings;
+    select('#controls').style('display', showSettings ? 'block' : 'none');
+  });
+}
+
+function mousePressed() {
+  if (gameMode && !gameOver && !showSettings && mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
+    targetPos = { x: mouseX, y: mouseY };
+    caught = false;
+    select('#caughtMessage').style('display', 'none');
+  }
+}
+
+function drawPrey(x, y, size, hue, wings) {
+  push();
+  let flap = sin(wingAngle) * 0.5 + 0.5;
+  fill(hue, 100, 80);
+  noStroke();
+  ellipse(x, y, size * 2, size * 1.5);
+  fill(hue, 100, 100);
+  ellipse(x, y - size * 0.5, size * 1.2, size * 0.8);
+  fill(0, 0, 100);
+  ellipse(x - size * 0.4, y - size * 0.7, size * 0.4, size * 0.4);
+  ellipse(x + size * 0.4, y - size * 0.7, size * 0.4, size * 0.4);
+  stroke(hue, 100, 60);
+  strokeWeight(2);
+  let wingOffset = wings * (1 + flap * 0.5);
+  line(x - size * wingOffset, y, x - size * wingOffset * 1.5, y - size * (0.5 + flap * 0.3));
+  line(x + size * wingOffset, y, x + size * wingOffset * 1.5, y - size * (0.5 + flap * 0.3));
+  pop();
+}
+
+function drawSpider(x, y, r, legLength) {
+  push();
+  stroke(255, 100, 100);
+  strokeWeight(2);
+  for (let n = 0; n < TAU; n += PI / 4) {
+    line(x, y, round((x + sin(n) * legLength) / legLength) * legLength, round((y + cos(n) * legLength) / legLength) * legLength);
+  }
+  fill(0, 100, 50);
+  noStroke();
+  ellipse(x, y, r * 1.5, r * 1.5);
+  fill(0, 0, 100);
+  ellipse(x - r * 0.3, y - r * 0.3, r * 0.4, r * 0.4);
+  ellipse(x + r * 0.3, y - r * 0.3, r * 0.4, r * 0.4);
+  pop();
+}
+
+function drawCollectable(x, y) {
+  push();
+  fill(60, 100, 100);
+  noStroke();
+  star(x, y, 5, 10, 5);
+  pop();
+}
+
+function star(x, y, radius1, radius2, npoints) {
+  let angle = TWO_PI / npoints;
+  let halfAngle = angle / 2.0;
+  beginShape();
+  for (let a = 0; a < TWO_PI; a += angle) {
+    let sx = x + cos(a) * radius2;
+    let sy = y + sin(a) * radius2;
+    vertex(sx, sy);
+    sx = x + cos(a + halfAngle) * radius1;
+    sy = y + sin(a + halfAngle) * radius1;
+    vertex(sx, sy);
+  }
+  endShape(CLOSE);
+}
+
+function draw() {
+  if (gameOver) {
+    select('#gameOver').style('display', 'block');
+    select('#finalScore').html(`Score: ${floor(score)}`);
+    select('#finalLevel').html(`Level: ${level}`);
+    select('#finalCollectables').html(`Collectables: ${collectables}`);
+    select('#survivalTime').html(`Time Survived: ${floor((endTime - startTime) / 1000)}s`);
+    return;
+  }
+
+  if (showSettings) {
+    return;
+  }
+
+  background(0, 0, parseInt(bgBrightnessSlider.value()));
+  let W = 400, N = r => noise(r * parseFloat(noiseScaleSlider.value())) * W % W;
+  let numSpiders = parseInt(spiderSlider.value());
+  let r = parseInt(radiusSlider.value());
+  let hue = parseInt(hueSlider.value());
+  let targetSize = parseFloat(targetSizeSlider.value());
+  let legLength = parseInt(legLengthSlider.value());
+  let baseSpeed = parseFloat(speedSlider.value());
+  let speed = baseSpeed * (1 + (level - 1) * 0.2);
+  let spiderIntel = parseFloat(spiderIntelSlider.value());
+  let preySpeed = parseFloat(preySpeedSlider.value());
+  let preyWings = parseFloat(preyWingsSlider.value());
+
+  let preyX, preyY;
+  if (gameMode) {
+    currentPos.x = lerp(currentPos.x, targetPos.x, preySpeed);
+    currentPos.y = lerp(currentPos.y, targetPos.y, preySpeed);
+    preyX = currentPos.x + N(f + 0.1) - N(f);
+    preyY = currentPos.y + N(W - f - 0.1) - N(W - f);
+  } else {
+    preyX = N(f + 0.1);
+    preyY = N(W - f - 0.1);
+  }
+
+  let preyCaught = false;
+
+  // Draw collectables
+  if (gameMode) {
+    for (let i = collectableItems.length - 1; i >= 0; i--) {
+      let item = collectableItems[i];
+      drawCollectable(item.x, item.y);
+      if (dist(preyX, preyY, item.x, item.y) < targetSize + 10) {
+        collectables++;
+        score += 100;
+        collectableItems.splice(i, 1);
+        collectableItems.push({ x: random(50, 350), y: random(50, 350) });
+      }
+    }
+    if (collectableItems.length < 1) {
+      collectableItems.push({ x: random(50, 350), y: random(50, 350) });
+    }
+  }
+
+  // Draw base spiders
+  for (let i = 0; i < numSpiders; i++) {
+    let offset = i * 0.1;
+    let x = lerp(N(f + offset), preyX, spiderIntel);
+    let y = lerp(N(W - f - offset), preyY, spiderIntel);
+    drawSpider(x, y, r, legLength);
+    if (gameMode && dist(x, y, preyX, preyY) < r + targetSize) {
+      preyCaught = true;
+    }
+  }
+
+  // Draw independent spiders
+  for (let spider of independentSpiders) {
+    spider.f = spider.f || 0;
+    let x = lerp(N(spider.f + spider.offset), preyX, spiderIntel);
+    let y = lerp(N(W - spider.f - spider.offset), preyY, spiderIntel);
+    drawSpider(x, y, r, legLength);
+    if (gameMode && dist(x, y, preyX, preyY) < r + targetSize) {
+      preyCaught = true;
+    }
+    spider.f += spider.speed;
+  }
+
+  // Draw prey
+  drawPrey(preyX, preyY, targetSize, hue, preyWings);
+  drawPrey(N(f + 0.01), N(W - f - 0.01), targetSize, hue, preyWings);
+
+  if (gameMode) {
+    score += 0.1;
+    select('#score-level').html(`Score: ${floor(score)} | Level: ${level} | Collectables: ${collectables}`);
+    if (frameCount - levelTimer > 300) {
+      level++;
+      independentSpiders.push({ offset: random(1000), speed: baseSpeed * (1 + (level - 1) * 0.2) });
+      levelTimer = frameCount;
+      select('#levelMessage').style('display', 'block');
+      levelMessageTimer = frameCount;
+    }
+    if (frameCount - levelMessageTimer > 60) {
+      select('#levelMessage').style('display', 'none');
+    }
+    if (preyCaught && !caught) {
+      caught = true;
+      gameOver = true;
+      endTime = millis();
+      select('#caughtMessage').style('display', 'block');
+      caughtTimer = frameCount;
+    }
+    if (caught && frameCount - caughtTimer > 60) {
+      select('#caughtMessage').style('display', 'none');
+    }
+  }
+
+  f += speed;
+  wingAngle += 0.2;
+}
+</script>
+</body>
+</html>
