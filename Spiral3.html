@@ -2,92 +2,104 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Improved 3D Spiral Starfield</title>
-  <style>body { margin: 0; overflow: hidden; }</style>
+  <title>3D Spiral Starfield with Mobile Zoom</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #startButton {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 18px;
+      padding: 12px 24px;
+      z-index: 10;
+    }
+  </style>
 </head>
 <body>
+  <button id="startButton">Start Starfield</button>
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dat.gui"></script>
 
   <script>
-    let scene = new THREE.Scene();
-    let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 5000);
-    let renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
-    camera.position.z = 800;
+    let scene, camera, renderer;
+    let starLayers = [];
+    let tiltZoom = 0;
+    let initialZ = 800;
 
-    const starLayers = [];
+    function createScene() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 5000);
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+      camera.position.z = initialZ;
 
-    function createLogSpiralLayer(count, color, armCount, spin, zRange) {
-      const geometry = new THREE.BufferGeometry();
-      const positions = [];
-      const colors = [];
+      function createLogSpiralLayer(count, color, armCount, spin, zRange) {
+        const geometry = new THREE.BufferGeometry();
+        const positions = [];
+        const colors = [];
 
-      for (let i = 0; i < count; i++) {
-        const arm = i % armCount;
-        const t = i / count * Math.PI * 10;
-        const radius = 50 + 300 * Math.exp(0.05 * t);
-        const angle = t + (arm * 2 * Math.PI / armCount);
-        const x = Math.cos(angle * spin) * radius;
-        const y = Math.sin(angle * spin) * radius;
-        const z = (Math.random() - 0.5) * zRange;
+        for (let i = 0; i < count; i++) {
+          const arm = i % armCount;
+          const t = i / count * Math.PI * 10;
+          const radius = 50 + 300 * Math.exp(0.05 * t);
+          const angle = t + (arm * 2 * Math.PI / armCount);
+          const x = Math.cos(angle * spin) * radius;
+          const y = Math.sin(angle * spin) * radius;
+          const z = (Math.random() - 0.5) * zRange;
 
-        positions.push(x, y, z);
+          positions.push(x, y, z);
 
-        const c = new THREE.Color(color);
-        colors.push(c.r, c.g, c.b);
+          const c = new THREE.Color(color);
+          colors.push(c.r, c.g, c.b);
+        }
+
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+        const material = new THREE.PointsMaterial({ size: 1.2, vertexColors: true });
+        const points = new THREE.Points(geometry, material);
+        scene.add(points);
+        starLayers.push({ points, speed: 0.001 + Math.random() * 0.002 });
       }
 
-      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-      geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+      createLogSpiralLayer(4000, 0xffcc88, 4, 1.0, 500);
+      createLogSpiralLayer(3000, 0x88ccff, 5, 1.2, 800);
+      createLogSpiralLayer(2000, 0xcc88ff, 6, 0.9, 300);
 
-      const material = new THREE.PointsMaterial({ size: 1.2, vertexColors: true });
-      const points = new THREE.Points(geometry, material);
-      scene.add(points);
-      starLayers.push({ points, speed: 0.001 + Math.random() * 0.002 });
+      const gui = new dat.GUI();
+      const settings = { hueShift: 0 };
+
+      gui.add(settings, 'hueShift', 0, 1).step(0.01).onChange(val => {
+        starLayers.forEach(layer => {
+          const colors = layer.points.geometry.attributes.color;
+          for (let i = 0; i < colors.count; i++) {
+            const c = new THREE.Color().setHSL((val + i / colors.count) % 1, 1.0, 0.5);
+            colors.setXYZ(i, c.r, c.g, c.b);
+          }
+          colors.needsUpdate = true;
+        });
+      });
+
+      animate();
     }
 
-    // Create layers with more realistic variation
-    createLogSpiralLayer(4000, 0xffcc88, 4, 1.0, 500);
-    createLogSpiralLayer(3000, 0x88ccff, 5, 1.2, 800);
-    createLogSpiralLayer(2000, 0xcc88ff, 6, 0.9, 300);
+    function handleOrientation(event) {
+      const beta = event.beta || 0; // front/back
+      const gamma = event.gamma || 0; // side tilt
 
-    // GUI for hue shift
-    const gui = new dat.GUI();
-    const settings = { hueShift: 0 };
-
-    gui.add(settings, 'hueShift', 0, 1).step(0.01).onChange(val => {
-      starLayers.forEach(layer => {
-        const colors = layer.points.geometry.attributes.color;
-        for (let i = 0; i < colors.count; i++) {
-          const c = new THREE.Color().setHSL((val + i / colors.count) % 1, 1.0, 0.5);
-          colors.setXYZ(i, c.r, c.g, c.b);
-        }
-        colors.needsUpdate = true;
-      });
-    });
-
-    // Tilt-based camera zoom
-    let tiltZoom = 0;
-
-    window.addEventListener('deviceorientation', (e) => {
-      const gamma = e.gamma || 0; // side tilt
-      const beta = e.beta || 0;   // forward/back tilt
-
+      // Control zoom based on front/back tilt
+      tiltZoom = THREE.MathUtils.clamp(-beta, -60, 60);
       camera.rotation.y = THREE.MathUtils.degToRad(gamma / 2);
       camera.rotation.x = THREE.MathUtils.degToRad(beta / 4);
-
-      // Forward tilt = zoom in, Backward tilt = zoom out
-      tiltZoom = THREE.MathUtils.clamp(-beta, -60, 60); // limit range
-    });
+    }
 
     function animate() {
       requestAnimationFrame(animate);
 
-      // Slowly interpolate zoom for smoothness
-      const targetZ = 800 + tiltZoom * 10;
-      camera.position.z += (targetZ - camera.position.z) * 0.05;
+      const targetZ = initialZ + tiltZoom * 10;
+      camera.position.z += (targetZ - camera.position.z) * 0.1;
 
       starLayers.forEach(layer => {
         layer.points.rotation.z += layer.speed;
@@ -96,7 +108,28 @@
       renderer.render(scene, camera);
     }
 
-    animate();
+    // Request permission on iOS
+    document.getElementById('startButton').addEventListener('click', () => {
+      if (
+        typeof DeviceMotionEvent !== 'undefined' &&
+        typeof DeviceMotionEvent.requestPermission === 'function'
+      ) {
+        DeviceMotionEvent.requestPermission()
+          .then(response => {
+            if (response === 'granted') {
+              window.addEventListener('deviceorientation', handleOrientation);
+              document.getElementById('startButton').style.display = 'none';
+              createScene();
+            }
+          })
+          .catch(console.error);
+      } else {
+        // Android or non-iOS
+        window.addEventListener('deviceorientation', handleOrientation);
+        document.getElementById('startButton').style.display = 'none';
+        createScene();
+      }
+    });
   </script>
 </body>
 </html>
