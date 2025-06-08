@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spiral Galaxy Grid 3D</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <style>
+    body { margin: 0; display: flex; flex-direction: column; align-items: center; background: #000; }
+    canvas { display: block; touch-action: none; }
+    #stats {
+      position: absolute;
+      top: 10px;
+      left: 100px;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      font-size: 16px;
+      z-index: 100;
+    }
+    #topViewButton {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      padding: 10px 20px;
+      background: #333;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      font-family: Arial, sans-serif;
+      font-size: 16px;
+      cursor: pointer;
+      z-index: 100;
+    }
+    #topViewButton:hover { background: #555; }
+    @media (max-width: 600px) {
+      #stats { font-size: 14px; left: 90px; }
+      #topViewButton { font-size: 14px; padding: 8px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <button id="topViewButton">View from Above</button>
+  <div id="stats"></div>
+  <script>
+    let spirals = [], stars = [], time = 0, speedMult = 1;
+    const P = Math.PI / 48, T = 2 * Math.PI, w = 50;
+    let cam, angleX = 0, angleY = 0, zoom = 2000, lastPinchDist = 0;
+    let isAnimating = false, animationStartTime = 0, animationDuration = 3; // 3 seconds
+
+    function setup() {
+      createCanvas(800, 800, WEBGL);
+      colorMode(HSB, 360, 100, 100);
+      noStroke();
+      cam = createCamera();
+      cam.setPosition(0, 0, zoom);
+      cam.lookAt(0, 0, 0);
+
+      // Initialize 81 spirals in a 9x9 grid
+      for (let i = -4; i <= 4; i++) {
+        for (let j = -4; j <= 4; j++) {
+          let baseSpeed = 0.04 + (i + 4) * 0.024 + (j + 4) * 0.004;
+          let hueOffset = ((i + 4) * 40 + (j + 4) * 10) % 360;
+          spirals.push({
+            x: i * 100, y: j * 100, f: 0, speed: baseSpeed, hueOffset: hueOffset,
+            gridRow: i + 4, gridCol: j + 4
+          });
+        }
+      }
+
+      // Initialize starfield with 500 stars
+      for (let i = 0; i < 500; i++) {
+        stars.push({
+          x: random(-1000, 1000),
+          y: random(-1000, 1000),
+          z: random(-1000, 1000)
+        });
+      }
+
+      // Button to view from above with smooth pitch animation
+      document.getElementById('topViewButton').addEventListener('click', () => {
+        cam.setPosition(0, 0, 1500);
+        cam.lookAt(0, 0, 0);
+        angleX = 0;
+        angleY = 0; // Start at 0 radians (0 degrees)
+        zoom = 1500;
+        isAnimating = true;
+        animationStartTime = time;
+      });
+    }
+
+    function draw() {
+      background(0);
+      time += 1 / 60;
+
+      // Increase speed every 1 second
+      if (Math.floor(time) % 1 === 0 && time % 1 < 0.1) {
+        speedMult += 0.1;
+      }
+
+      // Handle pitch animation
+      if (isAnimating) {
+        let t = (time - animationStartTime) / animationDuration;
+        if (t <= 1) {
+          angleY = lerp(0, -PI / 2, t); // Smoothly interpolate from 0 to -PI/2 (90 degrees)
+        } else {
+          angleY = -PI / 2;
+          isAnimating = false;
+        }
+      }
+
+      // Update camera
+      cam.setPosition(0, 0, zoom);
+      cam.lookAt(0, 0, 0);
+      rotateX(angleY);
+      rotateY(angleX);
+
+      // Update stats display
+      let yaw = (angleX * 180 / Math.PI).toFixed(0);
+      let pitch = (angleY * 180 / Math.PI).toFixed(0);
+      let gridStats = spirals.map(s => `(${s.gridRow}, ${s.gridCol})`).join(', ');
+      document.getElementById('stats').innerHTML = `
+        Camera: (${cam.eyeX.toFixed(0)}, ${cam.eyeY.toFixed(0)}, ${cam.eyeZ.toFixed(0)})<br>
+        Orientation: Yaw ${yaw}°, Pitch ${pitch}°<br>
+        Time: ${time.toFixed(1)}s<br>
+        Speed Multiplier: ${speedMult.toFixed(1)}<br>
+        Grid Coordinates: ${gridStats}
+      `;
+
+      // Draw starfield
+      for (let star of stars) {
+        push();
+        let dist = Math.sqrt(star.x*star.x + star.y*star.y + (star.z - zoom)*(star.z - zoom));
+        let brightness = map(dist, 0, 2000, 50, 10);
+        fill(0, 0, brightness);
+        translate(star.x, star.y, star.z);
+        box(1);
+        pop();
+      }
+
+      // Draw each spiral with cubes
+      for (let spiral of spirals) {
+        spiral.f -= spiral.speed * speedMult;
+
+        push();
+        translate(spiral.x, spiral.y, 0);
+        for (let z = -w * 1.5; z < w * 1.5; z += 5) {
+          for (let r = 15; r < w; r += 5) {
+            push();
+            let x = sin(z / 25 + spiral.f) * r;
+            let y = cos(z / 25 + spiral.f) * r;
+            let posZ = z + 5 * sin(3 * (z / 25 + spiral.f) - spiral.f);
+            let dist = Math.sqrt((x + spiral.x)*(x + spiral.x) + (y + spiral.y)*(y + spiral.y) + (posZ - zoom)*(posZ - zoom));
+            let brightness = map(dist, zoom - w * 1.5, zoom + w * 1.5, 100, 20);
+            let hue = (spiral.hueOffset + (spiral.f * 180 / Math.PI) % 360 + 360) % 360;
+            fill(hue, 80, brightness);
+            translate(x, y, posZ);
+            box(2 * sin(r / 3 - spiral.f / 2));
+            pop();
+          }
+        }
+        pop();
+      }
+    }
+
+    function touchStarted() {
+      lastPinchDist = 0;
+      return false;
+    }
+
+    function touchMoved() {
+      if (touches.length === 1 && !isAnimating) { // Disable drag during animation
+        angleX += (touches[0].x - pmouseX) * 0.01;
+        angleY += (touches[0].y - pmouseY) * 0.01;
+        angleY = constrain(angleY, -PI / 2, PI / 2);
+      } else if (touches.length === 2) {
+        let dist = Math.hypot(touches[0].x - touches[1].x, touches[0].y - touches[1].y);
+        if (lastPinchDist > 0) {
+          zoom += (lastPinchDist - dist) * 2;
+          zoom = constrain(zoom, 800, 4000);
+        }
+        lastPinchDist = dist;
+      }
+      return false;
+    }
+
+    function mouseWheel(event) {
+      if (!isAnimating) { // Disable zoom during animation
+        zoom += event.delta * -0.5;
+        zoom = constrain(zoom, 800, 4000);
+      }
+      return false;
+    }
+
+    function screenToWorld(x, y) {
+      let fov = PI / 3;
+      let aspect = width / height;
+      let z = zoom;
+      let worldX = (2 * x / width - 1) * z * tan(fov / 2) * aspect;
+      let worldY = (1 - 2 * y / height) * z * tan(fov / 2);
+      return { x: worldX, y: worldY, z: 0 };
+    }
+  </script>
+</body>
+</html>
