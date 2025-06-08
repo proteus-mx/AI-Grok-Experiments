@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Improved Spiral Starfield</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: black; }
+    #ui {
+      position: absolute;
+      top: 10px; left: 10px;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    button {
+      padding: 8px 12px;
+      font-size: 14px;
+      border: none;
+      border-radius: 5px;
+      background: #444;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #666;
+    }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <button id="toggleHue">Auto Hue: OFF</button>
+    <button id="toggleZoom">Auto Zoom: OFF</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dat.gui"></script>
+
+  <script>
+    let scene = new THREE.Scene();
+    let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 5000);
+    camera.position.z = 600;
+
+    let renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // OrbitControls for user camera control
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    // Spiral stars
+    const starLayers = [];
+    function createSpiralLayer(count, baseHue, radius, twist, speed) {
+      const geometry = new THREE.BufferGeometry();
+      const positions = [];
+      const colors = [];
+
+      for (let i = 0; i < count; i++) {
+        const t = i / count;
+        const angle = t * twist * Math.PI * 2;
+        const dist = radius * Math.sqrt(t);
+        const x = Math.cos(angle) * dist;
+        const y = Math.sin(angle) * dist;
+        const z = (Math.random() - 0.5) * 600;
+
+        positions.push(x, y, z);
+
+        const color = new THREE.Color().setHSL((baseHue + t) % 1, 1, 0.7);
+        colors.push(color.r, color.g, color.b);
+      }
+
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+      const material = new THREE.PointsMaterial({ size: 1.5, vertexColors: true });
+      const points = new THREE.Points(geometry, material);
+      scene.add(points);
+
+      starLayers.push({ points, baseHue, geometry, speed });
+    }
+
+    // Create layered spiral
+    createSpiralLayer(4000, 0.1, 300, 8, 0.001);
+    createSpiralLayer(3000, 0.5, 250, 6, -0.0015);
+    createSpiralLayer(2000, 0.8, 200, 10, 0.002);
+
+    // GUI Sliders
+    const gui = new dat.GUI();
+    const settings = {
+      hueShift: 0,
+    };
+    gui.add(settings, 'hueShift', 0, 1).step(0.001).onChange(updateColors);
+
+    function updateColors() {
+      for (let layer of starLayers) {
+        const colors = layer.geometry.attributes.color;
+        for (let i = 0; i < colors.count; i++) {
+          const t = i / colors.count;
+          const h = (settings.hueShift + layer.baseHue + t) % 1;
+          const color = new THREE.Color().setHSL(h, 1, 0.7);
+          colors.setXYZ(i, color.r, color.g, color.b);
+        }
+        colors.needsUpdate = true;
+      }
+    }
+
+    // Auto hue
+    let autoHue = false;
+    let hueTime = 0;
+    document.getElementById('toggleHue').onclick = () => {
+      autoHue = !autoHue;
+      document.getElementById('toggleHue').textContent = `Auto Hue: ${autoHue ? 'ON' : 'OFF'}`;
+    };
+
+    // Auto zoom
+    let autoZoom = false;
+    let zoomDir = 1;
+    document.getElementById('toggleZoom').onclick = () => {
+      autoZoom = !autoZoom;
+      document.getElementById('toggleZoom').textContent = `Auto Zoom: ${autoZoom ? 'ON' : 'OFF'}`;
+    };
+
+    // Animate
+    function animate() {
+      requestAnimationFrame(animate);
+
+      starLayers.forEach(layer => {
+        layer.points.rotation.z += layer.speed;
+      });
+
+      if (autoHue) {
+        hueTime += 0.001;
+        settings.hueShift = (Math.sin(hueTime) * 0.5 + 0.5);
+        updateColors();
+      }
+
+      if (autoZoom) {
+        camera.position.z += zoomDir * 0.5;
+        if (camera.position.z > 800 || camera.position.z < 300) zoomDir *= -1;
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
