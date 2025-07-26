@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Block Race</title>
+    <title>Block Race - V0.2</title>
     <style>
         :root {
             --background: #333333;
@@ -235,16 +235,23 @@
         }
 
         function randomizeBoard() {
-            let tiles = createTiles();
-            let all = shuffle(tiles.concat([null]));
-            let idx = 0;
-            for (let i = 0; i < 5; i++) {
-                for (let j = 0; j < 5; j++) {
-                    board[i][j] = all[idx++];
-                    if (board[i][j] === null) emptyPos = { row: i, col: j };
+            let path;
+            do {
+                let tiles = createTiles();
+                let all = shuffle(tiles.concat([null]));
+                let idx = 0;
+                for (let i = 0; i < 5; i++) {
+                    for (let j = 0; j < 5; j++) {
+                        board[i][j] = all[idx++];
+                        if (board[i][j] === null) emptyPos = { row: i, col: j };
+                    }
                 }
-            }
+                pattern = board.slice(1,4).map(row => row.slice(1,4));
+                scrambleBoard(20);
+                path = findShortPath();
+            } while (!path || path.length > 20);
             initBoard();
+            renderPattern();
         }
 
         function scrambleBoard(numMoves) {
@@ -484,7 +491,6 @@
             }, 1000);
             if (!board.some(row => row.some(cell => cell !== null))) {
                 randomizeBoard();
-                scrambleBoard(20);
             }
             document.getElementById('welcome').style.display = 'none';
             document.getElementById('gameContent').style.display = 'flex';
