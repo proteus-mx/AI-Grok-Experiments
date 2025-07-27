@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Block Race - V0.3</title>
+    <title>Block Race</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -17,6 +17,8 @@
             --progress-bg: #555555;
             --progress-fill: #00ff88;
             --highlight-border: rgba(255, 255, 0, 0.5);
+            --warning-orange: #ffaa00;
+            --warning-red: #ff0000;
         }
         .light {
             --background: #f5f5f5;
@@ -29,6 +31,8 @@
             --progress-bg: #d0d0d0;
             --progress-fill: #007bff;
             --highlight-border: rgba(255, 255, 0, 0.7);
+            --warning-orange: #ffaa00;
+            --warning-red: #ff0000;
         }
         body {
             font-family: 'Orbitron', sans-serif;
@@ -97,6 +101,11 @@
             position: relative;
             width: 100%;
         }
+        #gameTitle {
+            font-size: 2.5em;
+            margin: 20px 0;
+            text-shadow: 0 2px 4px var(--shadow);
+        }
         #gameOver {
             display: none;
             flex-direction: column;
@@ -141,12 +150,26 @@
             border-radius: 10px;
             box-shadow: 0 4px 10px var(--shadow);
         }
+        #points {
+            font-size: 14px;
+            margin-top: 5px;
+        }
         #gameTime {
             font-size: 18px;
             background: rgba(0, 0, 0, 0.3);
             padding: 10px 20px;
             border-radius: 10px;
             box-shadow: 0 4px 10px var(--shadow);
+        }
+        #moveTime {
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        #moveTime.orange {
+            animation: flashOrange 0.5s infinite alternate;
+        }
+        #moveTime.red {
+            animation: flashRed 0.5s infinite alternate;
         }
         #progressContainer {
             text-align: center;
@@ -170,15 +193,28 @@
             color: var(--text);
         }
         #scrambleMessage {
-            position: fixed;
-            top: 20%;
+            position: absolute;
+            top: 50%;
             left: 50%;
-            transform: translateX(-50%);
+            transform: translate(-50%, -50%);
             background: rgba(0, 0, 0, 0.8);
             color: var(--accent);
             padding: 15px 30px;
             border-radius: 10px;
             font-size: 1.5em;
+            display: none;
+            z-index: 10;
+        }
+        #bonusMessage {
+            position: fixed;
+            top: 30%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--accent);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 1.2em;
             display: none;
             z-index: 10;
         }
@@ -196,10 +232,10 @@
         }
         #highlightBorder {
             position: absolute;
-            left: 73px;
-            top: 73px;
-            width: 186px;
-            height: 186px;
+            left: 71px;
+            top: 71px;
+            width: 188px;
+            height: 188px;
             border: 4px solid var(--highlight-border);
             border-radius: 8px;
             animation: flashBorder 2s ease-in-out infinite;
@@ -208,10 +244,10 @@
         }
         #exampleHighlightBorder {
             position: absolute;
-            left: 73px;
-            top: 73px;
-            width: 186px;
-            height: 186px;
+            left: 71px;
+            top: 71px;
+            width: 188px;
+            height: 188px;
             border: 4px solid var(--highlight-border);
             border-radius: 8px;
             animation: flashBorder 2s ease-in-out infinite;
@@ -226,7 +262,7 @@
             box-sizing: border-box;
             border-radius: 8px;
             box-shadow: 0 4px 10px var(--shadow);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
             z-index: 6;
         }
         .cell:hover {
@@ -266,6 +302,26 @@
             align-items: center;
             gap: 15px;
         }
+        #settings {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--text);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 20px var(--shadow);
+            z-index: 10;
+        }
+        #settings label {
+            margin: 10px 0 5px;
+            font-size: 14px;
+        }
         button {
             margin: 5px;
             padding: 10px 20px;
@@ -294,28 +350,47 @@
         #startWelcome {
             animation: throbEffect 1s ease-in-out infinite;
         }
-        label {
-            margin: 5px;
-            font-size: 14px;
+        #undo, #settingsBtn {
+            position: fixed;
+            bottom: 20px;
+            padding: 8px 16px;
         }
-        .match {
-            animation: matchEffect 0.5s ease-in-out;
+        #undo {
+            right: 20px;
+        }
+        #settingsBtn {
+            left: 20px;
+        }
+        @media (max-width: 400px) {
+            .cell { width: 50px; height: 50px; }
+            #highlightBorder, #exampleHighlightBorder { left: 59px; top: 59px; width: 158px; height: 158px; }
+            #mini, #exampleMini { grid-template-columns: repeat(3, 30px); }
+            .mini-cell { width: 30px; height: 30px; }
+            #gameOver, #settings { width: 250px; height: 200px; }
+            #welcome h1 { font-size: 2.2em; }
+            #welcome p { font-size: 1.1em; }
+            #moves, #gameTime { font-size: 16px; }
+            #points, #moveTime { font-size: 12px; }
+            #progressBar { width: 150px; }
+            #completePercentage { font-size: 12px; }
+        }
+        @keyframes flashOrange {
+            from { color: var(--text); }
+            to { color: var(--warning-orange); }
+        }
+        @keyframes flashRed {
+            from { color: var(--text); }
+            to { color: var(--warning-red); }
         }
         @keyframes matchEffect {
             0% { transform: scale(1); }
             50% { transform: scale(1.2); }
             100% { transform: scale(1); }
         }
-        .throb {
-            animation: throbEffect 1s ease-in-out infinite;
-        }
         @keyframes throbEffect {
             0% { transform: scale(1); }
             50% { transform: scale(1.1); }
             100% { transform: scale(1); }
-        }
-        .win-animation {
-            animation: winSpin 1s ease-in-out;
         }
         @keyframes winSpin {
             0% { transform: rotate(0deg) scale(1); }
@@ -346,18 +421,6 @@
             50% { border-color: rgba(255, 255, 0, 0.2); }
             100% { border-color: var(--highlight-border); }
         }
-        @media (max-width: 400px) {
-            .cell { width: 50px; height: 50px; }
-            #highlightBorder, #exampleHighlightBorder { left: 61px; top: 61px; width: 156px; height: 156px; }
-            #mini, #exampleMini { grid-template-columns: repeat(3, 30px); }
-            .mini-cell { width: 30px; height: 30px; }
-            #gameOver { width: 250px; height: 200px; }
-            #welcome h1 { font-size: 2.2em; }
-            #welcome p { font-size: 1.1em; }
-            #moves, #gameTime { font-size: 16px; }
-            #progressBar { width: 150px; }
-            #completePercentage { font-size: 12px; }
-        }
     </style>
 </head>
 <body>
@@ -371,9 +434,10 @@
         <button id="startWelcome">Start Game</button>
     </div>
     <div id="gameContent">
+        <h1 id="gameTitle">Block Race</h1>
         <div id="stats">
-            <div id="moves">Moves: 0</div>
-            <div id="gameTime">Game Time: 0s</div>
+            <div id="moves">Moves: 0<br><span id="points">Points: 0</span></div>
+            <div id="gameTime">Game Time: 0s<br><span id="moveTime">Move Time: 0s</span></div>
         </div>
         <div id="progressContainer">
             <div id="progressBar"><div id="progressFill" style="width: 0%"></div></div>
@@ -386,26 +450,34 @@
             </div>
             <div id="board"><div id="highlightBorder"></div></div>
         </div>
-        <button id="randBoard">Scramble Board</button>
         <button id="autoPlay">Auto Play</button>
-        <label for="autoSpeed">Auto Speed (ms):</label>
-        <input type="range" id="autoSpeed" min="100" max="2000" value="500" step="100">
         <button id="undo">Undo</button>
-        <button id="toggleTheme">Toggle Theme</button>
+        <button id="settingsBtn">Settings</button>
     </div>
     <div id="gameOver">
         <h2>Game Complete!</h2>
         <p id="finalStats"></p>
         <button id="restart">Play Again</button>
     </div>
+    <div id="settings">
+        <h2>Settings</h2>
+        <label for="autoSpeed">Auto Speed (ms):</label>
+        <input type="range" id="autoSpeed" min="100" max="2000" value="500" step="100">
+        <button id="toggleTheme">Toggle Theme</button>
+        <button id="closeSettings">Close</button>
+    </div>
     <div id="scrambleMessage">Scrambling...</div>
+    <div id="bonusMessage"></div>
 
     <script>
         const colors = ['red', 'green', 'blue', 'yellow', 'orange', 'purple'];
         let board = Array(5).fill().map(() => Array(5).fill(null));
         let pattern = Array(3).fill().map(() => Array(3).fill(null));
         let moves = 0;
+        let points = 0;
         let time = 0;
+        let moveTime = 0;
+        let moveTimer = null;
         let timerInterval = null;
         let autoInterval = null;
         let emptyPos = { row: 0, col: 0 };
@@ -419,6 +491,8 @@
         let exampleCells = Array(5).fill().map(() => Array(5).fill(null));
         let exampleInterval = null;
         let gameStarted = false;
+        let isMoving = false;
+        let isAutoPlaying = false;
 
         function shuffle(array) {
             for (let i = array.length - 1; i > 0; i--) {
@@ -434,20 +508,20 @@
             return tiles;
         }
 
-        function checkMiddleMatch(targetBoard = board, targetPattern = pattern) {
+        function checkAnyMatch(targetBoard = board, targetPattern = pattern) {
             for (let i = 0; i < 3; i++) {
                 for (let j = 0; j < 3; j++) {
-                    if (targetBoard[i+1][j+1] !== targetPattern[i][j]) {
-                        return false;
+                    if (targetBoard[i+1][j+1] === targetPattern[i][j]) {
+                        return true;
                     }
                 }
             }
-            return true;
+            return false;
         }
 
         function randomizeBoard() {
             const scrambleMessage = document.getElementById('scrambleMessage');
-            scrambleMessage.style.display = 'block';
+            if (scrambleMessage) scrambleMessage.style.display = 'block';
             let path;
             let moveCount = 0;
             const maxMoves = 50;
@@ -466,17 +540,24 @@
             } while (!path || path.length > 20);
 
             const interval = setInterval(() => {
-                if (moveCount < 10 || (checkMiddleMatch() && moveCount < maxMoves)) {
+                if (moveCount < 10 || (checkAnyMatch() && moveCount < maxMoves)) {
                     scrambleBoard(1);
                     initBoard();
                     moveCount++;
                 } else {
                     clearInterval(interval);
-                    scrambleMessage.style.display = 'none';
+                    if (scrambleMessage) scrambleMessage.style.display = 'none';
                     renderPattern();
                     updateStats();
+                    if (gameStarted) {
+                        startGameTimer();
+                        // If auto play was active, restart it
+                        if (isAutoPlaying) {
+                            toggleAutoPlay();
+                        }
+                    }
                 }
-            }, 300);
+            }, 30);
         }
 
         function scrambleBoard(numMoves, isExample = false) {
@@ -513,7 +594,8 @@
             do {
                 for (let i = 0; i < 3; i++) {
                     for (let j = 0; j < 3; j++) {
-                        targetPattern[i][j] = colors[Math.floor(Math.random() * colors.length)];
+                        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                        targetPattern[i][j] = randomColor;
                     }
                 }
                 colorCounts = {};
@@ -532,68 +614,78 @@
             const boardDiv = document.getElementById(isExample ? 'exampleBoard' : 'board');
             const targetBoard = isExample ? exampleBoard : board;
             const targetCells = isExample ? exampleCells : cellEls;
-            boardDiv.innerHTML = isExample ? '<div id="exampleHighlightBorder"></div>' : '<div id="highlightBorder"></div>';
-            boardDiv.style.width = `${5 * tileSize + 4 * gap}px`;
-            boardDiv.style.height = `${5 * tileSize + 4 * gap}px`;
-            for (let i = 0; i < 5; i++) {
-                targetCells[i] = [];
-                for (let j = 0; j < 5; j++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'cell ' + (targetBoard[i][j] || 'empty');
-                    cell.style.left = `${j * (tileSize + gap)}px`;
-                    cell.style.top = `${i * (tileSize + gap)}px`;
-                    cell.style.width = `${tileSize}px`;
-                    cell.style.height = `${tileSize}px`;
-                    if (!isExample) {
-                        cell.dataset.row = i;
-                        cell.dataset.col = j;
-                        cell.addEventListener('click', handleClick);
-                    } else {
-                        cell.dataset.row = i;
-                        cell.dataset.col = j;
-                        cell.addEventListener('click', handleExampleClick);
+            if (boardDiv) {
+                boardDiv.innerHTML = isExample ? '<div id="exampleHighlightBorder"></div>' : '<div id="highlightBorder"></div>';
+                boardDiv.style.width = `${5 * tileSize + 4 * gap}px`;
+                boardDiv.style.height = `${5 * tileSize + 4 * gap}px`;
+                for (let i = 0; i < 5; i++) {
+                    targetCells[i] = [];
+                    for (let j = 0; j < 5; j++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell ' + (targetBoard[i][j] || 'empty');
+                        cell.style.left = `${j * (tileSize + gap)}px`;
+                        cell.style.top = `${i * (tileSize + gap)}px`;
+                        cell.style.width = `${tileSize}px`;
+                        cell.style.height = `${tileSize}px`;
+                        if (!isExample) {
+                            cell.dataset.row = i;
+                            cell.dataset.col = j;
+                            cell.addEventListener('click', handleClick);
+                        } else {
+                            cell.dataset.row = i;
+                            cell.dataset.col = j;
+                            cell.addEventListener('click', handleExampleClick);
+                        }
+                        boardDiv.appendChild(cell);
+                        targetCells[i][j] = cell;
                     }
-                    boardDiv.appendChild(cell);
-                    targetCells[i][j] = cell;
                 }
+                if (!isExample) updateBoardClasses();
+                else updateExampleBoardClasses();
             }
-            if (!isExample) updateBoardClasses();
-            else updateExampleBoardClasses();
         }
 
         function renderPattern() {
             const miniDiv = document.getElementById('mini');
-            miniDiv.innerHTML = '';
-            for (let i = 0; i < 3; i++) {
-                for (let j = 0; j < 3; j++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'mini-cell ' + pattern[i][j];
-                    miniDiv.appendChild(cell);
+            if (miniDiv) {
+                miniDiv.innerHTML = '';
+                for (let i = 0; i < 3; i++) {
+                    for (let j = 0; j < 3; j++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'mini-cell ' + (pattern[i][j] || 'empty');
+                        miniDiv.appendChild(cell);
+                    }
                 }
             }
         }
 
         function renderExamplePattern() {
             const miniDiv = document.getElementById('exampleMini');
-            miniDiv.innerHTML = '';
-            for (let i = 0; i < 3; i++) {
-                for (let j = 0; j < 3; j++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'mini-cell ' + examplePattern[i][j];
-                    miniDiv.appendChild(cell);
+            if (miniDiv) {
+                miniDiv.innerHTML = '';
+                for (let i = 0; i < 3; i++) {
+                    for (let j = 0; j < 3; j++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'mini-cell ' + (examplePattern[i][j] || 'empty');
+                        miniDiv.appendChild(cell);
+                    }
                 }
             }
         }
 
         function handleClick(e) {
-            if (!gameStarted) return;
+            if (!gameStarted || isAutoPlaying) return;
             const cell = e.target;
             if (cell.classList.contains('empty')) return;
             const row = parseInt(cell.dataset.row);
             const col = parseInt(cell.dataset.col);
             if (row === emptyPos.row || col === emptyPos.col) {
+                isMoving = true;
+                const moveStart = Date.now();
                 moveLine(row, col);
+                const moveDuration = (Date.now() - moveStart) / 1000;
                 moves++;
+                updateMoveTime(moveDuration);
                 updateStats();
                 checkWin();
             }
@@ -667,7 +759,7 @@
             }
 
             movingCells.forEach(cell => {
-                cell.style.transition = 'transform 0.3s ease';
+                cell.style.transition = 'transform 0.2s ease';
                 if (dir === 'left') {
                     cell.style.transform = `translateX(-${amount}px)`;
                 } else if (dir === 'right') {
@@ -688,10 +780,11 @@
                 if (!isExample) {
                     updateBoardClasses();
                     checkWin();
+                    isMoving = false;
                 } else {
                     updateExampleBoardClasses();
                 }
-            }, 300);
+            }, 200);
         }
 
         function calculatePercentage() {
@@ -742,14 +835,55 @@
             }
         }
 
+        function updateMoveTime(moveDuration) {
+            if (!gameStarted) return;
+            const bonusMessage = document.getElementById('bonusMessage');
+            if (moveDuration < 1) {
+                points += 50;
+                if (bonusMessage) {
+                    bonusMessage.innerText = '+50 Fast Move!';
+                    bonusMessage.style.display = 'block';
+                    setTimeout(() => bonusMessage.style.display = 'none', 1000);
+                }
+            } else if (moveDuration < 3) {
+                points += 20;
+                if (bonusMessage) {
+                    bonusMessage.innerText = '+20 Quick Move!';
+                    bonusMessage.style.display = 'block';
+                    setTimeout(() => bonusMessage.style.display = 'none', 1000);
+                }
+            } else {
+                points += 10;
+            }
+            if (moveTimer) clearInterval(moveTimer);
+            moveTime = 0;
+            updateStats();
+            moveTimer = setInterval(() => {
+                moveTime++;
+                updateStats();
+            }, 1000);
+        }
+
         function updateStats() {
             const movesDiv = document.getElementById('moves');
+            const pointsSpan = document.getElementById('points');
             const gameTimeDiv = document.getElementById('gameTime');
+            const moveTimeSpan = document.getElementById('moveTime');
             const progressFill = document.getElementById('progressFill');
             const completePercentage = document.getElementById('completePercentage');
             const percentage = calculatePercentage();
-            if (movesDiv) movesDiv.innerText = `Moves: ${moves}`;
-            if (gameTimeDiv) gameTimeDiv.innerText = `Game Time: ${time}s`;
+            if (movesDiv) movesDiv.innerHTML = `Moves: ${moves}`;
+            if (pointsSpan) pointsSpan.innerHTML = `Points: ${points}`;
+            if (gameTimeDiv) gameTimeDiv.innerHTML = `Game Time: ${time}s<br><span id="moveTime">Move Time: ${moveTime}s</span>`;
+            if (moveTimeSpan) {
+                moveTimeSpan.innerHTML = `Move Time: ${moveTime}s`;
+                moveTimeSpan.className = '';
+                if (moveTime > 10) {
+                    moveTimeSpan.classList.add('red');
+                } else if (moveTime > 3) {
+                    moveTimeSpan.classList.add('orange');
+                }
+            }
             if (progressFill) progressFill.style.width = `${percentage}%`;
             if (completePercentage) completePercentage.innerText = `Complete: ${percentage}%`;
         }
@@ -788,50 +922,72 @@
                     clearInterval(timerInterval);
                     timerInterval = null;
                 }
+                if (moveTimer) {
+                    clearInterval(moveTimer);
+                    moveTimer = null;
+                }
                 if (autoInterval) {
                     clearInterval(autoInterval);
                     autoInterval = null;
-                    document.getElementById('autoPlay').textContent = 'Auto Play';
-                }
-                for (let i = 0; i < 5; i++) {
-                    for (let j = 0; j < 5; j++) {
-                        const cell = cellEls[i][j];
-                        cell.classList.add('win-animation');
-                        setTimeout(() => cell.classList.remove('win-animation'), 1000);
-                    }
+                    isAutoPlaying = false;
+                    const autoPlayBtn = document.getElementById('autoPlay');
+                    if (autoPlayBtn) autoPlayBtn.textContent = 'Auto Play';
                 }
                 setTimeout(() => {
-                    showStars();
-                    setTimeout(() => {
-                        document.getElementById('finalStats').innerText = `Moves: ${moves} | Game Time: ${time}s`;
-                        document.getElementById('gameOver').style.display = 'flex';
-                    }, 2000);
-                }, 1000);
+                    if (!isMoving) {
+                        for (let i = 0; i < 5; i++) {
+                            for (let j = 0; j < 5; j++) {
+                                const cell = cellEls[i][j];
+                                cell.classList.add('win-animation');
+                                setTimeout(() => cell.classList.remove('win-animation'), 1000);
+                            }
+                        }
+                        setTimeout(() => {
+                            showStars();
+                            setTimeout(() => {
+                                document.getElementById('finalStats').innerText = `Moves: ${moves} | Points: ${points} | Game Time: ${time}s`;
+                                document.getElementById('gameOver').style.display = 'flex';
+                            }, 2000);
+                        }, 1000);
+                    }
+                }, 200);
             }
         }
 
-        function startGame() {
-            moves = 0;
-            time = 0;
-            history = [];
-            gameStarted = true;
-            document.getElementById('randBoard').disabled = true;
-            document.getElementById('randPattern').disabled = true;
-            randomizePattern();
-            randomizeBoard();
-            updateStats();
+        function startGameTimer() {
             if (timerInterval) clearInterval(timerInterval);
-            if (autoInterval) {
-                clearInterval(autoInterval);
-                autoInterval = null;
-                const autoPlayBtn = document.getElementById('autoPlay');
-                if (autoPlayBtn) autoPlayBtn.textContent = 'Auto Play';
-            }
-            if (exampleInterval) clearInterval(exampleInterval);
+            if (moveTimer) clearInterval(moveTimer);
             timerInterval = setInterval(() => {
                 time++;
                 updateStats();
             }, 1000);
+            moveTimer = setInterval(() => {
+                moveTime++;
+                updateStats();
+            }, 1000);
+        }
+
+        function startGame() {
+            moves = 0;
+            points = 0;
+            time = 0;
+            moveTime = 0;
+            history = [];
+            isAutoPlaying = false;
+            gameStarted = true;
+            const randBoardBtn = document.getElementById('randBoard');
+            const randPatternBtn = document.getElementById('randPattern');
+            const autoPlayBtn = document.getElementById('autoPlay');
+            if (randBoardBtn) randBoardBtn.disabled = true;
+            if (randPatternBtn) randPatternBtn.disabled = true;
+            if (autoPlayBtn) autoPlayBtn.textContent = 'Auto Play';
+            if (autoInterval) {
+                clearInterval(autoInterval);
+                autoInterval = null;
+            }
+            randomizePattern();
+            randomizeBoard();
+            if (exampleInterval) clearInterval(exampleInterval);
             const welcomeDiv = document.getElementById('welcome');
             const gameContentDiv = document.getElementById('gameContent');
             const gameOverDiv = document.getElementById('gameOver');
@@ -842,8 +998,17 @@
 
         function restartGame() {
             gameStarted = false;
-            document.getElementById('randBoard').disabled = false;
-            document.getElementById('randPattern').disabled = false;
+            isAutoPlaying = false;
+            const randBoardBtn = document.getElementById('randBoard');
+            const randPatternBtn = document.getElementById('randPattern');
+            const autoPlayBtn = document.getElementById('autoPlay');
+            if (randBoardBtn) randBoardBtn.disabled = false;
+            if (randPatternBtn) randPatternBtn.disabled = false;
+            if (autoPlayBtn) autoPlayBtn.textContent = 'Auto Play';
+            if (autoInterval) {
+                clearInterval(autoInterval);
+                autoInterval = null;
+            }
             randomizeBoard();
             randomizePattern();
             startGame();
@@ -852,32 +1017,45 @@
         function toggleAutoPlay() {
             if (!gameStarted) return;
             const speed = parseInt(document.getElementById('autoSpeed').value);
-            if (autoInterval) {
-                clearInterval(autoInterval);
-                autoInterval = null;
-                const autoPlayBtn = document.getElementById('autoPlay');
+            const autoPlayBtn = document.getElementById('autoPlay');
+            if (isAutoPlaying) {
+                if (autoInterval) {
+                    clearInterval(autoInterval);
+                    autoInterval = null;
+                }
+                isAutoPlaying = false;
                 if (autoPlayBtn) autoPlayBtn.textContent = 'Auto Play';
             } else {
                 const path = findShortPath();
                 if (path && path.length > 0) {
-                    const autoPlayBtn = document.getElementById('autoPlay');
+                    isAutoPlaying = true;
                     if (autoPlayBtn) autoPlayBtn.textContent = 'Stop';
                     let i = 0;
                     autoInterval = setInterval(() => {
-                        if (i < path.length) {
-                            moveLine(path[i].row, path[i].col);
-                            moves++;
-                            updateStats();
-                            i++;
-                        } else {
-                            clearInterval(autoInterval);
-                            autoInterval = null;
+                        if (!gameStarted || i >= path.length) {
+                            if (autoInterval) {
+                                clearInterval(autoInterval);
+                                autoInterval = null;
+                            }
+                            isAutoPlaying = false;
                             if (autoPlayBtn) autoPlayBtn.textContent = 'Auto Play';
                             checkWin();
+                            return;
+                        }
+                        if (!isMoving) {
+                            isMoving = true;
+                            const moveStart = Date.now();
+                            moveLine(path[i].row, path[i].col);
+                            const moveDuration = (Date.now() - moveStart) / 1000;
+                            moves++;
+                            updateMoveTime(moveDuration);
+                            updateStats();
+                            i++;
                         }
                     }, speed);
                 } else {
                     alert('No solution found or too complex');
+                    if (autoPlayBtn) autoPlayBtn.textContent = 'Auto Play';
                 }
             }
         }
@@ -887,9 +1065,10 @@
             const queue = [];
             const visited = new Set();
             const initialBoard = targetBoard.map(row => row.slice());
-            const initialStr = JSON.stringify(initialBoard);
+            const initialEmpty = {...emptyPos};
+            const initialStr = JSON.stringify({board: initialBoard, empty: initialEmpty});
             visited.add(initialStr);
-            queue.push({board: initialBoard, empty: {...emptyPos}, path: []});
+            queue.push({board: initialBoard, empty: initialEmpty, path: []});
             while (queue.length) {
                 if (visited.size > maxVisited) {
                     return null;
@@ -900,44 +1079,32 @@
                 }
                 const er = curr.empty.row;
                 const ec = curr.empty.col;
-                for (let c = 0; c < 5; c++) {
-                    if (c !== ec && curr.board[er][c] !== null) {
+                const directions = [
+                    {dr: -1, dc: 0, row: er - 1, col: ec},
+                    {dr: 1, dc: 0, row: er + 1, col: ec},
+                    {dr: 0, dc: -1, row: er, col: ec - 1},
+                    {dr: 0, dc: 1, row: er, col: ec + 1}
+                ];
+                for (const d of directions) {
+                    const nr = er + d.dr;
+                    const nc = ec + d.dc;
+                    if (nr >= 0 && nr < 5 && nc >= 0 && nc < 5 && curr.board[nr][nc] !== null) {
                         const newBoard = curr.board.map(row => row.slice());
-                        const newPath = [...curr.path, {row: er, col: c}];
-                        const newEmpty = {row: er, col: c};
-                        if (c < ec) {
-                            for (let k = ec; k > c; k--) {
-                                newBoard[er][k] = newBoard[er][k - 1];
+                        const newPath = [...curr.path, {row: nr, col: nc}];
+                        const newEmpty = {row: nr, col: nc};
+                        if (d.dr !== 0) {
+                            const step = d.dr > 0 ? 1 : -1;
+                            for (let k = er; k !== nr; k += step) {
+                                newBoard[k + step][ec] = newBoard[k][ec];
                             }
                         } else {
-                            for (let k = ec; k < c; k++) {
-                                newBoard[er][k] = newBoard[er][k + 1];
+                            const step = d.dc > 0 ? 1 : -1;
+                            for (let k = ec; k !== nc; k += step) {
+                                newBoard[er][k + step] = newBoard[er][k];
                             }
                         }
-                        newBoard[er][c] = null;
-                        const newStr = JSON.stringify(newBoard);
-                        if (!visited.has(newStr)) {
-                            visited.add(newStr);
-                            queue.push({board: newBoard, empty: newEmpty, path: newPath});
-                        }
-                    }
-                }
-                for (let r = 0; r < 5; r++) {
-                    if (r !== er && curr.board[r][ec] !== null) {
-                        const newBoard = curr.board.map(row => row.slice());
-                        const newPath = [...curr.path, {row: r, col: ec}];
-                        const newEmpty = {row: r, col: ec};
-                        if (r < er) {
-                            for (let k = er; k > r; k--) {
-                                newBoard[k][ec] = newBoard[k - 1][ec];
-                            }
-                        } else {
-                            for (let k = er; k < r; k++) {
-                                newBoard[k][ec] = newBoard[k + 1][ec];
-                            }
-                        }
-                        newBoard[r][ec] = null;
-                        const newStr = JSON.stringify(newBoard);
+                        newBoard[nr][nc] = null;
+                        const newStr = JSON.stringify({board: newBoard, empty: newEmpty});
                         if (!visited.has(newStr)) {
                             visited.add(newStr);
                             queue.push({board: newBoard, empty: newEmpty, path: newPath});
@@ -960,11 +1127,13 @@
         }
 
         function undoMove() {
-            if (history.length && gameStarted) {
+            if (history.length && gameStarted && !isAutoPlaying) {
                 let last = history.pop();
                 board = last.board;
                 emptyPos = last.empty;
                 moves--;
+                points -= 10;
+                if (points < 0) points = 0;
                 updateStats();
                 initBoard();
                 checkWin();
@@ -990,7 +1159,7 @@
             } while (!path || path.length > 20);
 
             const interval = setInterval(() => {
-                if (moveCount < 10 || (checkMiddleMatch(exampleBoard, examplePattern) && moveCount < maxMoves)) {
+                if (moveCount < 10 || (checkAnyMatch(exampleBoard, examplePattern) && moveCount < maxMoves)) {
                     scrambleBoard(1, true);
                     initBoard(true);
                     moveCount++;
@@ -998,7 +1167,7 @@
                     clearInterval(interval);
                     renderExamplePattern();
                 }
-            }, 300);
+            }, 30);
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -1007,16 +1176,26 @@
             const randBoardBtn = document.getElementById('randBoard');
             const randPatternBtn = document.getElementById('randPattern');
             const autoPlayBtn = document.getElementById('autoPlay');
+            const settingsBtn = document.getElementById('settingsBtn');
             const toggleThemeBtn = document.getElementById('toggleTheme');
+            const closeSettingsBtn = document.getElementById('closeSettings');
             const restartBtn = document.getElementById('restart');
             const autoSpeedInput = document.getElementById('autoSpeed');
             const undoBtn = document.getElementById('undo');
 
             if (startWelcomeBtn) startWelcomeBtn.addEventListener('click', startGame);
             if (randBoardBtn) randBoardBtn.addEventListener('click', randomizeBoard);
-            if (randPatternBtn) randPatternBtn.addEventListener('click', randomizePattern);
+            if (randPatternBtn) randPatternBtn.addEventListener('click', () => randomizePattern());
             if (autoPlayBtn) autoPlayBtn.addEventListener('click', toggleAutoPlay);
+            if (settingsBtn) settingsBtn.addEventListener('click', () => {
+                const settingsDiv = document.getElementById('settings');
+                if (settingsDiv) settingsDiv.style.display = 'flex';
+            });
             if (toggleThemeBtn) toggleThemeBtn.addEventListener('click', () => document.body.classList.toggle('light'));
+            if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', () => {
+                const settingsDiv = document.getElementById('settings');
+                if (settingsDiv) settingsDiv.style.display = 'none';
+            });
             if (restartBtn) restartBtn.addEventListener('click', restartGame);
             if (autoSpeedInput) autoSpeedInput.addEventListener('input', () => {});
             if (undoBtn) undoBtn.addEventListener('click', undoMove);
