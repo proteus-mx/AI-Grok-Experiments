@@ -3,31 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Block Race - V0.2</title>
+    <title>Block Race - V0.3</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --background: #333333;
+            --background: #2b2b2b;
             --text: #ffffff;
-            --border: #ffffff;
-            --shadow: rgba(255,255,255,0.2);
+            --border: #4a4a4a;
+            --shadow: rgba(255,255,255,0.3);
+            --accent: #00ff88;
+            --button-bg: #3a3a3a;
+            --button-hover: #00ff88;
+            --progress-bg: #555555;
+            --progress-fill: #00ff88;
+            --highlight-border: rgba(255, 255, 0, 0.5);
         }
         .light {
-            --background: #ffffff;
-            --text: #000000;
-            --border: #000000;
+            --background: #f5f5f5;
+            --text: #1a1a1a;
+            --border: #333333;
             --shadow: rgba(0,0,0,0.2);
+            --accent: #007bff;
+            --button-bg: #e0e0e0;
+            --button-hover: #007bff;
+            --progress-bg: #d0d0d0;
+            --progress-fill: #007bff;
+            --highlight-border: rgba(255, 255, 0, 0.7);
         }
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Orbitron', sans-serif;
             margin: 0;
-            padding: 10px;
+            padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            background: var(--background);
+            background: linear-gradient(135deg, var(--background), #1a1a1a);
             color: var(--text);
+            transition: background 0.3s;
+            position: relative;
+            overflow: hidden;
         }
         #welcome {
             display: flex;
@@ -37,18 +53,49 @@
             text-align: center;
             height: 100vh;
             width: 100%;
+            background: linear-gradient(135deg, #000, #333);
+            border-radius: 15px;
+            box-shadow: 0 8px 20px var(--shadow);
         }
         #welcome h1 {
-            font-size: 2em;
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 0 2px 4px var(--shadow);
         }
         #welcome p {
-            max-width: 80%;
-            font-size: 1.2em;
+            max-width: 70%;
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        #exampleContainer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        #exampleBoard {
+            position: relative;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 10px;
+        }
+        #exampleMini {
+            display: grid;
+            grid-template-columns: repeat(3, 40px);
+            gap: 3px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 10px;
         }
         #gameContent {
             display: none;
             flex-direction: column;
             align-items: center;
+            gap: 20px;
+            position: relative;
+            width: 100%;
         }
         #gameOver {
             display: none;
@@ -56,97 +103,200 @@
             align-items: center;
             justify-content: center;
             text-align: center;
-            width: 250px;
-            height: 200px;
+            width: 300px;
+            height: 250px;
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.8);
             color: var(--text);
-            border-radius: 10px;
+            border-radius: 15px;
             padding: 20px;
-            animation: flashText 1s infinite;
+            box-shadow: 0 8px 20px var(--shadow);
             z-index: 10;
         }
         #gameOver h2 {
-            font-size: 1.5em;
+            font-size: 2em;
             margin: 0;
+            color: var(--accent);
         }
         #gameOver p {
-            margin: 10px 0;
+            margin: 15px 0;
+            font-size: 1.2em;
         }
         #stats {
-            font-size: 16px;
-            margin-bottom: 10px;
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+        #moves {
+            font-size: 18px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px var(--shadow);
+        }
+        #gameTime {
+            font-size: 18px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px var(--shadow);
+        }
+        #progressContainer {
+            text-align: center;
+        }
+        #progressBar {
+            width: 200px;
+            height: 20px;
+            background: var(--progress-bg);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px var(--shadow);
+            margin: 10px auto;
+        }
+        #progressFill {
+            height: 100%;
+            background: var(--progress-fill);
+            transition: width 0.3s ease;
+        }
+        #completePercentage {
+            font-size: 14px;
+            color: var(--text);
+        }
+        #scrambleMessage {
+            position: fixed;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--accent);
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.5em;
+            display: none;
+            z-index: 10;
         }
         #game {
             display: flex;
             flex-direction: column;
             align-items: center;
+            gap: 15px;
         }
         #board {
             position: relative;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 10px;
+        }
+        #highlightBorder {
+            position: absolute;
+            left: 73px;
+            top: 73px;
+            width: 186px;
+            height: 186px;
+            border: 4px solid var(--highlight-border);
+            border-radius: 8px;
+            animation: flashBorder 2s ease-in-out infinite;
+            z-index: 5;
+            pointer-events: none;
+        }
+        #exampleHighlightBorder {
+            position: absolute;
+            left: 73px;
+            top: 73px;
+            width: 186px;
+            height: 186px;
+            border: 4px solid var(--highlight-border);
+            border-radius: 8px;
+            animation: flashBorder 2s ease-in-out infinite;
+            z-index: 5;
+            pointer-events: none;
         }
         .cell {
             position: absolute;
             width: 60px;
             height: 60px;
-            border: 1px solid var(--border);
+            border: 2px solid var(--border);
             box-sizing: border-box;
-            border-radius: 5px;
-            box-shadow: 0 0 5px var(--shadow);
+            border-radius: 8px;
+            box-shadow: 0 4px 10px var(--shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            z-index: 6;
         }
         .cell:hover {
-            transform: scale(1.05);
+            transform: scale(1.1);
+            box-shadow: 0 6px 15px var(--shadow);
         }
         .empty {
-            background: var(--background);
+            background: transparent;
+            border: none;
             pointer-events: none;
         }
-        .red { background: #ff0000; }
-        .green { background: #00ff00; }
-        .blue { background: #0000ff; }
-        .yellow { background: #ffff00; }
-        .orange { background: #ffa500; }
-        .purple { background: #800080; }
-        #mini {
+        .red { background: linear-gradient(135deg, #ff4d4d, #cc0000); }
+        .green { background: linear-gradient(135deg, #4dff4d, #00cc00); }
+        .blue { background: linear-gradient(135deg, #4d4dff, #0000cc); }
+        .yellow { background: linear-gradient(135deg, #ffff4d, #cccc00); }
+        .orange { background: linear-gradient(135deg, #ffaa33, #cc7a00); }
+        .purple { background: linear-gradient(135deg, #b266ff, #6600cc); }
+        #mini, #exampleMini {
             display: grid;
             grid-template-columns: repeat(3, 40px);
-            gap: 2px;
-            margin: 10px;
+            gap: 3px;
+            margin: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 10px;
         }
         .mini-cell {
             width: 40px;
             height: 40px;
-            border: 1px solid var(--border);
+            border: 2px solid var(--border);
             box-sizing: border-box;
-            border-radius: 3px;
-            box-shadow: 0 0 3px var(--shadow);
+            border-radius: 6px;
+            box-shadow: 0 2px 5px var(--shadow);
         }
         #patternContainer {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 15px;
         }
         button {
-            margin: 3px;
-            padding: 8px 12px;
-            font-size: 12px;
-            background: var(--background);
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 14px;
+            background: var(--button-bg);
             color: var(--text);
-            border: 1px solid var(--border);
-            border-radius: 5px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
             cursor: pointer;
-            box-shadow: 0 0 5px var(--shadow);
+            box-shadow: 0 4px 10px var(--shadow);
+            transition: all 0.3s ease;
         }
         button:hover {
-            background: var(--text);
-            color: var(--background);
+            background: var(--button-hover);
+            color: #fff;
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+        }
+        #startWelcome {
+            animation: throbEffect 1s ease-in-out infinite;
         }
         label {
-            margin: 3px;
-            font-size: 12px;
+            margin: 5px;
+            font-size: 14px;
         }
         .match {
             animation: matchEffect 0.5s ease-in-out;
@@ -156,44 +306,87 @@
             50% { transform: scale(1.2); }
             100% { transform: scale(1); }
         }
-        .flash {
-            animation: flash 1s infinite;
+        .throb {
+            animation: throbEffect 1s ease-in-out infinite;
         }
-        @keyframes flash {
-            0% { box-shadow: 0 0 5px yellow; }
-            50% { box-shadow: 0 0 15px yellow; }
-            100% { box-shadow: 0 0 5px yellow; }
+        @keyframes throbEffect {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
         }
-        @keyframes flashText {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
+        .win-animation {
+            animation: winSpin 1s ease-in-out;
+        }
+        @keyframes winSpin {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.2); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+        .star {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #fff;
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+            animation: starExplode 1.5s ease-out forwards;
+            z-index: 5;
+        }
+        @keyframes starExplode {
+            0% {
+                transform: translate(0, 0) scale(0.5);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(calc(100vw * var(--dx)), calc(100vh * var(--dy))) scale(1.5);
+                opacity: 0;
+            }
+        }
+        @keyframes flashBorder {
+            0% { border-color: var(--highlight-border); }
+            50% { border-color: rgba(255, 255, 0, 0.2); }
+            100% { border-color: var(--highlight-border); }
         }
         @media (max-width: 400px) {
             .cell { width: 50px; height: 50px; }
-            #mini { grid-template-columns: repeat(3, 30px); }
+            #highlightBorder, #exampleHighlightBorder { left: 61px; top: 61px; width: 156px; height: 156px; }
+            #mini, #exampleMini { grid-template-columns: repeat(3, 30px); }
             .mini-cell { width: 30px; height: 30px; }
-            #gameOver { width: 200px; height: 150px; }
+            #gameOver { width: 250px; height: 200px; }
+            #welcome h1 { font-size: 2.2em; }
+            #welcome p { font-size: 1.1em; }
+            #moves, #gameTime { font-size: 16px; }
+            #progressBar { width: 150px; }
+            #completePercentage { font-size: 12px; }
         }
     </style>
 </head>
 <body>
     <div id="welcome">
         <h1>Block Race</h1>
-        <p>Slide colored squares into the empty space by tapping or clicking tiles in the same row or column. Match the 3x3 pattern in the center of the 5x5 grid. Randomize board or pattern as needed. Track moves and time.</p>
-        <button id="startWelcome">Start</button>
+        <p>Slide colored squares into the empty space to match the 3x3 pattern in the center of the 5x5 grid. Click or tap tiles in the same row or column as the empty space to move them. Watch the demo below!</p>
+        <div id="exampleContainer">
+            <div id="exampleMini"></div>
+            <div id="exampleBoard"><div id="exampleHighlightBorder"></div></div>
+        </div>
+        <button id="startWelcome">Start Game</button>
     </div>
     <div id="gameContent">
-        <div id="stats">Moves: 0 | Time: 0s</div>
+        <div id="stats">
+            <div id="moves">Moves: 0</div>
+            <div id="gameTime">Game Time: 0s</div>
+        </div>
+        <div id="progressContainer">
+            <div id="progressBar"><div id="progressFill" style="width: 0%"></div></div>
+            <div id="completePercentage">Complete: 0%</div>
+        </div>
         <div id="game">
             <div id="patternContainer">
                 <div id="mini"></div>
                 <button id="randPattern">Randomize Pattern</button>
             </div>
-            <div id="board"></div>
+            <div id="board"><div id="highlightBorder"></div></div>
         </div>
-        <button id="randBoard">Randomize Board</button>
-        <button id="start">Start Game</button>
+        <button id="randBoard">Scramble Board</button>
         <button id="autoPlay">Auto Play</button>
         <label for="autoSpeed">Auto Speed (ms):</label>
         <input type="range" id="autoSpeed" min="100" max="2000" value="500" step="100">
@@ -201,10 +394,11 @@
         <button id="toggleTheme">Toggle Theme</button>
     </div>
     <div id="gameOver">
-        <h2>Game Over!</h2>
+        <h2>Game Complete!</h2>
         <p id="finalStats"></p>
-        <button id="restart">Restart</button>
+        <button id="restart">Play Again</button>
     </div>
+    <div id="scrambleMessage">Scrambling...</div>
 
     <script>
         const colors = ['red', 'green', 'blue', 'yellow', 'orange', 'purple'];
@@ -217,8 +411,14 @@
         let emptyPos = { row: 0, col: 0 };
         let cellEls = Array(5).fill().map(() => Array(5).fill(null));
         let tileSize = window.innerWidth <= 400 ? 50 : 60;
-        let gap = 2;
+        let gap = 3;
         let history = [];
+        let exampleBoard = Array(5).fill().map(() => Array(5).fill(null));
+        let examplePattern = Array(3).fill().map(() => Array(3).fill(null));
+        let exampleEmptyPos = { row: 0, col: 0 };
+        let exampleCells = Array(5).fill().map(() => Array(5).fill(null));
+        let exampleInterval = null;
+        let gameStarted = false;
 
         function shuffle(array) {
             for (let i = array.length - 1; i > 0; i--) {
@@ -234,8 +434,23 @@
             return tiles;
         }
 
+        function checkMiddleMatch(targetBoard = board, targetPattern = pattern) {
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if (targetBoard[i+1][j+1] !== targetPattern[i][j]) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
         function randomizeBoard() {
+            const scrambleMessage = document.getElementById('scrambleMessage');
+            scrambleMessage.style.display = 'block';
             let path;
+            let moveCount = 0;
+            const maxMoves = 50;
             do {
                 let tiles = createTiles();
                 let all = shuffle(tiles.concat([null]));
@@ -247,14 +462,26 @@
                     }
                 }
                 pattern = board.slice(1,4).map(row => row.slice(1,4));
-                scrambleBoard(20);
                 path = findShortPath();
             } while (!path || path.length > 20);
-            initBoard();
-            renderPattern();
+
+            const interval = setInterval(() => {
+                if (moveCount < 10 || (checkMiddleMatch() && moveCount < maxMoves)) {
+                    scrambleBoard(1);
+                    initBoard();
+                    moveCount++;
+                } else {
+                    clearInterval(interval);
+                    scrambleMessage.style.display = 'none';
+                    renderPattern();
+                    updateStats();
+                }
+            }, 300);
         }
 
-        function scrambleBoard(numMoves) {
+        function scrambleBoard(numMoves, isExample = false) {
+            const targetBoard = isExample ? exampleBoard : board;
+            const targetEmptyPos = isExample ? exampleEmptyPos : emptyPos;
             for (let i = 0; i < numMoves; i++) {
                 const directions = [
                     {dr: -1, dc: 0},
@@ -264,62 +491,74 @@
                 ];
                 let possible = [];
                 directions.forEach(d => {
-                    let nr = emptyPos.row + d.dr;
-                    let nc = emptyPos.col + d.dc;
-                    if (nr >= 0 && nr < 5 && nc >= 0 && nc < 5 && board[nr][nc] !== null) {
+                    let nr = targetEmptyPos.row + d.dr;
+                    let nc = targetEmptyPos.col + d.dc;
+                    if (nr >= 0 && nr < 5 && nc >= 0 && nc < 5 && targetBoard[nr][nc] !== null) {
                         possible.push({row: nr, col: nc});
                     }
                 });
                 if (possible.length > 0) {
                     let rand = possible[Math.floor(Math.random() * possible.length)];
-                    board[emptyPos.row][emptyPos.col] = board[rand.row][rand.col];
-                    board[rand.row][rand.col] = null;
-                    emptyPos = {row: rand.row, col: rand.col};
+                    targetBoard[targetEmptyPos.row][targetEmptyPos.col] = targetBoard[rand.row][rand.col];
+                    targetBoard[rand.row][rand.col] = null;
+                    targetEmptyPos.row = rand.row;
+                    targetEmptyPos.col = rand.col;
                 }
             }
         }
 
-        function randomizePattern() {
+        function randomizePattern(isExample = false) {
+            const targetPattern = isExample ? examplePattern : pattern;
             let colorCounts;
             do {
                 for (let i = 0; i < 3; i++) {
                     for (let j = 0; j < 3; j++) {
-                        pattern[i][j] = colors[Math.floor(Math.random() * colors.length)];
+                        targetPattern[i][j] = colors[Math.floor(Math.random() * colors.length)];
                     }
                 }
                 colorCounts = {};
                 colors.forEach(c => colorCounts[c] = 0);
                 for (let i = 0; i < 3; i++) {
                     for (let j = 0; j < 3; j++) {
-                        colorCounts[pattern[i][j]]++;
+                        colorCounts[targetPattern[i][j]]++;
                     }
                 }
             } while (Object.values(colorCounts).some(count => count > 4));
-            renderPattern();
+            if (isExample) renderExamplePattern();
+            else renderPattern();
         }
 
-        function initBoard() {
-            const boardDiv = document.getElementById('board');
-            boardDiv.innerHTML = '';
+        function initBoard(isExample = false) {
+            const boardDiv = document.getElementById(isExample ? 'exampleBoard' : 'board');
+            const targetBoard = isExample ? exampleBoard : board;
+            const targetCells = isExample ? exampleCells : cellEls;
+            boardDiv.innerHTML = isExample ? '<div id="exampleHighlightBorder"></div>' : '<div id="highlightBorder"></div>';
             boardDiv.style.width = `${5 * tileSize + 4 * gap}px`;
             boardDiv.style.height = `${5 * tileSize + 4 * gap}px`;
-            cellEls = Array(5).fill().map(() => Array(5).fill(null));
             for (let i = 0; i < 5; i++) {
+                targetCells[i] = [];
                 for (let j = 0; j < 5; j++) {
                     const cell = document.createElement('div');
-                    cell.className = 'cell ' + (board[i][j] || 'empty');
+                    cell.className = 'cell ' + (targetBoard[i][j] || 'empty');
                     cell.style.left = `${j * (tileSize + gap)}px`;
                     cell.style.top = `${i * (tileSize + gap)}px`;
                     cell.style.width = `${tileSize}px`;
                     cell.style.height = `${tileSize}px`;
-                    cell.dataset.row = i;
-                    cell.dataset.col = j;
-                    cell.addEventListener('click', handleClick);
+                    if (!isExample) {
+                        cell.dataset.row = i;
+                        cell.dataset.col = j;
+                        cell.addEventListener('click', handleClick);
+                    } else {
+                        cell.dataset.row = i;
+                        cell.dataset.col = j;
+                        cell.addEventListener('click', handleExampleClick);
+                    }
                     boardDiv.appendChild(cell);
-                    cellEls[i][j] = cell;
+                    targetCells[i][j] = cell;
                 }
             }
-            updateBoardClasses();
+            if (!isExample) updateBoardClasses();
+            else updateExampleBoardClasses();
         }
 
         function renderPattern() {
@@ -334,8 +573,20 @@
             }
         }
 
+        function renderExamplePattern() {
+            const miniDiv = document.getElementById('exampleMini');
+            miniDiv.innerHTML = '';
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'mini-cell ' + examplePattern[i][j];
+                    miniDiv.appendChild(cell);
+                }
+            }
+        }
+
         function handleClick(e) {
-            if (!timerInterval) return;
+            if (!gameStarted) return;
             const cell = e.target;
             if (cell.classList.contains('empty')) return;
             const row = parseInt(cell.dataset.row);
@@ -348,11 +599,24 @@
             }
         }
 
-        function moveLine(r, c) {
-            history.push({board: board.map(row => row.slice()), empty: {...emptyPos}});
+        function handleExampleClick(e) {
+            const cell = e.target;
+            if (cell.classList.contains('empty')) return;
+            const row = parseInt(cell.dataset.row);
+            const col = parseInt(cell.dataset.col);
+            if (row === exampleEmptyPos.row || col === exampleEmptyPos.col) {
+                moveLine(row, col, true);
+                updateExampleBoardClasses();
+            }
+        }
 
-            const er = emptyPos.row;
-            const ec = emptyPos.col;
+        function moveLine(r, c, isExample = false) {
+            const targetBoard = isExample ? exampleBoard : board;
+            const targetEmptyPos = isExample ? exampleEmptyPos : emptyPos;
+            const targetCells = isExample ? exampleCells : cellEls;
+
+            const er = targetEmptyPos.row;
+            const ec = targetEmptyPos.col;
             let dir;
             if (r === er) {
                 dir = c < ec ? 'right' : 'left';
@@ -363,27 +627,27 @@
             if (r === er) {
                 if (c < ec) {
                     for (let k = ec; k > c; k--) {
-                        board[r][k] = board[r][k-1];
+                        targetBoard[r][k] = targetBoard[r][k-1];
                     }
                 } else {
                     for (let k = ec; k < c; k++) {
-                        board[r][k] = board[r][k+1];
+                        targetBoard[r][k] = targetBoard[r][k+1];
                     }
                 }
-                board[r][c] = null;
-                emptyPos.col = c;
+                targetBoard[r][c] = null;
+                targetEmptyPos.col = c;
             } else {
                 if (r < er) {
                     for (let k = er; k > r; k--) {
-                        board[k][c] = board[k-1][c];
+                        targetBoard[k][c] = targetBoard[k-1][c];
                     }
                 } else {
                     for (let k = er; k < r; k++) {
-                        board[k][c] = board[k+1][c];
+                        targetBoard[k][c] = targetBoard[k+1][c];
                     }
                 }
-                board[r][c] = null;
-                emptyPos.row = r;
+                targetBoard[r][c] = null;
+                targetEmptyPos.row = r;
             }
 
             let movingCells = [];
@@ -392,13 +656,13 @@
                 const min = Math.min(c, ec);
                 const max = Math.max(c, ec);
                 for (let k = min; k <= max; k++) {
-                    movingCells.push(cellEls[r][k]);
+                    movingCells.push(targetCells[r][k]);
                 }
             } else {
                 const min = Math.min(r, er);
                 const max = Math.max(r, er);
                 for (let k = min; k <= max; k++) {
-                    movingCells.push(cellEls[k][c]);
+                    movingCells.push(targetCells[k][c]);
                 }
             }
 
@@ -419,10 +683,25 @@
                 movingCells.forEach(cell => {
                     cell.style.transition = '';
                     cell.style.transform = '';
+                    cell.className = 'cell ' + (targetBoard[parseInt(cell.dataset.row || r)][parseInt(cell.dataset.col || c)] || 'empty');
                 });
-                updateBoardClasses();
-                checkWin();
+                if (!isExample) {
+                    updateBoardClasses();
+                    checkWin();
+                } else {
+                    updateExampleBoardClasses();
+                }
             }, 300);
+        }
+
+        function calculatePercentage() {
+            let matchCount = 0;
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if (board[i+1][j+1] === pattern[i][j]) matchCount++;
+                }
+            }
+            return Math.round((matchCount / 9) * 100);
         }
 
         function updateBoardClasses() {
@@ -433,14 +712,63 @@
                     const isMatch = isCenter && board[i][j] === pattern[i-1][j-1];
                     cell.className = 'cell ' + (board[i][j] || 'empty');
                     if (isMatch) {
-                        if (!cell.classList.contains('flash')) {
-                            cell.classList.add('flash', 'match');
+                        if (!cell.classList.contains('throb')) {
+                            cell.classList.add('throb', 'match');
                             setTimeout(() => cell.classList.remove('match'), 500);
                         }
                     } else {
-                        cell.classList.remove('flash', 'match');
+                        cell.classList.remove('throb', 'match');
                     }
                 }
+            }
+        }
+
+        function updateExampleBoardClasses() {
+            for (let i = 0; i < 5; i++) {
+                for (let j = 0; j < 5; j++) {
+                    const cell = exampleCells[i][j];
+                    const isCenter = i >= 1 && i <= 3 && j >= 1 && j <= 3;
+                    const isMatch = isCenter && exampleBoard[i][j] === examplePattern[i-1][j-1];
+                    cell.className = 'cell ' + (exampleBoard[i][j] || 'empty');
+                    if (isMatch) {
+                        if (!cell.classList.contains('throb')) {
+                            cell.classList.add('throb', 'match');
+                            setTimeout(() => cell.classList.remove('match'), 500);
+                        }
+                    } else {
+                        cell.classList.remove('throb', 'match');
+                    }
+                }
+            }
+        }
+
+        function updateStats() {
+            const movesDiv = document.getElementById('moves');
+            const gameTimeDiv = document.getElementById('gameTime');
+            const progressFill = document.getElementById('progressFill');
+            const completePercentage = document.getElementById('completePercentage');
+            const percentage = calculatePercentage();
+            if (movesDiv) movesDiv.innerText = `Moves: ${moves}`;
+            if (gameTimeDiv) gameTimeDiv.innerText = `Game Time: ${time}s`;
+            if (progressFill) progressFill.style.width = `${percentage}%`;
+            if (completePercentage) completePercentage.innerText = `Complete: ${percentage}%`;
+        }
+
+        function showStars() {
+            const boardRect = document.getElementById('board').getBoundingClientRect();
+            const centerX = boardRect.left + boardRect.width / 2;
+            const centerY = boardRect.top + boardRect.height / 2;
+            for (let i = 0; i < 20; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = `${centerX}px`;
+                star.style.top = `${centerY}px`;
+                const angle = Math.random() * 2 * Math.PI;
+                const distance = 200 + Math.random() * 300;
+                star.style.setProperty('--dx', Math.cos(angle) * distance / window.innerWidth);
+                star.style.setProperty('--dy', Math.sin(angle) * distance / window.innerHeight);
+                document.body.appendChild(star);
+                setTimeout(() => star.remove(), 1500);
             }
         }
 
@@ -465,49 +793,75 @@
                     autoInterval = null;
                     document.getElementById('autoPlay').textContent = 'Auto Play';
                 }
-                document.getElementById('finalStats').innerText = `Moves: ${moves} | Time: ${time}s`;
-                document.getElementById('gameOver').style.display = 'flex';
+                for (let i = 0; i < 5; i++) {
+                    for (let j = 0; j < 5; j++) {
+                        const cell = cellEls[i][j];
+                        cell.classList.add('win-animation');
+                        setTimeout(() => cell.classList.remove('win-animation'), 1000);
+                    }
+                }
+                setTimeout(() => {
+                    showStars();
+                    setTimeout(() => {
+                        document.getElementById('finalStats').innerText = `Moves: ${moves} | Game Time: ${time}s`;
+                        document.getElementById('gameOver').style.display = 'flex';
+                    }, 2000);
+                }, 1000);
             }
-        }
-
-        function updateStats() {
-            document.getElementById('stats').innerText = `Moves: ${moves} | Time: ${time}s`;
         }
 
         function startGame() {
             moves = 0;
             time = 0;
             history = [];
+            gameStarted = true;
+            document.getElementById('randBoard').disabled = true;
+            document.getElementById('randPattern').disabled = true;
+            randomizePattern();
+            randomizeBoard();
             updateStats();
             if (timerInterval) clearInterval(timerInterval);
             if (autoInterval) {
                 clearInterval(autoInterval);
                 autoInterval = null;
-                document.getElementById('autoPlay').textContent = 'Auto Play';
+                const autoPlayBtn = document.getElementById('autoPlay');
+                if (autoPlayBtn) autoPlayBtn.textContent = 'Auto Play';
             }
+            if (exampleInterval) clearInterval(exampleInterval);
             timerInterval = setInterval(() => {
                 time++;
                 updateStats();
             }, 1000);
-            if (!board.some(row => row.some(cell => cell !== null))) {
-                randomizeBoard();
-            }
-            document.getElementById('welcome').style.display = 'none';
-            document.getElementById('gameContent').style.display = 'flex';
-            document.getElementById('gameOver').style.display = 'none';
+            const welcomeDiv = document.getElementById('welcome');
+            const gameContentDiv = document.getElementById('gameContent');
+            const gameOverDiv = document.getElementById('gameOver');
+            if (welcomeDiv) welcomeDiv.style.display = 'none';
+            if (gameContentDiv) gameContentDiv.style.display = 'flex';
+            if (gameOverDiv) gameOverDiv.style.display = 'none';
+        }
+
+        function restartGame() {
+            gameStarted = false;
+            document.getElementById('randBoard').disabled = false;
+            document.getElementById('randPattern').disabled = false;
+            randomizeBoard();
+            randomizePattern();
+            startGame();
         }
 
         function toggleAutoPlay() {
-            if (!timerInterval) return;
+            if (!gameStarted) return;
             const speed = parseInt(document.getElementById('autoSpeed').value);
             if (autoInterval) {
                 clearInterval(autoInterval);
                 autoInterval = null;
-                document.getElementById('autoPlay').textContent = 'Auto Play';
+                const autoPlayBtn = document.getElementById('autoPlay');
+                if (autoPlayBtn) autoPlayBtn.textContent = 'Auto Play';
             } else {
                 const path = findShortPath();
                 if (path && path.length > 0) {
-                    document.getElementById('autoPlay').textContent = 'Stop';
+                    const autoPlayBtn = document.getElementById('autoPlay');
+                    if (autoPlayBtn) autoPlayBtn.textContent = 'Stop';
                     let i = 0;
                     autoInterval = setInterval(() => {
                         if (i < path.length) {
@@ -518,7 +872,7 @@
                         } else {
                             clearInterval(autoInterval);
                             autoInterval = null;
-                            document.getElementById('autoPlay').textContent = 'Auto Play';
+                            if (autoPlayBtn) autoPlayBtn.textContent = 'Auto Play';
                             checkWin();
                         }
                     }, speed);
@@ -528,11 +882,11 @@
             }
         }
 
-        function findShortPath() {
+        function findShortPath(targetBoard = board, targetPattern = pattern) {
             const maxVisited = 50000;
             const queue = [];
             const visited = new Set();
-            const initialBoard = board.map(row => row.slice());
+            const initialBoard = targetBoard.map(row => row.slice());
             const initialStr = JSON.stringify(initialBoard);
             visited.add(initialStr);
             queue.push({board: initialBoard, empty: {...emptyPos}, path: []});
@@ -541,7 +895,7 @@
                     return null;
                 }
                 const curr = queue.shift();
-                if (isGoal(curr.board)) {
+                if (isGoal(curr.board, targetPattern)) {
                     return curr.path;
                 }
                 const er = curr.empty.row;
@@ -594,10 +948,10 @@
             return null;
         }
 
-        function isGoal(b) {
+        function isGoal(b, targetPattern = pattern) {
             for (let i = 0; i < 3; i++) {
                 for (let j = 0; j < 3; j++) {
-                    if (b[i+1][j+1] !== pattern[i][j]) {
+                    if (b[i+1][j+1] !== targetPattern[i][j]) {
                         return false;
                     }
                 }
@@ -606,7 +960,7 @@
         }
 
         function undoMove() {
-            if (history.length && timerInterval) {
+            if (history.length && gameStarted) {
                 let last = history.pop();
                 board = last.board;
                 emptyPos = last.empty;
@@ -617,11 +971,41 @@
             }
         }
 
+        function initExampleBoard() {
+            let path;
+            let moveCount = 0;
+            const maxMoves = 50;
+            do {
+                let tiles = createTiles();
+                let all = shuffle(tiles.concat([null]));
+                let idx = 0;
+                for (let i = 0; i < 5; i++) {
+                    for (let j = 0; j < 5; j++) {
+                        exampleBoard[i][j] = all[idx++];
+                        if (exampleBoard[i][j] === null) exampleEmptyPos = { row: i, col: j };
+                    }
+                }
+                examplePattern = exampleBoard.slice(1,4).map(row => row.slice(1,4));
+                path = findShortPath(exampleBoard, examplePattern);
+            } while (!path || path.length > 20);
+
+            const interval = setInterval(() => {
+                if (moveCount < 10 || (checkMiddleMatch(exampleBoard, examplePattern) && moveCount < maxMoves)) {
+                    scrambleBoard(1, true);
+                    initBoard(true);
+                    moveCount++;
+                } else {
+                    clearInterval(interval);
+                    renderExamplePattern();
+                }
+            }, 300);
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
+            initExampleBoard();
             const startWelcomeBtn = document.getElementById('startWelcome');
             const randBoardBtn = document.getElementById('randBoard');
             const randPatternBtn = document.getElementById('randPattern');
-            const startBtn = document.getElementById('start');
             const autoPlayBtn = document.getElementById('autoPlay');
             const toggleThemeBtn = document.getElementById('toggleTheme');
             const restartBtn = document.getElementById('restart');
@@ -631,11 +1015,10 @@
             if (startWelcomeBtn) startWelcomeBtn.addEventListener('click', startGame);
             if (randBoardBtn) randBoardBtn.addEventListener('click', randomizeBoard);
             if (randPatternBtn) randPatternBtn.addEventListener('click', randomizePattern);
-            if (startBtn) startBtn.addEventListener('click', startGame);
             if (autoPlayBtn) autoPlayBtn.addEventListener('click', toggleAutoPlay);
             if (toggleThemeBtn) toggleThemeBtn.addEventListener('click', () => document.body.classList.toggle('light'));
-            if (restartBtn) restartBtn.addEventListener('click', startGame);
-            if (autoSpeedInput) autoSpeedInput.addEventListener('input', updateAutoSpeed);
+            if (restartBtn) restartBtn.addEventListener('click', restartGame);
+            if (autoSpeedInput) autoSpeedInput.addEventListener('input', () => {});
             if (undoBtn) undoBtn.addEventListener('click', undoMove);
         });
     </script>
