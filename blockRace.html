@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Block Race</title>
+    <title>Block Race V0.9</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -42,7 +42,6 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
             background: linear-gradient(135deg, var(--background), #1a1a1a);
             color: var(--text);
             transition: background 0.3s;
@@ -92,10 +91,11 @@
             text-align: center;
             height: 100vh;
             width: 100%;
-            
+            background: linear-gradient(135deg, #000, #333);
             border-radius: 15px;
             box-shadow: 0 8px 20px var(--shadow);
             z-index: 1;
+            
         }
         #welcome h1 {
             font-size: 3em;
@@ -120,6 +120,8 @@
             background: rgba(0, 0, 0, 0.2);
             padding: 10px;
             border-radius: 10px;
+            max-height: 290px;
+            max-width: 290px;
         }
         #gameContent {
             display: none;
@@ -128,12 +130,13 @@
             gap: 20px;
             position: relative;
             width: 100%;
+            height: 100%;
             background: transparent;
             z-index: 1;
         }
         #gameTitle {
-            font-size: 2.5em;
-            margin: 20px 0 10px 0;
+            font-size: 2em;
+            
             text-shadow: 0 2px 4px var(--shadow);
         }
         #gameOver {
@@ -143,12 +146,12 @@
             justify-content: center;
             text-align: center;
             width: 300px;
-            height: 250px;
+            height: 350px;
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.9);
             color: var(--text);
             border-radius: 15px;
             padding: 20px;
@@ -167,10 +170,19 @@
         #stats {
             position: absolute;
             top: 10px;
-            right: 20px;
+            left: 0px;
             display: flex;
             flex-direction: column;
-            align-items: flex-end;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        #stats2 {
+            position: absolute;
+            top: 10px;
+            right: 0px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
             gap: 10px;
         }
         #moves {
@@ -237,7 +249,7 @@
         }
         #bonusMessage {
             position: fixed;
-            top: 30%;
+            top: 50%;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(0, 0, 0, 0.8);
@@ -259,6 +271,8 @@
             background: rgba(0, 0, 0, 0.2);
             padding: 10px;
             border-radius: 10px;
+            max-height: 290px;
+            max-width: 290px;
         }
         #board.winning {
             animation: shakeBoard 0.5s ease-in-out 2;
@@ -321,42 +335,34 @@
         .purple { background: linear-gradient(135deg, #b266ff, #6600cc); }
         #mini {
             display: grid;
-            grid-template-columns: repeat(3, 40px);
-            gap: 3px;
+            grid-template-columns: repeat(3, 20px);
+            gap: 2px;
             background: rgba(0, 0, 0, 0.2);
-            padding: 10px;
-            border-radius: 10px;
+            padding: 8px;
+            border-radius: 8px;
         }
         #miniContainer {
             position: absolute;
             top: 100px;
-            right: 20px;
+            right: 20px;  
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 10px;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-        }
-        #miniContainer.minimized {
-            display: none;
         }
         .mini-cell {
-            width: 40px;
-            height: 40px;
+            width: 20px;
+            height: 20px;
             border: 2px solid var(--border);
             box-sizing: border-box;
-            border-radius: 6px;
-            box-shadow: 0 2px 5px var(--shadow);
+            border-radius: 5px;
+            box-shadow: 0 0px 5px var(--shadow);
         }
         #patternContainer {
             display: flex;
             flex-direction: column;
             align-items: flex-end;
             gap: 5px;
-        }
-        #minMaxPattern {
-            padding: 5px 10px;
-            font-size: 12px;
         }
         #settings {
             display: none;
@@ -372,7 +378,7 @@
             border-radius: 15px;
             padding: 20px;
             box-shadow: 0 8px 20px var(--shadow);
-            z-index: 10;
+            z-index: 10; 
         }
         #settings label {
             margin: 10px 0 5px;
@@ -423,8 +429,8 @@
         @media (max-width: 400px) {
             .cell { width: 50px; height: 50px; }
             #highlightBorder, #exampleHighlightBorder { left: 53px; top: 53px; width: 170px; height: 170px; }
-            #mini { grid-template-columns: repeat(3, 30px); }
-            .mini-cell { width: 30px; height: 30px; }
+            #mini { grid-template-columns: repeat(3, 25px); }
+            .mini-cell { width: 25px; height: 25px; }
             #gameOver, #settings { width: 250px; height: 200px; }
             #welcome h1 { font-size: 2.2em; }
             #welcome p { font-size: 1.1em; }
@@ -435,7 +441,6 @@
             #undo { right: 70px; }
             #hint { right: 10px; }
             #miniContainer { top: 80px; right: 10px; }
-            #minMaxPattern { padding: 4px 8px; font-size: 10px; }
         }
         @keyframes flashOrange {
             from { color: var(--text); }
@@ -504,21 +509,23 @@
         </div>
     </div>
     <div id="gameContent">
-        <h1 id="gameTitle">Block Race</h1>
-        <div id="stats">
-            <div id="moves">Moves: 0<br><span id="points">Points: 0</span><br><span id="gameNumber">Game Number: 0</span></div>
-            <div id="gameTime">Game Time: 0s<br><span id="moveTime">Move Time: 0s</span></div>
-        </div>
+        <h1 id="gameTitle">Block<br>Race</h1>
         <div id="progressContainer">
             <div id="progressBar"><div id="progressFill" style="width: 0%"></div></div>
             <div id="completePercentage">Complete: 0%</div>
         </div>
+        <div id="stats">
+            <div id="moves">Moves: 0<br><span id="points">Points: 0</span><br><span id="gameNumber">Game: 0</span></div>
+        </div>
+        <div id="stats2">
+            <div id="gameTime">Time: 0s<br><span id="moveTime">Move: 0s</span></div>
+        </div>
+        
         <div id="game">
             <div id="patternContainer">
                 <div id="miniContainer">
                     <div id="mini"></div>
                 </div>
-                <button id="minMaxPattern">Minimize Pattern</button>
             </div>
             <div id="board"><div id="highlightBorder"></div></div>
         </div>
@@ -545,7 +552,7 @@
     <div id="scrambleMessage">Scrambling...</div>
     <div id="bonusMessage"></div>
 
-    <script>
+    <script>// 25 total; 24; 6 colours, 4 each; 5 col
         const colors = ['red', 'green', 'blue', 'yellow', 'orange', 'purple'];
         let board = Array(5).fill().map(() => Array(5).fill(null));
         let pattern = Array(3).fill().map(() => Array(3).fill(null));
@@ -570,7 +577,6 @@
         let gameStarted = false;
         let isMoving = false;
         let isAutoPlaying = false;
-        let isPatternMinimized = false;
         let isScrambling = false;
         let isStarfieldEnabled = true;
 
@@ -595,22 +601,6 @@
             } catch (error) {
                 console.error('Error in createTiles:', error);
                 return [];
-            }
-        }
-
-        function checkAnyMatch(targetBoard = board, targetPattern = pattern) {
-            try {
-                for (let i = 0; i < 3; i++) {
-                    for (let j = 0; j < 3; j++) {
-                        if (targetBoard[i+1][j+1] === targetPattern[i][j]) {
-                            return true;
-                        }
-                    }
-                }
-                return false;
-            } catch (error) {
-                console.error('Error in checkAnyMatch:', error);
-                return false;
             }
         }
 
@@ -673,7 +663,7 @@
 
                 let tiles = createTiles();
                 let idx = 0;
-                for (let i = 0; i < 5; i++) {
+                for (let i = 0; i < 5; i++) { 
                     for (let j = 0; j < 5; j++) {
                         if (i >= 1 && i <= 3 && j >= 1 && j <= 3) {
                             board[i][j] = pattern[i-1][j-1];
@@ -824,25 +814,6 @@
                 }
             } catch (error) {
                 console.error('Error in renderPattern:', error);
-            }
-        }
-
-        function togglePatternMinimize() {
-            try {
-                const miniContainer = document.getElementById('miniContainer');
-                const minMaxBtn = document.getElementById('minMaxPattern');
-                if (miniContainer && minMaxBtn) {
-                    isPatternMinimized = !isPatternMinimized;
-                    if (isPatternMinimized) {
-                        miniContainer.classList.add('minimized');
-                        minMaxBtn.textContent = 'Maximize Pattern';
-                    } else {
-                        miniContainer.classList.remove('minimized');
-                        minMaxBtn.textContent = 'Minimize Pattern';
-                    }
-                }
-            } catch (error) {
-                console.error('Error in togglePatternMinimize:', error);
             }
         }
 
@@ -1008,6 +979,11 @@
                         if (board[i+1] && board[i+1][j+1] === pattern[i][j]) matchCount++;
                     }
                 }
+
+                //const duration = (100-(Math.round((matchCount / 9) * 100))) / 2;
+                //document.getElementById("starfield").style.animation = `rotateStarfield ${duration}s linear infinite`;
+
+                
                 return Math.round((matchCount / 9) * 100);
             } catch (error) {
                 console.error('Error in calculatePercentage:', error);
@@ -1073,28 +1049,28 @@
                     bonusMessage.style.display = 'block';
                     setTimeout(() => {
                         if (bonusMessage) bonusMessage.style.display = 'none';
-                    }, 1000);
+                    }, 1500);
                 }
                 if (moveDuration < 3 && bonusMessage) {
                     points += 2;
-                    bonusMessage.innerText = '+2 Fast Move!' + (isBestMove ? ' (+30 Best Move)' : '');
+                    bonusMessage.innerText = '+2 Fast Move!' + (isBestMove ? ' \n\n+30 Best Move' : '');
                     bonusMessage.style.display = 'block';
                     setTimeout(() => {
                         if (bonusMessage) bonusMessage.style.display = 'none';
-                    }, 1000);
+                    }, 1500);
                 } else if (moveDuration < 5 && bonusMessage) {
                     points += 1;
-                    bonusMessage.innerText = '+1 Quick Move!' + (isBestMove ? ' (+30 Best Move)' : '');
+                    bonusMessage.innerText = '+1 Quick Move!' + (isBestMove ? ' \n\n+30 Best Move' : '');
                     bonusMessage.style.display = 'block';
                     setTimeout(() => {
                         if (bonusMessage) bonusMessage.style.display = 'none';
-                    }, 1000);
+                    }, 1500);
                 } else if (isBestMove && bonusMessage) {
                     bonusMessage.innerText = '+30 Best Move!';
                     bonusMessage.style.display = 'block';
                     setTimeout(() => {
                         if (bonusMessage) bonusMessage.style.display = 'none';
-                    }, 1000);
+                    }, 1500);
                 }
                 if (moveTimer) clearInterval(moveTimer);
                 moveTime = 0;
@@ -1118,10 +1094,10 @@
                 const progressFill = document.getElementById('progressFill');
                 const completePercentage = document.getElementById('completePercentage');
                 const percentage = calculatePercentage();
-                if (movesDiv) movesDiv.innerHTML = `Moves: ${moves}<br><span id="points">Points: ${points}</span><br><span id="gameNumber">Game Number: ${gameNumber}</span>`;
+                if (movesDiv) movesDiv.innerHTML = `Moves: ${moves}<br><span id="points">Points: ${points}</span><br><span id="gameNumber">Number: ${gameNumber}</span>`;
                 if (pointsSpan) pointsSpan.innerHTML = `Points: ${points}`;
-                if (gameNumberSpan) gameNumberSpan.innerHTML = `Game Number: ${gameNumber}`;
-                if (gameTimeDiv) gameTimeDiv.innerHTML = `Game Time: ${time}s<br><span id="moveTime">Move Time: ${moveTime}s</span>`;
+                if (gameNumberSpan) gameNumberSpan.innerHTML = `Number: ${gameNumber}`;
+                if (gameTimeDiv) gameTimeDiv.innerHTML = `Time: ${time}s<br><span id="moveTime">Move: ${moveTime}s</span>`;
                 if (moveTimeSpan) {
                     moveTimeSpan.innerHTML = `Move Time: ${moveTime}s`;
                     moveTimeSpan.className = '';
@@ -1206,7 +1182,7 @@
                                 showStars();
                                 setTimeout(() => {
                                     const finalStats = document.getElementById('finalStats');
-                                    if (finalStats) finalStats.innerHTML = `Moves: ${moves}<br><br>Points: ${points}<br><br>Game Time: ${time}s`;
+                                    if (finalStats) finalStats.innerHTML = `Moves: ${moves}<br><br>Points: ${points}<br><br>Time: ${time}s`;
                                     const gameOverDiv = document.getElementById('gameOver');
                                     if (gameOverDiv) gameOverDiv.style.display = 'flex';
                                 }, 2000);
@@ -1221,6 +1197,12 @@
 
         function submitScore() {
             try {
+                window.webkit?.messageHandlers.gridWarsHandler.postMessage({
+                    action: "submitScore",
+                    score: points,
+                    leaderboardId: leaderboardId
+                });
+            
                 console.log(`Submitting score: Moves=${moves}, Points=${points}, Game Number=${gameNumber}, Time=${time}s`);
                 alert('Score submitted to leaderboard!');
             } catch (error) {
@@ -1373,7 +1355,6 @@
                 const submitScoreBtn = document.getElementById('submitScore');
                 const autoSpeedInput = document.getElementById('autoSpeed');
                 const undoBtn = document.getElementById('undo');
-                const minMaxPatternBtn = document.getElementById('minMaxPattern');
 
                 if (startWelcomeBtn) startWelcomeBtn.addEventListener('click', startGame);
                 if (randBoardBtn) randBoardBtn.addEventListener('click', randomizeBoard);
@@ -1394,7 +1375,6 @@
                 if (submitScoreBtn) submitScoreBtn.addEventListener('click', submitScore);
                 if (autoSpeedInput) autoSpeedInput.addEventListener('input', () => {});
                 if (undoBtn) undoBtn.addEventListener('click', undoMove);
-                if (minMaxPatternBtn) minMaxPatternBtn.addEventListener('click', togglePatternMinimize);
 
                 initStarfield();
                 initExampleBoard();
@@ -1494,29 +1474,23 @@
 
         function startGame() {
             try {
-                gameNumber = 0;
                 gameNumber++;
                 moves = 0;
                 time = 0;
                 moveTime = 0;
                 history = [];
                 isAutoPlaying = false;
-                isPatternMinimized = false;
                 isScrambling = false;
                 gameStarted = true;
                 const randBoardBtn = document.getElementById('randBoard');
                 const autoPlayBtn = document.getElementById('autoPlay');
                 const hintBtn = document.getElementById('hint');
-                const minMaxBtn = document.getElementById('minMaxPattern');
-                const miniContainer = document.getElementById('miniContainer');
                 if (randBoardBtn) randBoardBtn.disabled = true;
                 if (autoPlayBtn) {
                     autoPlayBtn.textContent = 'Auto Play';
                     autoPlayBtn.disabled = true;
                 }
                 if (hintBtn) hintBtn.disabled = true;
-                if (minMaxBtn) minMaxBtn.textContent = 'Minimize Pattern';
-                if (miniContainer) miniContainer.classList.remove('minimized');
                 if (autoInterval) {
                     clearTimeout(autoInterval);
                     autoInterval = null;
@@ -1540,7 +1514,6 @@
                 const wasAutoPlaying = isAutoPlaying;
                 gameStarted = false;
                 isAutoPlaying = false;
-                isPatternMinimized = false;
                 isScrambling = false;
                 if (autoInterval) {
                     clearTimeout(autoInterval);
@@ -1549,16 +1522,12 @@
                 const randBoardBtn = document.getElementById('randBoard');
                 const autoPlayBtn = document.getElementById('autoPlay');
                 const hintBtn = document.getElementById('hint');
-                const minMaxBtn = document.getElementById('minMaxPattern');
-                const miniContainer = document.getElementById('miniContainer');
                 if (randBoardBtn) randBoardBtn.disabled = false;
                 if (autoPlayBtn) {
                     autoPlayBtn.textContent = 'Auto Play';
                     autoPlayBtn.disabled = true;
                 }
                 if (hintBtn) hintBtn.disabled = true;
-                if (minMaxBtn) minMaxBtn.textContent = 'Minimize Pattern';
-                if (miniContainer) miniContainer.classList.remove('minimized');
                 moves = 0;
                 time = 0;
                 moveTime = 0;
@@ -1677,6 +1646,6 @@
                 console.error('Error in toggleAutoPlay:', error);
             }
         }
-    </script>
+    </script> 
 </body>
 </html>
