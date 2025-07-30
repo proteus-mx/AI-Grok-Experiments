@@ -3,1650 +3,992 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Block Race V0.93</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <title>Rubik's Race</title>
     <style>
-        :root {
-            --background: #000000;
-            --text: #ffffff;
-            --border: #4a4a4a;
-            --shadow: rgba(255,255,255,0.3);
-            --accent: #00ff88;
-            --button-bg: #3a3a3a;
-            --button-hover: #00ff88;
-            --progress-bg: #555555;
-            --progress-fill: #00ff88;
-            --highlight-border: rgba(255, 255, 0, 0.5);
-            --warning-orange: #ffaa00;
-            --warning-red: #ff0000;
+        body { display: flex; flex-direction: column; align-items: center; font-family: Arial, sans-serif; background: #f0f0f0; margin: 0; padding: 20px; }
+        #game-container { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 20px; }
+        #pattern-container { display: flex; flex-direction: column; align-items: center; }
+        #pattern { display: grid; grid-template-columns: repeat(3, 20px); gap: 1px; border: 2px solid #333; background: #fff; padding: 3px; border-radius: 6px; margin-bottom: 5px; }
+        #board1, #board2 { display: grid; grid-template-columns: repeat(5, 40px); gap: 2px; border: 3px solid #333; background: #ddd; padding: 5px; border-radius: 10px; }
+        .tile { width: 40px; height: 40px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transition: transform 0.2s; user-select: none; }
+        #pattern .tile { width: 20px; height: 20px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .tile:active { transform: scale(0.95); }
+        .empty { background: transparent; box-shadow: none; }
+        .red { background: #FF4136; }
+        .green { background: #2ECC40; }
+        .blue { background: #0074D9; }
+        .yellow { background: #FFDC00; }
+        .white { background: #FFFFFF; border: 1px solid #ccc; }
+        .orange { background: #FF851B; }
+        #stats1, #stats2 { font-size: 16px; margin: 10px 0; display: flex; flex-direction: column; gap: 5px; align-items: center; }
+        #controls { margin: 10px 0; }
+        button { padding: 8px 16px; margin: 5px; background: #0074D9; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #randomize-pattern { padding: 5px 10px; font-size: 12px; }
+        #gameover { 
+            display: none; 
+            position: fixed; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            background: rgba(0, 0, 0, 0.7); 
+            color: #2ECC40; 
+            padding: 20px; 
+            border-radius: 10px; 
+            text-align: center; 
+            font-size: 24px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); 
         }
-        .light {
-            --background: #f5f5f5;
-            --text: #1a1a1a;
-            --border: #333333;
-            --shadow: rgba(0,0,0,0.2);
-            --accent: #007bff;
-            --button-bg: #e0e0e0;
-            --button-hover: #007bff;
-            --progress-bg: #d0d0d0;
-            --progress-fill: #007bff;
-            --highlight-border: rgba(255, 255, 0, 0.7);
-            --warning-orange: #ffaa00;
-            --warning-red: #ff0000;
-        }
-        body {
-            font-family: 'Orbitron', sans-serif;
-            margin-top: 70px;
-            padding-top: 0px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, var(--background), #1a1a1a);
-            color: var(--text);
-            transition: background 0.3s;
-            position: relative;
-            overflow: hidden;
-        }
-        #starfield {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            transform-origin: center;
-            animation: rotateStarfield 60s linear infinite;
-        }
-        .starfield-star {
-            position: absolute;
-            background: linear-gradient(45deg, #fff, #aaa);
-            border-radius: 50%;
-            animation: spiralStar 12s linear infinite;
-            opacity: 0.8;
-            box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
-        }
-        @keyframes rotateStarfield {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        @keyframes spiralStar {
-            0% {
-                transform: translate(-50%, -50%) scale(0.2) rotate(0deg);
-                opacity: 0.8;
-            }
-            50% {
-                opacity: 1;
-            }
-            100% {
-                transform: translate(-50%, -50%) scale(1.2) rotate(7200deg);
-                opacity: 0;
-            }
-        }
-        #welcome {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            height: 100vh;
-            width: 100%;
-            background: linear-gradient(135deg, #000, #333);
-            border-radius: 15px;
-            box-shadow: 0 8px 20px var(--shadow);
-            z-index: 1;
-            
-        }
-        #welcome h1 { 
-            font-size: 2.5em; 
-            margin-bottom: 10px;
-            margin-top: 0px;
-            text-shadow: 0 2px 4px var(--shadow);
-        }
-        #welcome p {
-            max-width: 70%;
-            font-size: 1em;
-            margin-bottom: 20px;
-            line-height: 1.5;
-        }
-        #exampleContainer {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-        #exampleBoard {
-            position: relative;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 10px;
-            border-radius: 10px;
-            max-height: 290px;
-            max-width: 290px;
-        }
-        #gameContent {
+        #thinking {
             display: none;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            position: relative;
-            width: 100%;
-            height: 100%;
-            background: transparent;
-            z-index: 1;
-        }
-        #gameTitle {
-            font-size: 2em;
-            
-            text-shadow: 0 2px 4px var(--shadow);
-        }
-        #gameOver {
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            width: 300px;
-            height: 350px;
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            color: var(--text);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 8px 20px var(--shadow);
-            z-index: 10;
-        }
-        #gameOver h2 {
-            font-size: 2em;
-            margin: 0;
-            color: var(--accent);
-        }
-        #gameOver p {
-            margin: 15px 0;
-            font-size: 2em;
-        }
-        #stats {
-            position: absolute;
-            top: 10px;
-            left: 0px;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 10px;
-        }
-        #stats2 {
-            position: absolute;
-            top: 10px;
-            right: 0px;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 10px;
-        }
-        #moves {
-            font-size: 18px;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 10px 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px var(--shadow);
-        }
-        #points, #gameNumber {
-            font-size: 14px;
-            margin-top: 5px;
-        }
-        #gameTime {
-            font-size: 18px;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 10px 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px var(--shadow);
-        }
-        #moveTime {
-            font-size: 14px;
-            margin-top: 5px;
-        }
-        #moveTime.orange {
-            animation: flashOrange 0.5s infinite alternate;
-        }
-        #moveTime.red {
-            animation: flashRed 0.5s infinite alternate;
-        }
-        #progressContainer {
-            text-align: center;
-        }
-        #progressBar {
-            width: 200px;
-            height: 20px;
-            background: var(--progress-bg);
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 2px 5px var(--shadow);
-            margin: 10px auto;
-        }
-        #progressFill {
-            height: 100%;
-            background: var(--progress-fill);
-            transition: width 0.3s ease;
-        }
-        #completePercentage {
-            font-size: 14px;
-            color: var(--text);
-        }
-        #scrambleMessage {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: var(--accent);
-            padding: 15px 30px;
-            border-radius: 10px;
-            font-size: 1.5em;
-            display: none;
-            z-index: 10;
-        }
-        #bonusMessage {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: var(--accent);
-            padding: 10px 20px;
-            border-radius: 10px;
-            font-size: 1.2em;
-            display: none;
-            z-index: 10;
-        }
-        #game {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-        }
-        #board {
-            position: relative;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 10px;
-            border-radius: 10px;
-            max-height: 290px;
-            max-width: 290px;
-        }
-        #board.winning {
-            animation: shakeBoard 0.5s ease-in-out 2;
-        }
-        #highlightBorder {
-            position: absolute;
-            left: 60px;
-            top: 60px;
-            width: 185px;
-            height: 185px;
-            border: 4px solid var(--highlight-border);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
             border-radius: 8px;
-            animation: flashBorder 2s ease-in-out infinite;
-            z-index: 5;
-            pointer-events: none;
+            font-size: 20px;
         }
-        #exampleHighlightBorder {
-            position: absolute;
-            left: 60px;
-            top: 60px;
-            width: 185px;
-            height: 185px;
-            border: 4px solid var(--highlight-border);
-            border-radius: 8px;
-            animation: flashBorder 2s ease-in-out infinite;
-            z-index: 5;
-            pointer-events: none;
+        #mode-selection { margin-bottom: 10px; }
+        #solution { 
+            margin-top: 20px; 
+            max-height: 150px; 
+            overflow-y: auto; 
+            width: 80%; 
+            max-width: 300px; 
+            background: #fff; 
+            padding: 10px; 
+            border-radius: 5px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
+            display: none; 
         }
-        .cell {
-            position: absolute;
-            width: 60px;
-            height: 60px;
-            border: 2px solid var(--border);
-            box-sizing: border-box;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px var(--shadow);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            z-index: 6;
+        #solution p { margin: 5px 0; font-size: 14px; }
+        #difficulty1, #difficulty2 { 
+            width: 100%; 
+            max-width: 200px; 
+            text-align: left; 
         }
-        .cell:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 15px var(--shadow);
-        }
-        .cell.hint {
-            animation: throbEffect 1s ease-in-out infinite;
-        }
-        .cell.win-animation {
-            animation: enhancedWin 1s ease-in-out;
-        }
-        .empty {
-            background: transparent;
-            border: none;
-            pointer-events: none;
-        }
-        .red { background: linear-gradient(135deg, #ff4d4d, #cc0000); }
-        .green { background: linear-gradient(135deg, #4dff4d, #00cc00); }
-        .blue { background: linear-gradient(135deg, #4d4dff, #0000cc); }
-        .yellow { background: linear-gradient(135deg, #ffff4d, #cccc00); }
-        .orange { background: linear-gradient(135deg, #ffaa33, #cc7a00); }
-        .purple { background: linear-gradient(135deg, #b266ff, #6600cc); }
-        #mini {
-            display: grid;
-            grid-template-columns: repeat(3, 20px);
-            gap: 2px;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 8px;
-            border-radius: 8px;
-        }
-        #miniContainer {
-            position: absolute;
-            top: 100px;
-            right: 20px;  
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-        .mini-cell {
-            width: 20px;
-            height: 20px;
-            border: 2px solid var(--border);
-            box-sizing: border-box;
+        #difficulty-bar1, #difficulty-bar2 {
+            height: 15px;
             border-radius: 5px;
-            box-shadow: 0 0px 5px var(--shadow);
+            background: #ccc;
+            overflow: hidden;
         }
-        #patternContainer {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 5px;
+        #difficulty-fill1, #difficulty-fill2 {
+            height: 100%;
+            transition: width 0.3s;
         }
-        #settings {
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: var(--text);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 8px 20px var(--shadow);
-            z-index: 10; 
+        #progress1, #progress2 {
+            width: 100%;
+            max-width: 200px;
+            text-align: left;
         }
-        #settings label {
-            margin: 10px 0 5px;
-            font-size: 14px;
+        #progress-bar1, #progress-bar2 {
+            height: 15px;
+            border-radius: 5px;
+            background: #ccc;
+            overflow: hidden;
         }
-        button {
-            margin: 5px;
-            padding: 10px 20px;
-            font-size: 14px;
-            background: var(--button-bg);
-            color: var(--text);
-            border: 2px solid var(--border);
-            border-radius: 8px;
-            cursor: pointer;
-            box-shadow: 0 4px 10px var(--shadow);
-            transition: all 0.3s ease;
+        #progress-fill1, #progress-fill2 {
+            height: 100%;
+            background: #2ECC40;
+            transition: width 0.3s;
         }
-        button:hover {
-            background: var(--button-hover);
-            color: #fff;
-            transform: translateY(-2px);
-        }
-        button:active {
-            transform: translateY(0);
-        }
-        button:disabled {
-            background: #555;
-            cursor: not-allowed;
-            transform: none;
-        }
-        #startWelcome {
-            animation: throbEffect 1s ease-in-out infinite;
-        }
-        #undo, #hint, #settingsBtn {
-            position: fixed;
-            bottom: 20px;
-            padding: 8px 16px;
-        }
-        #undo {
-            right: 80px;
-        }
-        #hint {
-            right: 20px;
-        }
-        #settingsBtn {
-            left: 20px;
-        }
-        @media (max-width: 400px) {
-            .cell { width: 50px; height: 50px; }
-            #highlightBorder, #exampleHighlightBorder { left: 53px; top: 53px; width: 170px; height: 170px; }
-            #mini { grid-template-columns: repeat(3, 25px); }
-            .mini-cell { width: 25px; height: 25px; }
-            #gameOver, #settings { width: 250px; height: 200px; }
-            #welcome h1 { font-size: 2.2em; }
-            #welcome p { font-size: 1.1em; }
-            #moves, #gameTime { font-size: 16px; }
-            #points, #gameNumber, #moveTime { font-size: 12px; }
-            #progressBar { width: 150px; }
-            #completePercentage { font-size: 12px; }
-            #undo { right: 70px; }
-            #hint { right: 10px; }
-            #miniContainer { top: 80px; right: 10px; }
-        }
-        @keyframes flashOrange {
-            from { color: var(--text); }
-            to { color: var(--warning-orange); }
-        }
-        @keyframes flashRed {
-            from { color: var(--text); }
-            to { color: var(--warning-red); }
-        }
-        @keyframes matchEffect {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-            100% { transform: scale(1); }
-        }
-        @keyframes throbEffect {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
-        }
-        @keyframes enhancedWin {
-            0% { transform: scale(1) rotate(0deg); opacity: 1; }
-            50% { transform: scale(1.3) rotate(180deg); opacity: 0.7; }
-            100% { transform: scale(1) rotate(360deg); opacity: 1; }
-        }
-        @keyframes shakeBoard {
-            0% { transform: translate(0, 0); }
-            25% { transform: translate(-5px, 5px); }
-            50% { transform: translate(5px, -5px); }
-            75% { transform: translate(-5px, 5px); }
-            100% { transform: translate(0, 0); }
-        }
-        .star {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background: #fff;
-            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
-            animation: starExplode 2s ease-out forwards;
-            z-index: 20;
-        }
-        @keyframes starExplode {
-            0% {
-                transform: translate(0, 0) scale(0.5);
-                opacity: 1;
-            }
-            100% {
-                transform: translate(calc(100vw * var(--dx)), calc(100vh * var(--dy))) scale(1.5);
-                opacity: 0;
-            }
-        }
-        @keyframes flashBorder {
-            0% { border-color: var(--highlight-border); }
-            50% { border-color: rgba(255, 255, 0, 0.2); }
-            100% { border-color: var(--highlight-border); }
-        }
+        .easy { background: #2ECC40; }
+        .medium { background: #FFDC00; }
+        .hard { background: #FF4136; }
+        .hint { animation: flash 0.5s infinite alternate; }
+        @keyframes flash { from { box-shadow: 0 0 15px red; } to { box-shadow: 0 0 25px red; } }
+        .player-label { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
     </style>
 </head>
 <body>
-    <div id="starfield"></div>
-    <div id="welcome">
-        <h1>Block Race</h1>
-        <button id="startWelcome">Start Game</button>
-        <p>Slide squares into the empty space to match the 3x3 pattern in the center of the 5x5 grid.</p>
-        <div id="exampleContainer">
-            <div id="exampleBoard"><div id="exampleHighlightBorder"></div></div>
-        </div>
+    <div id="mode-selection">
+        <button onclick="newGame('easy', 1)">1 Player - Easy</button>
+        <button onclick="newGame('hard', 1)">1 Player - Hard</button>
+        <button onclick="newGame('easy', 2)">2 Player - Easy</button>
+        <button onclick="newGame('hard', 2)">2 Player - Hard</button>
     </div>
-    <div id="gameContent">
-        <h1 id="gameTitle">Block<br>Race</h1>
-        <div id="progressContainer">
-            <div id="progressBar"><div id="progressFill" style="width: 0%"></div></div>
-            <div id="completePercentage">Complete: 0%</div>
-        </div>
-        <div id="stats">
-            <div id="moves">Moves: 0<br><span id="points">Points: 0</span><br><span id="gameNumber">Game: 0</span></div>
-        </div>
-        <div id="stats2">
-            <div id="gameTime">Time: 0s<br><span id="moveTime">Move: 0s</span></div>
-        </div>
-        
-        <div id="game">
-            <div id="patternContainer">
-                <div id="miniContainer">
-                    <div id="mini"></div>
+    <div id="game-container">
+        <div id="player1">
+            <div class="player-label">Player 1</div>
+            <div id="board1"></div>
+            <div id="stats1">
+                <div>
+                    <span id="timer1">Time: 0s</span>
+                    <span id="moves1">Moves: 0</span>
+                    <span id="points1">Points: 0</span>
+                </div>
+                <div id="progress1">
+                    <p>Games: <span id="games-played1">0</span> (<span id="games-won1">0</span>)</p>
+                    <div id="progress-bar1">
+                        <div id="progress-fill1"></div>
+                    </div>
+                </div>
+                <div id="difficulty1">
+                    <p>Difficulty: <span id="move-count1">0</span> moves</p>
+                    <div id="difficulty-bar1">
+                        <div id="difficulty-fill1"></div>
+                    </div>
                 </div>
             </div>
-            <div id="board"><div id="highlightBorder"></div></div>
         </div>
-        <button id="autoPlay">Auto Play</button>
-        <button id="undo">Undo</button>
-        <button id="hint">Hint</button>
-        <button id="settingsBtn">Settings</button>
+        <div id="pattern-container">
+            <div id="pattern"></div>
+            <button id="randomize-pattern" onclick="randomizePattern()">Randomize Pattern</button>
+        </div>
+        <div id="player2" style="display: none;">
+            <div class="player-label">Player 2</div>
+            <div id="board2"></div>
+            <div id="stats2">
+                <div>
+                    <span id="timer2">Time: 0s</span>
+                    <span id="moves2">Moves: 0</span>
+                    <span id="points2">Points: 0</span>
+                </div>
+                <div id="progress2">
+                    <p>Games: <span id="games-played2">0</span> (<span id="games-won2">0</span>)</p>
+                    <div id="progress-bar2">
+                        <div id="progress-fill2"></div>
+                    </div>
+                </div>
+                <div id="difficulty2">
+                    <p>Difficulty: <span id="move-count2">0</span> moves</p>
+                    <div id="difficulty-bar2">
+                        <div id="difficulty-fill2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div id="gameOver">
-        <h2>Game Complete!</h2>
-        <p id="finalStats"></p>
-        <button id="restart">Play Again</button>
-        <button id="submitScore">Submit Score</button>
+    <div id="controls">
+        <button onclick="hint(1)">Hint P1</button>
+        <button onclick="autoComplete(1)">Auto Solve P1</button>
+        <button id="hint2" onclick="hint(2)" style="display: none;">Hint P2</button>
+        <button id="auto2" onclick="autoComplete(2)" style="display: none;">Auto Solve P2</button>
+        <button onclick="showSolution()">Show Solution</button>
     </div>
-    <div id="settings">
-        <h2>Settings</h2>
-        <label for="autoSpeed">Auto Speed (ms):</label>
-        <input type="range" id="autoSpeed" min="100" max="2000" value="500" step="100">
-        <button id="randPattern">Randomize Pattern</button>
-        <button id="toggleTheme">Toggle Theme</button>
-        <button id="toggleStarfield">Enable Starfield</button>
-        <button id="closeSettings">Close</button>
+    <div id="solution"></div>
+    <div id="gameover">
+        <span id="winner"></span> Wins!<br>
+        Time: <span id="wintime"></span>s<br>
+        Moves: <span id="winmoves"></span><br>
+        Points: <span id="winpoints"></span><br>
+        <button onclick="newGame(currentMode, playerCount)">Play Again</button>
     </div>
-    <div id="scrambleMessage">Scrambling...</div>
-    <div id="bonusMessage"></div>
+    <div id="thinking">Thinking...</div>
+    <script>
+        const colors = ['red', 'green', 'blue', 'yellow', 'white', 'orange'];
+        let board1 = [], board2 = [];
+        let emptyPos1 = {x: 0, y: 0}, emptyPos2 = {x: 0, y: 0};
+        let pattern = [];
+        let startTime;
+        let timerInterval1, timerInterval2;
+        let moveCount1 = 0, moveCount2 = 0;
+        let points1 = 0, points2 = 0;
+        let gamesPlayed1 = 0, gamesPlayed2 = 0;
+        let gamesWon1 = 0, gamesWon2 = 0;
+        let initialMoveCount1 = 0, initialMoveCount2 = 0;
+        let gameWon = false;
+        let autoSolving = false;
+        let currentMode = 'easy';
+        let playerCount = 1;
+        let currentPlayer = 1;
 
-    <script>// 25 total; 24; 6 colours, 4 each; 5 col
-        const colors = ['red', 'green', 'blue', 'yellow', 'orange', 'purple'];
-        let board = Array(5).fill().map(() => Array(5).fill(null));
-        let pattern = Array(3).fill().map(() => Array(3).fill(null));
-        let moves = 0;
-        let points = 0;
-        let gameNumber = 0;
-        let time = 0;
-        let moveTime = 0;
-        let moveTimer = null;
-        let timerInterval = null;
-        let autoInterval = null;
-        let emptyPos = { row: 0, col: 0 };
-        let cellEls = Array(5).fill().map(() => Array(5).fill(null));
-        let tileSize = window.innerWidth <= 400 ? 50 : 60;
-        let gap = 3;
-        let history = [];
-        let exampleBoard = Array(5).fill().map(() => Array(5).fill(null));
-        let examplePattern = Array(3).fill().map(() => Array(3).fill(null));
-        let exampleEmptyPos = { row: 0, col: 0 };
-        let exampleCells = Array(5).fill().map(() => Array(5).fill(null));
-        let exampleInterval = null;
-        let gameStarted = false;
-        let isMoving = false;
-        let isAutoPlaying = false;
-        let isScrambling = false;
-        let isStarfieldEnabled = true;
+        function initBoard(mode, player) {
+            let tiles = [];
+            colors.forEach(c => { for(let i=0; i<4; i++) tiles.push(c); });
+            tiles.push(null);
+            
+            let board, moveCount;
+            let attempts = 0;
+            const maxAttempts = 10;
 
-        function shuffle(array) {
-            try {
-                for (let i = array.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [array[i], array[j]] = [array[j], array[i]];
-                }
-                return array;
-            } catch (error) {
-                console.error('Error in shuffle:', error);
-                return array;
-            }
-        }
-
-        function createTiles() {
-            try {
-                let tiles = [];
-                colors.forEach(c => { for (let i = 0; i < 4; i++) tiles.push(c); });
-                return tiles;
-            } catch (error) {
-                console.error('Error in createTiles:', error);
-                return [];
-            }
-        }
-
-        function checkIsSolved(targetBoard = board, targetPattern = pattern) {
-            try {
-                for (let i = 0; i < 3; i++) {
-                    for (let j = 0; j < 3; j++) {
-                        if (targetBoard[i+1][j+1] !== targetPattern[i][j]) {
-                            return false;
-                        }
-                    }
-                }
-                return true;
-            } catch (error) {
-                console.error('Error in checkIsSolved:', error);
-                return false;
-            }
-        }
-
-        function isSolvable(targetBoard, targetPattern) {
-            try {
-                const boardColors = {};
-                const patternColors = {};
-                colors.forEach(c => {
-                    boardColors[c] = 0;
-                    patternColors[c] = 0;
-                });
-                for (let i = 0; i < 5; i++) {
-                    for (let j = 0; j < 5; j++) {
-                        if (targetBoard[i][j]) boardColors[targetBoard[i][j]]++;
-                    }
-                }
-                for (let i = 0; i < 3; i++) {
-                    for (let j = 0; j < 3; j++) {
-                        patternColors[targetPattern[i][j]]++;
-                    }
-                }
-                for (const c of colors) {
-                    if (boardColors[c] < patternColors[c]) {
-                        console.log(`Unsolvable: Not enough ${c} tiles (Board: ${boardColors[c]}, Pattern: ${patternColors[c]})`);
-                        return false;
-                    }
-                }
-                return true;
-            } catch (error) {
-                console.error('Error in isSolvable:', error);
-                return false;
-            }
-        }
-
-        function randomizeBoard() {
-            try {
-                const scrambleMessage = document.getElementById('scrambleMessage');
-                const autoPlayBtn = document.getElementById('autoPlay');
-                const hintBtn = document.getElementById('hint');
-                if (scrambleMessage) scrambleMessage.style.display = 'block';
-                if (autoPlayBtn) autoPlayBtn.disabled = true;
-                if (hintBtn) hintBtn.disabled = true;
-                isScrambling = true;
-
-                let tiles = createTiles();
-                let idx = 0;
-                for (let i = 0; i < 5; i++) { 
-                    for (let j = 0; j < 5; j++) {
-                        if (i >= 1 && i <= 3 && j >= 1 && j <= 3) {
-                            board[i][j] = pattern[i-1][j-1];
-                        } else {
-                            board[i][j] = tiles[idx++] || null;
-                        }
-                    }
-                }
-                board[0][0] = null;
-                emptyPos = { row: 0, col: 0 };
-
-                let moveCount = 0;
-                const maxMoves = 20;
-                const interval = setInterval(() => {
-                    if (moveCount < maxMoves) {
-                        scrambleBoard(1);
-                        initBoard();
-                        moveCount++;
-                    } else {
-                        clearInterval(interval);
-                        if (scrambleMessage) scrambleMessage.style.display = 'none';
-                        renderPattern();
-                        updateStats();
-                        if (gameStarted) {
-                            startGameTimer();
-                            if (isAutoPlaying) {
-                                setTimeout(toggleAutoPlay, 100);
-                            }
-                        }
-                        isScrambling = false;
-                        if (autoPlayBtn) autoPlayBtn.disabled = false;
-                        if (hintBtn) hintBtn.disabled = false;
-                    }
-                }, 30);
-            } catch (error) {
-                console.error('Error in randomizeBoard:', error);
-            }
-        }
-
-        function scrambleBoard(numMoves, isExample = false) {
-            try {
-                const targetBoard = isExample ? exampleBoard : board;
-                const targetEmptyPos = isExample ? exampleEmptyPos : emptyPos;
-                for (let i = 0; i < numMoves; i++) {
-                    const directions = [
-                        {dr: -1, dc: 0},
-                        {dr: 1, dc: 0},
-                        {dr: 0, dc: -1},
-                        {dr: 0, dc: 1}
-                    ];
-                    let possible = [];
-                    directions.forEach(d => {
-                        let nr = targetEmptyPos.row + d.dr;
-                        let nc = targetEmptyPos.col + d.dc;
-                        if (nr >= 0 && nr < 5 && nc >= 0 && nc < 5 && targetBoard[nr][nc] !== null) {
-                            possible.push({row: nr, col: nc});
-                        }
-                    });
-                    if (possible.length > 0) {
-                        let rand = possible[Math.floor(Math.random() * possible.length)];
-                        targetBoard[targetEmptyPos.row][targetEmptyPos.col] = targetBoard[rand.row][rand.col];
-                        targetBoard[rand.row][rand.col] = null;
-                        targetEmptyPos.row = rand.row;
-                        targetEmptyPos.col = rand.col;
-                    }
-                }
-            } catch (error) {
-                console.error('Error in scrambleBoard:', error);
-            }
-        }
-
-        function randomizePattern(isExample = false) {
-            try {
-                const targetPattern = isExample ? examplePattern : pattern;
-                let colorCounts;
+            if (mode === 'easy') {
                 do {
-                    for (let i = 0; i < 3; i++) {
-                        for (let j = 0; j < 3; j++) {
-                            const randomColor = colors[Math.floor(Math.random() * colors.length)];
-                            targetPattern[i][j] = randomColor;
+                    board = Array.from({length: 5}, () => Array(5).fill(null));
+                    for (let y = 0; y < 3; y++) {
+                        for (let x = 0; x < 3; x++) {
+                            board[y + 1][x + 1] = pattern[y][x] || null;
                         }
                     }
-                    colorCounts = {};
-                    colors.forEach(c => colorCounts[c] = 0);
-                    for (let i = 0; i < 3; i++) {
-                        for (let j = 0; j < 3; j++) {
-                            colorCounts[targetPattern[i][j]]++;
+                    let remaining = {};
+                    colors.forEach(c => remaining[c] = 4);
+                    pattern.flat().forEach(c => { if (c) remaining[c]--; });
+                    let outerTiles = [];
+                    colors.forEach(c => { for (let i = 0; i < remaining[c]; i++) outerTiles.push(c); });
+                    outerTiles.sort(() => Math.random() - 0.5);
+                    let outerPos = [];
+                    for (let y = 0; y < 5; y++) {
+                        for (let x = 0; x < 5; x++) {
+                            if (y >= 1 && y <= 3 && x >= 1 && x <= 3) continue;
+                            outerPos.push({x, y});
                         }
                     }
-                } while (Object.values(colorCounts).some(count => count > 4));
-                if (!isExample) renderPattern();
-            } catch (error) {
-                console.error('Error in randomizePattern:', error);
+                    let tileIdx = 0;
+                    let emptyIdx = Math.floor(Math.random() * outerPos.length);
+                    for (let i = 0; i < outerPos.length; i++) {
+                        let pos = outerPos[i];
+                        if (i === emptyIdx) {
+                            board[pos.y][pos.x] = null;
+                            if (player === 1) emptyPos1 = {x: pos.x, y: pos.y};
+                            else emptyPos2 = {x: pos.x, y: pos.y};
+                        } else {
+                            board[pos.y][pos.x] = outerTiles[tileIdx++] || null;
+                        }
+                    }
+                    for (let i = 0; i < 10; i++) {
+                        let moves = getPossibleMoves(player === 1 ? emptyPos1 : emptyPos2);
+                        let move = moves[Math.floor(Math.random() * moves.length)];
+                        if (move) moveRowOrColumn(move.x, move.y, move.dx, move.dy, false, player, board);
+                    }
+                    moveCount = planSolutionSync(board, player === 1 ? emptyPos1 : emptyPos2).length;
+                    attempts++;
+                } while ((moveCount < 5 || moveCount > 15) && attempts < maxAttempts);
+            } else {
+                do {
+                    tiles.sort(() => Math.random() - 0.5);
+                    board = [];
+                    for (let y = 0; y < 5; y++) {
+                        board[y] = [];
+                        for (let x = 0; x < 5; x++) {
+                            board[y][x] = tiles[y * 5 + x];
+                            if (!board[y][x]) {
+                                if (player === 1) emptyPos1 = {x, y};
+                                else emptyPos2 = {x, y};
+                            }
+                        }
+                    }
+                    moveCount = planSolutionSync(board, player === 1 ? emptyPos1 : emptyPos2).length;
+                    attempts++;
+                } while ((moveCount < 15 || moveCount >= 100) && attempts < maxAttempts);
             }
+
+            if (attempts >= maxAttempts || moveCount === 0) {
+                board = Array.from({length: 5}, () => Array(5).fill(null));
+                for (let y = 0; y < 3; y++) {
+                    for (let x = 0; x < 3; x++) {
+                        board[y + 1][x + 1] = pattern[y][x] || null;
+                    }
+                }
+                let remaining = {};
+                colors.forEach(c => remaining[c] = 4);
+                pattern.flat().forEach(c => { if (c) remaining[c]--; });
+                let outerTiles = [];
+                colors.forEach(c => { for (let i = 0; i < remaining[c]; i++) outerTiles.push(c); });
+                outerTiles.sort(() => Math.random() - 0.5);
+                let outerPos = [];
+                for (let y = 0; y < 5; y++) {
+                    for (let x = 0; x < 5; x++) {
+                        if (y >= 1 && y <= 3 && x >= 1 && x <= 3) continue;
+                        outerPos.push({x, y});
+                    }
+                }
+                let tileIdx = 0;
+                let emptyIdx = Math.floor(Math.random() * outerPos.length);
+                for (let i = 0; i < outerPos.length; i++) {
+                    let pos = outerPos[i];
+                    if (i === emptyIdx) {
+                        board[pos.y][pos.x] = null;
+                        if (player === 1) emptyPos1 = {x: pos.x, y: pos.y};
+                        else emptyPos2 = {x: pos.x, y: pos.y};
+                    } else {
+                        board[pos.y][pos.x] = outerTiles[tileIdx++] || null;
+                    }
+                }
+                let targetMoves = mode === 'easy' ? 10 : 20;
+                for (let i = 0; i < targetMoves; i++) {
+                    let moves = getPossibleMoves(player === 1 ? emptyPos1 : emptyPos2);
+                    let move = moves[Math.floor(Math.random() * moves.length)];
+                    if (move) moveRowOrColumn(move.x, move.y, move.dx, move.dy, false, player, board);
+                }
+                moveCount = planSolutionSync(board, player === 1 ? emptyPos1 : emptyPos2).length;
+                if (moveCount === 0) return initBoard(mode, player);
+            }
+            if (player === 1) initialMoveCount1 = moveCount || 0;
+            else initialMoveCount2 = moveCount || 0;
+            return board;
         }
 
-        function initBoard(isExample = false) {
-            try {
-                const boardDiv = document.getElementById(isExample ? 'exampleBoard' : 'board');
-                const targetBoard = isExample ? exampleBoard : board;
-                const targetCells = isExample ? exampleCells : cellEls;
-                if (boardDiv) {
-                    boardDiv.innerHTML = isExample ? '<div id="exampleHighlightBorder"></div>' : '<div id="highlightBorder"></div>';
-                    boardDiv.style.width = `${5 * tileSize + 4 * gap}px`;
-                    boardDiv.style.height = `${5 * tileSize + 4 * gap}px`;
-                    for (let i = 0; i < 5; i++) {
-                        targetCells[i] = [];
-                        for (let j = 0; j < 5; j++) {
-                            const cell = document.createElement('div');
-                            cell.className = 'cell ' + (targetBoard[i][j] || 'empty');
-                            cell.style.left = `${j * (tileSize + gap)}px`;
-                            cell.style.top = `${i * (tileSize + gap)}px`;
-                            cell.style.width = `${tileSize}px`;
-                            cell.style.height = `${tileSize}px`;
-                            if (!isExample) {
-                                cell.dataset.row = i;
-                                cell.dataset.col = j;
-                                cell.addEventListener('click', handleClick);
-                            } else {
-                                cell.dataset.row = i;
-                                cell.dataset.col = j;
-                                cell.addEventListener('click', handleExampleClick);
-                            }
-                            boardDiv.appendChild(cell);
-                            targetCells[i][j] = cell;
-                        }
+        function generatePattern() {
+            let attempts = 0;
+            const maxAttempts = 10;
+            let moveCount1, moveCount2;
+            do {
+                pattern = [];
+                for (let y = 0; y < 3; y++) {
+                    pattern[y] = [];
+                    for (let x = 0; x < 3; x++) {
+                        pattern[y][x] = colors[Math.floor(Math.random() * colors.length)];
                     }
-                    if (!isExample) updateBoardClasses();
-                    else updateExampleBoardClasses();
                 }
-            } catch (error) {
-                console.error('Error in initBoard:', error);
+                let counts = {};
+                pattern.flat().forEach(c => counts[c] = (counts[c] || 0) + 1);
+                if (Object.values(counts).some(v => v > 4)) continue;
+
+                let tempBoard1 = initBoard(currentMode, 1);
+                moveCount1 = planSolutionSync(tempBoard1, emptyPos1).length;
+                if (playerCount === 2) {
+                    let tempBoard2 = initBoard(currentMode, 2);
+                    moveCount2 = planSolutionSync(tempBoard2, emptyPos2).length;
+                } else {
+                    moveCount2 = moveCount1;
+                }
+                attempts++;
+            } while ((moveCount1 === 0 || (playerCount === 2 && moveCount2 === 0)) && attempts < maxAttempts);
+            if (attempts >= maxAttempts) generatePattern();
+        }
+
+        function randomizePattern() {
+            generatePattern();
+            renderPattern();
+            const solution = document.getElementById('solution');
+            const difficulty1 = document.getElementById('difficulty1');
+            const difficulty2 = document.getElementById('difficulty2');
+            if (solution) solution.style.display = 'none';
+            if (difficulty1) difficulty1.style.display = 'none';
+            if (playerCount === 2 && difficulty2) difficulty2.style.display = 'none';
+            board1 = initBoard(currentMode, 1);
+            if (playerCount === 2) board2 = initBoard(currentMode, 2);
+            renderBoard(1);
+            if (playerCount === 2) renderBoard(2);
+            startTime = Date.now();
+            clearInterval(timerInterval1);
+            clearInterval(timerInterval2);
+            timerInterval1 = setInterval(() => updateTimer(1), 1000);
+            if (playerCount === 2) timerInterval2 = setInterval(() => updateTimer(2), 1000);
+            moveCount1 = 0;
+            moveCount2 = 0;
+            gameWon = false;
+            updateMoves(1);
+            if (playerCount === 2) updateMoves(2);
+            updateTimer(1);
+            if (playerCount === 2) updateTimer(2);
+            updateDifficulty(1);
+            if (playerCount === 2) updateDifficulty(2);
+        }
+
+        function isSolvableWithin(maxMoves, board, emptyPos) {
+            if (!board || !emptyPos) return false;
+            const queue = [{board: board.map(row => [...row]), emptyPos: {...emptyPos}, moves: 0}];
+            const seenStates = new Set([JSON.stringify(board)]);
+            const maxStates = 10000;
+            let statesExplored = 0;
+
+            while (queue.length > 0 && statesExplored < maxStates && queue[0].moves < maxMoves) {
+                const {board: currentBoard, emptyPos: currentEmpty, moves} = queue.shift();
+                if (!currentBoard || !currentEmpty) continue;
+                if (isSolved(currentBoard)) return true;
+                const possibleMoves = getPossibleMoves(currentEmpty);
+                for (const move of possibleMoves) {
+                    const newBoard = currentBoard.map(row => [...row]);
+                    const newEmpty = {...currentEmpty};
+                    const tx = move.x;
+                    const ty = move.y;
+                    const dx = move.dx;
+                    const dy = move.dy;
+                    if (dx !== 0) {
+                        let row = newBoard[ty];
+                        let emptyIndex = row.indexOf(null);
+                        if (emptyIndex === -1 || (dx > 0 && tx >= emptyIndex) || (dx < 0 && tx <= emptyIndex)) continue;
+                        if (dx > 0) {
+                            for (let x = emptyIndex; x > tx; x--) row[x] = row[x - 1];
+                        } else {
+                            for (let x = emptyIndex; x < tx; x++) row[x] = row[x + 1];
+                        }
+                        row[tx] = null;
+                        newEmpty.x = tx;
+                    } else {
+                        let column = newBoard.map(row => row[tx]);
+                        let emptyIndex = column.indexOf(null);
+                        if (emptyIndex === -1 || (dy > 0 && ty >= emptyIndex) || (dy < 0 && ty <= emptyIndex)) continue;
+                        if (dy > 0) {
+                            for (let y = emptyIndex; y > ty; y--) newBoard[y][tx] = newBoard[y - 1][tx];
+                        } else {
+                            for (let y = emptyIndex; y < ty; y++) newBoard[y][tx] = newBoard[y + 1][tx];
+                        }
+                        newBoard[ty][tx] = null;
+                        newEmpty.y = ty;
+                    }
+                    const boardState = JSON.stringify(newBoard);
+                    if (!seenStates.has(boardState)) {
+                        seenStates.add(boardState);
+                        queue.push({
+                            board: newBoard,
+                            emptyPos: newEmpty,
+                            moves: moves + 1
+                        });
+                        statesExplored++;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function renderBoard(player) {
+            const boardDiv = document.getElementById(`board${player}`);
+            const board = player === 1 ? board1 : board2;
+            if (!boardDiv || !board) return;
+            boardDiv.innerHTML = '';
+            for (let y = 0; y < 5; y++) {
+                for (let x = 0; x < 5; x++) {
+                    const tile = document.createElement('div');
+                    tile.className = 'tile ' + (board[y][x] || 'empty');
+                    tile.dataset.x = x;
+                    tile.dataset.y = y;
+                    tile.dataset.player = player;
+                    if (!autoSolving) {
+                        tile.addEventListener('touchstart', handleTouchStart);
+                        tile.addEventListener('touchend', handleTouchEnd);
+                    }
+                    boardDiv.appendChild(tile);
+                }
             }
         }
 
         function renderPattern() {
-            try {
-                const miniDiv = document.getElementById('mini');
-                if (miniDiv) {
-                    miniDiv.innerHTML = '';
-                    for (let i = 0; i < 3; i++) {
-                        for (let j = 0; j < 3; j++) {
-                            const cell = document.createElement('div');
-                            cell.className = 'mini-cell ' + (pattern[i][j] || 'empty');
-                            miniDiv.appendChild(cell);
-                        }
+            const patDiv = document.getElementById('pattern');
+            if (!patDiv) return;
+            patDiv.innerHTML = '';
+            for (let y = 0; y < 3; y++) {
+                for (let x = 0; x < 3; x++) {
+                    const tile = document.createElement('div');
+                    tile.className = 'tile ' + (pattern[y][x] || 'empty');
+                    patDiv.appendChild(tile);
+                }
+            }
+        }
+
+        let touchStartX, touchStartY;
+        function handleTouchStart(e) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }
+
+        function handleTouchEnd(e) {
+            const dx = e.changedTouches[0].clientX - touchStartX;
+            const dy = e.changedTouches[0].clientY - touchStartY;
+            const tile = e.target;
+            const x = parseInt(tile.dataset.x) || 0;
+            const y = parseInt(tile.dataset.y) || 0;
+            const player = parseInt(tile.dataset.player) || 1;
+            if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30) {
+                moveRowOrColumn(x, y, dx > 0 ? 1 : -1, 0, true, player);
+            } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 30) {
+                moveRowOrColumn(x, y, 0, dy > 0 ? 1 : -1, true, player);
+            }
+        }
+
+        function moveRowOrColumn(tx, ty, dx, dy, update = true, player = 1, targetBoard = null) {
+            const board = targetBoard || (player === 1 ? board1 : board2);
+            const emptyPos = player === 1 ? emptyPos1 : emptyPos2;
+            if (!board || !emptyPos) return false;
+
+            if (dx !== 0) {
+                let row = board[ty];
+                let emptyIndex = row.indexOf(null);
+                if (emptyIndex === -1) return false;
+
+                let startIndex = tx;
+                let endIndex = emptyIndex;
+                if (dx > 0 && startIndex >= emptyIndex) return false;
+                if (dx < 0 && startIndex <= emptyIndex) return false;
+
+                if (dx > 0) {
+                    for (let x = emptyIndex; x > startIndex; x--) {
+                        row[x] = row[x - 1];
                     }
-                }
-            } catch (error) {
-                console.error('Error in renderPattern:', error);
-            }
-        }
-
-        function handleClick(e) {
-            try {
-                if (!gameStarted || isAutoPlaying || isScrambling) {
-                    console.log('Click blocked: Invalid state');
-                    return;
-                }
-                const cell = e.target;
-                if (!cell || cell.classList.contains('empty')) return;
-                const row = parseInt(cell.dataset.row);
-                const col = parseInt(cell.dataset.col);
-                if (isNaN(row) || isNaN(col)) {
-                    console.error('Invalid row or col:', row, col);
-                    return;
-                }
-                if (row === emptyPos.row || col === emptyPos.col) {
-                    isMoving = true;
-                    const moveStart = Date.now();
-                    history.push({board: board.map(row => row.slice()), empty: {...emptyPos}});
-
-                    let isBestMove = false;
-                    if (board && pattern && isSolvable(board, pattern)) {
-                        const path = findShortPath();
-                        if (path && path.length > 0) {
-                            const bestMove = path[0];
-                            isBestMove = (row === bestMove.row && col === bestMove.col);
-                        } else {
-                            console.log('No valid path found for best move check');
-                        }
-                    }
-
-                    moveLine(row, col);
-                    const moveDuration = (Date.now() - moveStart) / 1000;
-                    moves++;
-                    updateMoveTime(moveDuration, isBestMove);
-                    updateStats();
-                    checkWin();
-                }
-            } catch (error) {
-                console.error('Error in handleClick:', error);
-            }
-        }
-
-        function handleExampleClick(e) {
-            try {
-                const cell = e.target;
-                if (!cell || cell.classList.contains('empty')) return;
-                const row = parseInt(cell.dataset.row);
-                const col = parseInt(cell.dataset.col);
-                if (row === exampleEmptyPos.row || col === exampleEmptyPos.col) {
-                    moveLine(row, col, true);
-                    updateExampleBoardClasses();
-                }
-            } catch (error) {
-                console.error('Error in handleExampleClick:', error);
-            }
-        }
-
-        function moveLine(r, c, isExample = false) {
-            try {
-                const targetBoard = isExample ? exampleBoard : board;
-                const targetEmptyPos = isExample ? exampleEmptyPos : emptyPos;
-                const targetCells = isExample ? exampleCells : cellEls;
-
-                const er = targetEmptyPos.row;
-                const ec = targetEmptyPos.col;
-                let dir;
-                if (r === er) {
-                    dir = c < ec ? 'right' : 'left';
                 } else {
-                    dir = r < er ? 'down' : 'up';
+                    for (let x = emptyIndex; x < startIndex; x++) {
+                        row[x] = row[x + 1];
+                    }
                 }
+                row[startIndex] = null;
+                emptyPos.x = startIndex;
+            } else {
+                let column = board.map(row => row[tx]);
+                let emptyIndex = column.indexOf(null);
+                if (emptyIndex === -1) return false;
 
-                if (r === er) {
-                    if (c < ec) {
-                        for (let k = ec; k > c; k--) {
-                            targetBoard[r][k] = targetBoard[r][k-1];
+                let startIndex = ty;
+                if (dy > 0 && startIndex >= emptyIndex) return false;
+                if (dy < 0 && startIndex <= emptyIndex) return false;
+
+                if (dy > 0) {
+                    for (let y = emptyIndex; y > startIndex; y--) {
+                        board[y][tx] = board[y - 1][tx];
+                    }
+                } else {
+                    for (let y = emptyIndex; y < startIndex; y++) {
+                        board[y][tx] = board[y + 1][tx];
+                    }
+                }
+                board[startIndex][tx] = null;
+                emptyPos.y = startIndex;
+            }
+
+            if (update && !gameWon) {
+                if (player === 1) moveCount1++;
+                else moveCount2++;
+                updateMoves(player);
+                renderBoard(player);
+                if (checkWin(player)) return true;
+                updateDifficulty(player);
+            }
+            return true;
+        }
+
+        function updateMoves(player) {
+            const moveCount = player === 1 ? moveCount1 : moveCount2;
+            const board = player === 1 ? board1 : board2;
+            const emptyPos = player === 1 ? emptyPos1 : emptyPos2;
+            const optimalMoves = board ? planSolutionSync(board, player).length : 0;
+            const points = player === 1 ? points1 : points2;
+            const movesElement = document.getElementById(`moves${player}`);
+            const pointsElement = document.getElementById(`points${player}`);
+            const gamesPlayedElement = document.getElementById(`games-played${player}`);
+            const gamesWonElement = document.getElementById(`games-won${player}`);
+            const progressFill = document.getElementById(`progress-fill${player}`);
+            if (movesElement) movesElement.innerText = `Moves: ${moveCount} (${optimalMoves})`;
+            if (pointsElement) pointsElement.innerText = `Points: ${points}`;
+            if (gamesPlayedElement) gamesPlayedElement.innerText = player === 1 ? gamesPlayed1 : gamesPlayed2;
+            if (gamesWonElement) gamesWonElement.innerText = player === 1 ? gamesWon1 : gamesWon2;
+            if (progressFill) {
+                const winRate = (player === 1 ? gamesPlayed1 : gamesPlayed2) > 0 
+                    ? ((player === 1 ? gamesWon1 : gamesWon2) / (player === 1 ? gamesPlayed1 : gamesPlayed2)) * 100 
+                    : 0;
+                progressFill.style.width = `${winRate}%`;
+            }
+        }
+
+        function checkWin(player) {
+            if (gameWon) return false;
+            const board = player === 1 ? board1 : board2;
+            if (!board) return false;
+            let match = true;
+            for (let y = 0; y < 3; y++) {
+                for (let x = 0; x < 3; x++) {
+                    if (board[y + 1][x + 1] !== (pattern[y][x] || null)) match = false;
+                }
+            }
+            if (match) {
+                gameWon = true;
+                clearInterval(timerInterval1);
+                if (playerCount === 2) clearInterval(timerInterval2);
+                const time = Math.floor((Date.now() - startTime) / 1000);
+                const pointsEarned = player === 1 ? (initialMoveCount1 || 0) : (initialMoveCount2 || 0);
+                if (player === 1) {
+                    points1 += pointsEarned;
+                    gamesWon1++;
+                    gamesPlayed1++;
+                    if (playerCount === 2) gamesPlayed2++;
+                } else {
+                    points2 += pointsEarned;
+                    gamesWon2++;
+                    gamesPlayed2++;
+                    gamesPlayed1++;
+                }
+                const gameover = document.getElementById('gameover');
+                const winner = document.getElementById('winner');
+                const wintime = document.getElementById('wintime');
+                const winmoves = document.getElementById('winmoves');
+                const winpoints = document.getElementById('winpoints');
+                if (winner) winner.innerText = `Player ${player}`;
+                if (wintime) wintime.innerText = time;
+                if (winmoves) winmoves.innerText = player === 1 ? moveCount1 : moveCount2;
+                if (winpoints) winpoints.innerText = pointsEarned;
+                if (gameover) gameover.style.display = 'block';
+                const thinking = document.getElementById('thinking');
+                const solution = document.getElementById('solution');
+                const difficulty1 = document.getElementById('difficulty1');
+                const difficulty2 = document.getElementById('difficulty2');
+                if (thinking) thinking.style.display = 'none';
+                if (solution) solution.style.display = 'none';
+                if (difficulty1) difficulty1.style.display = 'none';
+                if (playerCount === 2 && difficulty2) difficulty2.style.display = 'none';
+                updateMoves(1);
+                if (playerCount === 2) updateMoves(2);
+                autoSolving = false;
+            }
+            return match;
+        }
+
+        function updateTimer(player) {
+            const time = Math.floor((Date.now() - startTime) / 1000);
+            const timerElement = document.getElementById(`timer${player}`);
+            if (timerElement) timerElement.innerText = `Time: ${time}s`;
+        }
+
+        async function updateDifficulty(player) {
+            const thinking = document.getElementById('thinking');
+            if (thinking) thinking.style.display = 'block';
+            const moveSequence = await planSolution(player);
+            if (thinking) thinking.style.display = 'none';
+
+            const moveCount = moveSequence.length;
+            const moveCountElement = document.getElementById(`move-count${player}`);
+            const bar = document.getElementById(`difficulty-fill${player}`);
+            const difficultyElement = document.getElementById(`difficulty${player}`);
+            if (moveCountElement) moveCountElement.innerText = moveCount;
+            if (bar) {
+                const maxMoves = 100;
+                const width = Math.min((moveCount / maxMoves) * 100, 100);
+                bar.style.width = `${width}%`;
+                bar.className = moveCount <= 10 ? 'easy' : moveCount <= 50 ? 'medium' : 'hard';
+            }
+            if (difficultyElement) difficultyElement.style.display = 'block';
+        }
+
+        function newGame(mode = currentMode, players = playerCount) {
+            currentMode = mode === 'easy' || mode === 'hard' ? mode : 'easy';
+            playerCount = players === 1 || players === 2 ? players : 1;
+            currentPlayer = 1;
+            gameWon = false;
+            initialMoveCount1 = 0;
+            initialMoveCount2 = 0;
+            generatePattern();
+            board1 = initBoard(currentMode, 1);
+            if (playerCount === 2) board2 = initBoard(currentMode, 2);
+            renderBoard(1);
+            if (playerCount === 2) {
+                renderBoard(2);
+                const player2 = document.getElementById('player2');
+                const hint2 = document.getElementById('hint2');
+                const auto2 = document.getElementById('auto2');
+                if (player2) player2.style.display = 'block';
+                if (hint2) hint2.style.display = 'inline-block';
+                if (auto2) auto2.style.display = 'inline-block';
+            } else {
+                const player2 = document.getElementById('player2');
+                const hint2 = document.getElementById('hint2');
+                const auto2 = document.getElementById('auto2');
+                const difficulty2 = document.getElementById('difficulty2');
+                if (player2) player2.style.display = 'none';
+                if (hint2) hint2.style.display = 'none';
+                if (auto2) auto2.style.display = 'none';
+                if (difficulty2) difficulty2.style.display = 'none';
+            }
+            renderPattern();
+            startTime = Date.now();
+            clearInterval(timerInterval1);
+            clearInterval(timerInterval2);
+            timerInterval1 = setInterval(() => updateTimer(1), 1000);
+            if (playerCount === 2) timerInterval2 = setInterval(() => updateTimer(2), 1000);
+            const gameover = document.getElementById('gameover');
+            const thinking = document.getElementById('thinking');
+            const solution = document.getElementById('solution');
+            const difficulty1 = document.getElementById('difficulty1');
+            const difficulty2 = document.getElementById('difficulty2');
+            const board1Element = document.getElementById('board1');
+            const patternElement = document.getElementById('pattern');
+            const stats1 = document.getElementById('stats1');
+            const controls = document.getElementById('controls');
+            const modeSelection = document.getElementById('mode-selection');
+            if (gameover) gameover.style.display = 'none';
+            if (thinking) thinking.style.display = 'none';
+            if (solution) solution.style.display = 'none';
+            if (difficulty1) difficulty1.style.display = 'none';
+            if (playerCount === 2 && difficulty2) difficulty2.style.display = 'none';
+            if (board1Element) board1Element.style.display = 'grid';
+            if (patternElement) patternElement.style.display = 'grid';
+            if (stats1) stats1.style.display = 'flex';
+            if (controls) controls.style.display = 'block';
+            if (modeSelection) modeSelection.style.display = 'block';
+            moveCount1 = 0;
+            moveCount2 = 0;
+            gameWon = false;
+            updateMoves(1);
+            if (playerCount === 2) updateMoves(2);
+            updateTimer(1);
+            if (playerCount === 2) updateTimer(2);
+            autoSolving = false;
+            updateDifficulty(1);
+            if (playerCount === 2) updateDifficulty(2);
+        }
+
+        async function autoComplete(player) {
+            autoSolving = true;
+            const thinking = document.getElementById('thinking');
+            if (thinking) thinking.style.display = 'block';
+            renderBoard(player);
+
+            let moveSequence = await planSolution(player);
+            if (thinking) thinking.style.display = 'none';
+
+            if (moveSequence.length > 0) {
+                for (const move of moveSequence) {
+                    if (!move || gameWon) break;
+                    const {x, y, dx, dy} = move || {};
+                    if (moveRowOrColumn(x, y, dx, dy, true, player)) {
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                    }
+                    if (gameWon) return;
+                }
+            }
+
+            const seenStates = new Set();
+            while (!gameWon) {
+                const bestMove = getBestMove(player);
+                if (!bestMove) {
+                    const alternativeMove = getAlternativeMove(player);
+                    if (!alternativeMove) break;
+                    if (moveRowOrColumn(alternativeMove.x, alternativeMove.y, alternativeMove.dx, alternativeMove.dy, true, player)) {
+                        seenStates.add(JSON.stringify(player === 1 ? board1 : board2));
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                    }
+                } else {
+                    const boardState = JSON.stringify(player === 1 ? board1 : board2);
+                    if (seenStates.has(boardState)) {
+                        const alternativeMove = getAlternativeMove(player);
+                        if (!alternativeMove) break;
+                        if (moveRowOrColumn(alternativeMove.x, alternativeMove.y, alternativeMove.dx, alternativeMove.dy, true, player)) {
+                            seenStates.add(boardState);
+                            await new Promise(resolve => setTimeout(resolve, 200));
                         }
                     } else {
-                        for (let k = ec; k < c; k++) {
-                            targetBoard[r][k] = targetBoard[r][k+1];
-                        }
-                    }
-                    targetBoard[r][c] = null;
-                    targetEmptyPos.col = c;
-                } else {
-                    if (r < er) {
-                        for (let k = er; k > r; k--) {
-                            targetBoard[k][c] = targetBoard[k-1][c];
-                        }
-                    } else {
-                        for (let k = er; k < r; k++) {
-                            targetBoard[k][c] = targetBoard[k+1][c];
-                        }
-                    }
-                    targetBoard[r][c] = null;
-                    targetEmptyPos.row = r;
-                }
-
-                let movingCells = [];
-                let amount = tileSize + gap;
-                if (r === er) {
-                    const min = Math.min(c, ec);
-                    const max = Math.max(c, ec);
-                    for (let k = min; k <= max; k++) {
-                        if (targetCells[r] && targetCells[r][k]) {
-                            movingCells.push(targetCells[r][k]);
-                        }
-                    }
-                } else {
-                    const min = Math.min(r, er);
-                    const max = Math.max(r, er);
-                    for (let k = min; k <= max; k++) {
-                        if (targetCells[k] && targetCells[k][c]) {
-                            movingCells.push(targetCells[k][c]);
+                        if (moveRowOrColumn(bestMove.x, bestMove.y, bestMove.dx, bestMove.dy, true, player)) {
+                            seenStates.add(boardState);
+                            await new Promise(resolve => setTimeout(resolve, 200));
                         }
                     }
                 }
+            }
 
-                movingCells.forEach(cell => {
-                    if (cell) {
-                        cell.style.transition = 'transform 0.2s ease';
-                        if (dir === 'left') {
-                            cell.style.transform = `translateX(-${amount}px)`;
-                        } else if (dir === 'right') {
-                            cell.style.transform = `translateX(${amount}px)`;
-                        } else if (dir === 'up') {
-                            cell.style.transform = `translateY(-${amount}px)`;
-                        } else if (dir === 'down') {
-                            cell.style.transform = `translateY(${amount}px)`;
-                        }
-                    }
+            autoSolving = false;
+            renderBoard(player);
+        }
+
+        async function showSolution() {
+            const thinking = document.getElementById('thinking');
+            if (thinking) thinking.style.display = 'block';
+            const moveSequence = await planSolution(currentPlayer);
+            if (thinking) thinking.style.display = 'none';
+
+            const solutionDiv = document.getElementById('solution');
+            if (!solutionDiv) return;
+            solutionDiv.innerHTML = '';
+            if (moveSequence.length === 0) {
+                solutionDiv.innerHTML = '<p>No solution found within time limit.</p>';
+            } else {
+                const header = document.createElement('p');
+                header.innerText = `Solution for Player ${currentPlayer}: ${moveSequence.length} moves`;
+                solutionDiv.appendChild(header);
+                moveSequence.forEach((move, index) => {
+                    const {x, y, dx, dy} = move || {};
+                    const direction = dx > 0 ? 'right' : dx < 0 ? 'left' : dy > 0 ? 'down' : 'up';
+                    const p = document.createElement('p');
+                    p.innerText = `${index + 1}. Move tile at (${x},${y}) ${direction}`;
+                    solutionDiv.appendChild(p);
                 });
+            }
+            solutionDiv.style.display = 'block';
+        }
 
-                setTimeout(() => {
-                    movingCells.forEach(cell => {
-                        if (cell) {
-                            cell.style.transition = '';
-                            cell.style.transform = '';
-                            cell.className = 'cell ' + (targetBoard[parseInt(cell.dataset.row || r)][parseInt(cell.dataset.col || c)] || 'empty') + (cell.classList.contains('hint') ? ' hint' : '');
+        function planSolutionSync(board, player) {
+            if (!board || !player) return [];
+            const startTime = Date.now();
+            const maxTime = 5000;
+            const emptyPos = player === 1 ? {...emptyPos1} : {...emptyPos2};
+            const queue = [{board: board.map(row => [...row]), emptyPos, moves: []}];
+            const seenStates = new Set([JSON.stringify(board)]);
+            const maxStates = 10000;
+
+            while (queue.length > 0 && (Date.now() - startTime) < maxTime) {
+                const {board: currentBoard, emptyPos: currentEmpty, moves} = queue.shift();
+                if (!currentBoard || !currentEmpty) continue;
+
+                if (isSolved(currentBoard)) {
+                    return moves;
+                }
+
+                const possibleMoves = getPossibleMoves(currentEmpty, player);
+                for (const move of possibleMoves) {
+                    const newBoard = currentBoard.map(row => [...row]);
+                    const newEmpty = {...currentEmpty};
+                    const tx = move.x;
+                    const ty = move.y;
+                    const dx = move.dx;
+                    const dy = move.dy;
+
+                    if (dx !== 0) {
+                        let row = newBoard[ty];
+                        let emptyIndex = row.indexOf(null);
+                        if (emptyIndex === -1 || (dx > 0 && tx >= emptyIndex) || (dx < 0 && tx <= emptyIndex)) continue;
+
+                        if (dx > 0) {
+                            for (let x = emptyIndex; x > tx; x--) row[x] = row[x - 1];
+                        } else {
+                            for (let x = emptyIndex; x < tx; x++) row[x] = row[x + 1];
                         }
-                    });
-                    if (!isExample) {
-                        updateBoardClasses();
-                        checkWin();
-                        isMoving = false;
+                        row[tx] = null;
+                        newEmpty.x = tx;
                     } else {
-                        updateExampleBoardClasses();
-                    }
-                }, 200);
-            } catch (error) {
-                console.error('Error in moveLine:', error);
-            }
-        }
+                        let column = newBoard.map(row => row[tx]);
+                        let emptyIndex = column.indexOf(null);
+                        if (emptyIndex === -1 || (dy > 0 && ty >= emptyIndex) || (dy < 0 && ty <= emptyIndex)) continue;
 
-        function calculatePercentage() {
-            try {
-                let matchCount = 0;
-                for (let i = 0; i < 3; i++) {
-                    for (let j = 0; j < 3; j++) {
-                        if (board[i+1] && board[i+1][j+1] === pattern[i][j]) matchCount++;
-                    }
-                }
-
-                //const duration = (100-(Math.round((matchCount / 9) * 100))) / 2;
-                //document.getElementById("starfield").style.animation = `rotateStarfield ${duration}s linear infinite`;
-
-                
-                return Math.round((matchCount / 9) * 100);
-            } catch (error) {
-                console.error('Error in calculatePercentage:', error);
-                return 0;
-            }
-        }
-
-        function updateBoardClasses() {
-            try {
-                for (let i = 0; i < 5; i++) {
-                    for (let j = 0; j < 5; j++) {
-                        const cell = cellEls[i] && cellEls[i][j];
-                        if (!cell) continue;
-                        const isCenter = i >= 1 && i <= 3 && j >= 1 && j <= 3;
-                        const isMatch = isCenter && board[i][j] === pattern[i-1][j-1];
-                        cell.className = 'cell ' + (board[i][j] || 'empty') + (cell.classList.contains('hint') ? ' hint' : '');
-                        if (isMatch) {
-                            if (!cell.classList.contains('throb') || cell.classList.contains('hint')) {
-                                cell.classList.add('throb', 'match');
-                                setTimeout(() => cell.classList.remove('match'), 500);
-                            }
+                        if (dy > 0) {
+                            for (let y = emptyIndex; y > ty; y--) newBoard[y][tx] = newBoard[y - 1][tx];
                         } else {
-                            cell.classList.remove('throb', 'match');
+                            for (let y = emptyIndex; y < ty; y++) newBoard[y][tx] = newBoard[y + 1][tx];
                         }
+                        newBoard[ty][tx] = null;
+                        newEmpty.y = ty;
+                    }
+
+                    const boardState = JSON.stringify(newBoard);
+                    if (!seenStates.has(boardState)) {
+                        seenStates.add(boardState);
+                        queue.push({
+                            board: newBoard,
+                            emptyPos: newEmpty,
+                            moves: [...moves, move]
+                        });
                     }
                 }
-            } catch (error) {
-                console.error('Error in updateBoardClasses:', error);
-            }
-        }
 
-        function updateExampleBoardClasses() {
-            try {
-                for (let i = 0; i < 5; i++) {
-                    for (let j = 0; j < 5; j++) {
-                        const cell = exampleCells[i] && exampleCells[i][j];
-                        if (!cell) continue;
-                        const isCenter = i >= 1 && i <= 3 && j >= 1 && j <= 3;
-                        const isMatch = isCenter && exampleBoard[i][j] === examplePattern[i-1][j-1];
-                        cell.className = 'cell ' + (exampleBoard[i][j] || 'empty');
-                        if (isMatch) {
-                            if (!cell.classList.contains('throb')) {
-                                cell.classList.add('throb', 'match');
-                                setTimeout(() => cell.classList.remove('match'), 500);
-                            }
-                        } else {
-                            cell.classList.remove('throb', 'match');
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Error in updateExampleBoardClasses:', error);
-            }
-        }
+                if (seenStates.size >= maxStates) break;
 
-        function updateMoveTime(moveDuration, isBestMove = false) {
-            try {
-                if (!gameStarted) return;
-                const bonusMessage = document.getElementById('bonusMessage');
-                if (isBestMove && bonusMessage) {
-                    points += 30;
-                    bonusMessage.innerText = '+30 Best Move!';
-                    bonusMessage.style.display = 'block';
-                    setTimeout(() => {
-                        if (bonusMessage) bonusMessage.style.display = 'none';
-                    }, 1500);
-                }
-                if (moveDuration < 3 && bonusMessage) {
-                    points += 2;
-                    bonusMessage.innerText = '+2 Fast Move!' + (isBestMove ? ' \n\n+30 Best Move' : '');
-                    bonusMessage.style.display = 'block';
-                    setTimeout(() => {
-                        if (bonusMessage) bonusMessage.style.display = 'none';
-                    }, 1500);
-                } else if (moveDuration < 5 && bonusMessage) {
-                    points += 1;
-                    bonusMessage.innerText = '+1 Quick Move!' + (isBestMove ? ' \n\n+30 Best Move' : '');
-                    bonusMessage.style.display = 'block';
-                    setTimeout(() => {
-                        if (bonusMessage) bonusMessage.style.display = 'none';
-                    }, 1500);
-                } else if (isBestMove && bonusMessage) {
-                    bonusMessage.innerText = '+30 Best Move!';
-                    bonusMessage.style.display = 'block';
-                    setTimeout(() => {
-                        if (bonusMessage) bonusMessage.style.display = 'none';
-                    }, 1500);
-                }
-                if (moveTimer) clearInterval(moveTimer);
-                moveTime = 0;
-                updateStats();
-                moveTimer = setInterval(() => {
-                    moveTime++;
-                    updateStats();
-                }, 1000);
-            } catch (error) {
-                console.error('Error in updateMoveTime:', error);
-            }
-        }
-
-        function updateStats() {
-            try {
-                const movesDiv = document.getElementById('moves');
-                const pointsSpan = document.getElementById('points');
-                const gameNumberSpan = document.getElementById('gameNumber');
-                const gameTimeDiv = document.getElementById('gameTime');
-                const moveTimeSpan = document.getElementById('moveTime');
-                const progressFill = document.getElementById('progressFill');
-                const completePercentage = document.getElementById('completePercentage');
-                const percentage = calculatePercentage();
-                if (movesDiv) movesDiv.innerHTML = `Moves: ${moves}<br><span id="points">Points: ${points}</span><br><span id="gameNumber">Number: ${gameNumber}</span>`;
-                if (pointsSpan) pointsSpan.innerHTML = `Points: ${points}`;
-                if (gameNumberSpan) gameNumberSpan.innerHTML = `Number: ${gameNumber}`;
-                if (gameTimeDiv) gameTimeDiv.innerHTML = `Time: ${time}s<br><span id="moveTime">Move: ${moveTime}s</span>`;
-                if (moveTimeSpan) {
-                    moveTimeSpan.innerHTML = `Move Time: ${moveTime}s`;
-                    moveTimeSpan.className = '';
-                    if (moveTime > 10) {
-                        moveTimeSpan.classList.add('red');
-                    } else if (moveTime > 3) {
-                        moveTimeSpan.classList.add('orange');
-                    }
-                }
-                if (progressFill) progressFill.style.width = `${percentage}%`;
-                if (completePercentage) completePercentage.innerText = `Complete: ${percentage}%`;
-            } catch (error) {
-                console.error('Error in updateStats:', error);
-            }
-        }
-
-        function showStars() {
-            try {
-                const board = document.getElementById('board');
-                if (!board) {
-                    console.error('Board element not found');
-                    return;
-                }
-                const boardRect = board.getBoundingClientRect();
-                const centerX = boardRect.left + boardRect.width / 2;
-                const centerY = boardRect.top + boardRect.height / 2;
-                for (let i = 0; i < 30; i++) {
-                    const star = document.createElement('div');
-                    star.className = 'star';
-                    star.style.left = `${centerX}px`;
-                    star.style.top = `${centerY}px`;
-                    const angle = Math.random() * 2 * Math.PI;
-                    const distance = 200 + Math.random() * 300;
-                    star.style.setProperty('--dx', Math.cos(angle) * distance / window.innerWidth);
-                    star.style.setProperty('--dy', Math.sin(angle) * distance / window.innerHeight);
-                    document.body.appendChild(star);
-                    setTimeout(() => star.remove(), 2000);
-                }
-            } catch (error) {
-                console.error('Error in showStars:', error);
-            }
-        }
-
-        function checkWin() {
-            try {
-                const autoPlayBtn = document.getElementById('autoPlay');
-                const hintBtn = document.getElementById('hint');
-                if (checkIsSolved()) {
-                    points += 10;
-                    if (timerInterval) {
-                        clearInterval(timerInterval);
-                        timerInterval = null;
-                    }
-                    if (moveTimer) {
-                        clearInterval(moveTimer);
-                        moveTimer = null;
-                    }
-                    if (autoInterval) {
-                        clearTimeout(autoInterval);
-                        autoInterval = null;
-                        isAutoPlaying = false;
-                        if (autoPlayBtn) autoPlayBtn.textContent = 'Auto Play';
-                    }
-                    if (autoPlayBtn) autoPlayBtn.disabled = true;
-                    if (hintBtn) hintBtn.disabled = true;
-                    setTimeout(() => {
-                        if (!isMoving) {
-                            const boardDiv = document.getElementById('board');
-                            if (boardDiv) boardDiv.classList.add('winning');
-                            for (let i = 0; i < 5; i++) {
-                                for (let j = 0; j < 5; j++) {
-                                    const cell = cellEls[i] && cellEls[i][j];
-                                    if (cell) {
-                                        cell.style.animationDelay = `${(i * 5 + j) * 50}ms`;
-                                        cell.classList.add('win-animation');
-                                        setTimeout(() => cell.classList.remove('win-animation'), 1000);
-                                    }
-                                }
-                            }
-                            setTimeout(() => {
-                                if (boardDiv) boardDiv.classList.remove('winning');
-                                showStars();
-                                setTimeout(() => {
-                                    const finalStats = document.getElementById('finalStats');
-                                    if (finalStats) finalStats.innerHTML = `Moves: ${moves}<br><br>Points: ${points}<br><br>Time: ${time}s`;
-                                    const gameOverDiv = document.getElementById('gameOver');
-                                    if (gameOverDiv) gameOverDiv.style.display = 'flex';
-                                }, 2000);
-                            }, 1000);
-                        }
-                    }, 200);
-                }
-            } catch (error) {
-                console.error('Error in checkWin:', error);
-            }
-        }
-
-        function submitScore() {
-            try {
-                window.webkit?.messageHandlers.gridWarsHandler.postMessage({
-                    action: "submitScore",
-                    score: points,
-                    leaderboardId: leaderboardId
+                queue.sort((a, b) => {
+                    const scoreA = getCorrectTileCount(a.board) - a.moves.length / 100;
+                    const scoreB = getCorrectTileCount(b.board) - b.moves.length / 100;
+                    return scoreB - scoreA;
                 });
+            }
+
+            return [];
+        }
+
+        async function planSolution(player) {
+            return new Promise(resolve => {
+                resolve(planSolutionSync(player === 1 ? board1 : board2, player));
+            });
+        }
+
+        function getCorrectTileCount(tempBoard) {
+            if (!tempBoard) return 0;
+            let correct = 0;
+            for (let y = 0; y < 3; y++) {
+                for (let x = 0; x < 3; x++) {
+                    if (tempBoard[y + 1][x + 1] === (pattern[y][x] || null)) correct++;
+                }
+            }
+            return correct;
+        }
+
+        function getPossibleMoves(empty = emptyPos1, player = 1) {
+            const moves = [];
+            if (!empty) return moves;
+            for (let x = 0; x < 5; x++) {
+                if (x !== empty.x) {
+                    const dx = x < empty.x ? 1 : -1;
+                    moves.push({x, y: empty.y, dx, dy: 0});
+                }
+            }
+            for (let y = 0; y < 5; y++) {
+                if (y !== empty.y) {
+                    const dy = y < empty.y ? 1 : -1;
+                    moves.push({x: empty.x, y, dx: 0, dy});
+                }
+            }
+            return moves;
+        }
+
+        function isSolved(board) {
+            if (!board) return false;
+            for (let y = 0; y < 3; y++) {
+                for (let x = 0; x < 3; x++) {
+                    if (board[y + 1][x + 1] !== (pattern[y][x] || null)) return false;
+                }
+            }
+            return true;
+        }
+
+        function getBestMove(player) {
+            const board = player === 1 ? board1 : board2;
+            const empty = player === 1 ? emptyPos1 : emptyPos2;
+            if (!board || !empty) return null;
+            const moves = getPossibleMoves(empty, player);
+            let bestMove = null;
+            let bestScore = -Infinity;
+
+            for (const move of moves) {
+                const tempBoard = board.map(row => [...row]);
+                const tx = move.x;
+                const ty = move.y;
+                const dx = move.dx;
+                const dy = move.dy;
+
+                if (dx !== 0) {
+                    let row = tempBoard[ty];
+                    let emptyIndex = row.indexOf(null);
+                    if (emptyIndex === -1 || (dx > 0 && tx >= emptyIndex) || (dx < 0 && tx <= emptyIndex)) continue;
+
+                    if (dx > 0) {
+                        for (let x = emptyIndex; x > tx; x--) row[x] = row[x - 1];
+                    } else {
+                        for (let x = emptyIndex; x < tx; x++) row[x] = row[x + 1];
+                    }
+                    row[tx] = null;
+                } else {
+                    let column = tempBoard.map(row => row[tx]);
+                    let emptyIndex = column.indexOf(null);
+                    if (emptyIndex === -1 || (dy > 0 && ty >= emptyIndex) || (dy < 0 && ty <= emptyIndex)) continue;
+
+                    if (dy > 0) {
+                        for (let y = emptyIndex; y > ty; y--) tempBoard[y][tx] = tempBoard[y - 1][tx];
+                    } else {
+                        for (let y = emptyIndex; y < ty; y++) tempBoard[y][tx] = tempBoard[y + 1][tx];
+                    }
+                    tempBoard[ty][tx] = null;
+                }
+
+                const score = getCorrectTileCount(tempBoard);
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = move;
+                }
+            }
+
+            return bestMove;
+        }
+
+        function getAlternativeMove(player) {
+            const empty = player === 1 ? emptyPos1 : emptyPos2;
+            const moves = getPossibleMoves(empty, player);
+            return moves[Math.floor(Math.random() * moves.length)] || null;
+        }
+
+        function hint(player) {
+            const tiles = document.querySelectorAll(`#board${player} .tile`);
+            tiles.forEach(t => t.classList.remove('hint'));
             
-                console.log(`Submitting score: Moves=${moves}, Points=${points}, Game Number=${gameNumber}, Time=${time}s`);
-                alert('Score submitted to leaderboard!');
-            } catch (error) {
-                console.error('Error in submitScore:', error);
+            const bestMove = getBestMove(player);
+            if (bestMove) {
+                const idx = bestMove.y * 5 + bestMove.x;
+                tiles[idx].classList.add('hint');
+                setTimeout(() => tiles[idx].classList.remove('hint'), 2000);
             }
         }
 
-        function showHint() {
-            try {
-                if (!gameStarted || isAutoPlaying || isScrambling || checkIsSolved()) {
-                    console.log('Hint blocked: Invalid state');
-                    return;
-                }
-                if (board && pattern && isSolvable(board, pattern)) {
-                    const path = findShortPath();
-                    if (path && path.length > 0) {
-                        const nextMove = path[0];
-                        const cell = cellEls[nextMove.row] && cellEls[nextMove.row][nextMove.col];
-                        if (cell) {
-                            cell.classList.add('hint');
-                            setTimeout(() => cell.classList.remove('hint'), 2000);
-                            console.log(`Hint shown: (${nextMove.row}, ${nextMove.col})`);
-                        } else {
-                            console.error('Hint failed: Invalid cell');
-                        }
-                    } else {
-                        alert('No valid move found. Try randomizing the board.');
-                        console.log('Hint failed: No valid path');
-                    }
-                }
-            } catch (error) {
-                console.error('Error in showHint:', error);
+        document.getElementById('board1')?.addEventListener('touchend', () => {
+            if (!document.getElementById('gameover')?.style.display && !autoSolving) {
+                currentPlayer = 1;
+                hint(1);
+                updateDifficulty(1);
             }
-        }
-
-        function startGameTimer() {
-            try {
-                if (timerInterval) clearInterval(timerInterval);
-                if (moveTimer) clearInterval(moveTimer);
-                timerInterval = setInterval(() => {
-                    time++;
-                    updateStats();
-                }, 1000);
-                moveTimer = setInterval(() => {
-                    moveTime++;
-                    updateStats();
-                }, 1000);
-            } catch (error) {
-                console.error('Error in startGameTimer:', error);
-            }
-        }
-
-        function toggleStarfield() {
-            try {
-                const starfield = document.getElementById('starfield');
-                const toggleBtn = document.getElementById('toggleStarfield');
-                if (!starfield || !toggleBtn) {
-                    console.error('Starfield or toggle button not found');
-                    return;
-                }
-                isStarfieldEnabled = !isStarfieldEnabled;
-                if (isStarfieldEnabled) {
-                    starfield.style.display = 'block';
-                    toggleBtn.textContent = 'Disable Starfield';
-                    initStarfield();
-                } else {
-                    starfield.style.display = 'none';
-                    toggleBtn.textContent = 'Enable Starfield';
-                    starfield.innerHTML = '';
-                }
-            } catch (error) {
-                console.error('Error in toggleStarfield:', error);
-            }
-        }
-
-        function initStarfield() {
-            try {
-                const starfield = document.getElementById('starfield');
-                if (!starfield) {
-                    console.error('Starfield element not found');
-                    return;
-                }
-                starfield.innerHTML = '';
-                const width = window.innerWidth;
-                const height = window.innerHeight;
-                for (let i = 0; i < 150; i++) {
-                    const star = document.createElement('div');
-                    star.className = 'starfield-star';
-                    const size = Math.random() * 4 + 1;
-                    star.style.width = `${size}px`;
-                    star.style.height = `${size}px`;
-                    const x = Math.random() * width;
-                    const y = Math.random() * height;
-                    star.style.left = `${x}px`;
-                    star.style.top = `${y}px`;
-                    star.style.animationDuration = `${Math.random() * 8 + 4}s`;
-                    star.style.animationDelay = `${Math.random() * 10}s`;
-                    starfield.appendChild(star);
-                }
-            } catch (error) {
-                console.error('Error in initStarfield:', error);
-            }
-        }
-
-        function initExampleBoard() {
-            try {
-                let path;
-                let moveCount = 0;
-                const maxMoves = 20;
-                do {
-                    let tiles = createTiles();
-                    let all = shuffle(tiles.concat([null]));
-                    let idx = 0;
-                    for (let i = 0; i < 5; i++) {
-                        for (let j = 0; j < 5; j++) {
-                            exampleBoard[i][j] = all[idx++] || null;
-                            if (exampleBoard[i][j] === null) exampleEmptyPos = { row: i, col: j };
-                        }
-                    }
-                    examplePattern = exampleBoard.slice(1,4).map(row => row.slice(1,4));
-                    path = findShortPath(exampleBoard, examplePattern);
-                } while (!path || path.length > 20 || !isSolvable(exampleBoard, examplePattern));
-
-                const interval = setInterval(() => {
-                    if (moveCount < maxMoves) {
-                        scrambleBoard(1, true);
-                        initBoard(true);
-                        moveCount++;
-                    } else {
-                        clearInterval(interval);
-                    }
-                }, 30);
-            } catch (error) {
-                console.error('Error in initExampleBoard:', error);
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            try {
-                const startWelcomeBtn = document.getElementById('startWelcome');
-                const randBoardBtn = document.getElementById('randBoard');
-                const randPatternBtn = document.getElementById('randPattern');
-                const autoPlayBtn = document.getElementById('autoPlay');
-                const hintBtn = document.getElementById('hint');
-                const settingsBtn = document.getElementById('settingsBtn');
-                const toggleThemeBtn = document.getElementById('toggleTheme');
-                const toggleStarfieldBtn = document.getElementById('toggleStarfield');
-                const closeSettingsBtn = document.getElementById('closeSettings');
-                const restartBtn = document.getElementById('restart');
-                const submitScoreBtn = document.getElementById('submitScore');
-                const autoSpeedInput = document.getElementById('autoSpeed');
-                const undoBtn = document.getElementById('undo');
-
-                if (startWelcomeBtn) startWelcomeBtn.addEventListener('click', startGame);
-                if (randBoardBtn) randBoardBtn.addEventListener('click', randomizeBoard);
-                if (randPatternBtn) randPatternBtn.addEventListener('click', () => randomizePattern());
-                if (autoPlayBtn) autoPlayBtn.addEventListener('click', toggleAutoPlay);
-                if (hintBtn) hintBtn.addEventListener('click', showHint);
-                if (settingsBtn) settingsBtn.addEventListener('click', () => {
-                    const settingsDiv = document.getElementById('settings');
-                    if (settingsDiv) settingsDiv.style.display = 'flex';
-                });
-                if (toggleThemeBtn) toggleThemeBtn.addEventListener('click', () => document.body.classList.toggle('light'));
-                if (toggleStarfieldBtn) toggleStarfieldBtn.addEventListener('click', toggleStarfield);
-                if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', () => {
-                    const settingsDiv = document.getElementById('settings');
-                    if (settingsDiv) settingsDiv.style.display = 'none';
-                });
-                if (restartBtn) restartBtn.addEventListener('click', restartGame);
-                if (submitScoreBtn) submitScoreBtn.addEventListener('click', submitScore);
-                if (autoSpeedInput) autoSpeedInput.addEventListener('input', () => {});
-                if (undoBtn) undoBtn.addEventListener('click', undoMove);
-
-                initStarfield();
-                initExampleBoard();
-            } catch (error) {
-                console.error('Error in DOMContentLoaded:', error);
+        });
+        document.getElementById('board2')?.addEventListener('touchend', () => {
+            if (!document.getElementById('gameover')?.style.display && !autoSolving) {
+                currentPlayer = 2;
+                hint(2);
+                updateDifficulty(2);
             }
         });
 
-        function findShortPath(targetBoard = board, targetPattern = pattern) {
-            try {
-                const maxVisited = 1000000;
-                const queue = [];
-                const visited = new Set();
-                const initialBoard = targetBoard.map(row => row.slice());
-                const initialEmpty = {...emptyPos};
-                const initialStr = JSON.stringify({board: initialBoard, empty: initialEmpty});
-                visited.add(initialStr);
-                queue.push({board: initialBoard, empty: initialEmpty, path: []});
-                console.log('Starting path search...');
-
-                while (queue.length) {
-                    if (visited.size > maxVisited) {
-                        console.log('Path search terminated: Max visited states reached');
-                        return null;
-                    }
-                    const curr = queue.shift();
-                    if (isGoal(curr.board, targetPattern)) {
-                        console.log('Path found with length:', curr.path.length);
-                        return curr.path;
-                    }
-                    const er = curr.empty.row;
-                    const ec = curr.empty.col;
-                    const directions = [
-                        {dr: -1, dc: 0, row: er - 1, col: ec},
-                        {dr: 1, dc: 0, row: er + 1, col: ec},
-                        {dr: 0, dc: -1, row: er, col: ec - 1},
-                        {dr: 0, dc: 1, row: er, col: ec + 1}
-                    ];
-                    for (const d of directions) {
-                        const nr = er + d.dr;
-                        const nc = ec + d.dc;
-                        if (nr >= 0 && nr < 5 && nc >= 0 && nc < 5 && curr.board[nr][nc] !== null) {
-                            const newBoard = curr.board.map(row => row.slice());
-                            const newPath = [...curr.path, {row: nr, col: nc}];
-                            const newEmpty = {row: nr, col: nc};
-                            newBoard[er][ec] = newBoard[nr][nc];
-                            newBoard[nr][nc] = null;
-                            const newStr = JSON.stringify({board: newBoard, empty: newEmpty});
-                            if (!visited.has(newStr)) {
-                                visited.add(newStr);
-                                queue.push({board: newBoard, empty: newEmpty, path: newPath});
-                            }
-                        }
-                    }
-                }
-                console.log('No path found');
-                return null;
-            } catch (error) {
-                console.error('Error in findShortPath:', error);
-                return null;
-            }
-        }
-
-        function isGoal(b, targetPattern = pattern) {
-            try {
-                for (let i = 0; i < 3; i++) {
-                    for (let j = 0; j < 3; j++) {
-                        if (b[i+1][j+1] !== targetPattern[i][j]) {
-                            return false;
-                        }
-                    }
-                }
-                return true;
-            } catch (error) {
-                console.error('Error in isGoal:', error);
-                return false;
-            }
-        }
-
-        function undoMove() {
-            try {
-                if (history.length && gameStarted && !isAutoPlaying && !isScrambling) {
-                    let last = history.pop();
-                    board = last.board;
-                    emptyPos = last.empty;
-                    moves--;
-                    points -= 10;
-                    if (points < 0) points = 0;
-                    updateStats();
-                    initBoard();
-                    checkWin();
-                }
-            } catch (error) {
-                console.error('Error in undoMove:', error);
-            }
-        }
-
-        function startGame() {
-            try {
-                gameNumber++;
-                moves = 0;
-                time = 0;
-                moveTime = 0;
-                history = [];
-                isAutoPlaying = false;
-                isScrambling = false;
-                gameStarted = true;
-                const randBoardBtn = document.getElementById('randBoard');
-                const autoPlayBtn = document.getElementById('autoPlay');
-                const hintBtn = document.getElementById('hint');
-                if (randBoardBtn) randBoardBtn.disabled = true;
-                if (autoPlayBtn) {
-                    autoPlayBtn.textContent = 'Auto Play';
-                    autoPlayBtn.disabled = true;
-                }
-                if (hintBtn) hintBtn.disabled = true;
-                if (autoInterval) {
-                    clearTimeout(autoInterval);
-                    autoInterval = null;
-                }
-                randomizePattern();
-                randomizeBoard();
-                if (exampleInterval) clearInterval(exampleInterval);
-                const welcomeDiv = document.getElementById('welcome');
-                const gameContentDiv = document.getElementById('gameContent');
-                const gameOverDiv = document.getElementById('gameOver');
-                if (welcomeDiv) welcomeDiv.style.display = 'none';
-                if (gameContentDiv) gameContentDiv.style.display = 'flex';
-                if (gameOverDiv) gameOverDiv.style.display = 'none';
-            } catch (error) {
-                console.error('Error in startGame:', error);
-            }
-        }
-
-        function restartGame() {
-            try {
-                const wasAutoPlaying = isAutoPlaying;
-                gameStarted = false;
-                isAutoPlaying = false;
-                isScrambling = false;
-                if (autoInterval) {
-                    clearTimeout(autoInterval);
-                    autoInterval = null;
-                }
-                const randBoardBtn = document.getElementById('randBoard');
-                const autoPlayBtn = document.getElementById('autoPlay');
-                const hintBtn = document.getElementById('hint');
-                if (randBoardBtn) randBoardBtn.disabled = false;
-                if (autoPlayBtn) {
-                    autoPlayBtn.textContent = 'Auto Play';
-                    autoPlayBtn.disabled = true;
-                }
-                if (hintBtn) hintBtn.disabled = true;
-                moves = 0;
-                time = 0;
-                moveTime = 0;
-                history = [];
-                randomizeBoard();
-                randomizePattern();
-                gameNumber++;
-                startGame();
-                if (wasAutoPlaying) {
-                    setTimeout(() => {
-                        isAutoPlaying = true;
-                        toggleAutoPlay();
-                    }, 100);
-                }
-            } catch (error) {
-                console.error('Error in restartGame:', error);
-            }
-        }
-
-        function toggleAutoPlay() {
-            try {
-                if (!gameStarted || isScrambling) {
-                    console.log('Auto Play blocked: Game not started or scrambling');
-                    return;
-                }
-                const autoPlayBtn = document.getElementById('autoPlay');
-                const hintBtn = document.getElementById('hint');
-                if (isAutoPlaying) {
-                    if (autoInterval) {
-                        clearTimeout(autoInterval);
-                        autoInterval = null;
-                    }
-                    isAutoPlaying = false;
-                    if (autoPlayBtn) {
-                        autoPlayBtn.textContent = 'Auto Play';
-                        autoPlayBtn.disabled = checkIsSolved();
-                    }
-                    if (hintBtn) hintBtn.disabled = checkIsSolved();
-                    console.log('Auto Play stopped');
-                    return;
-                }
-
-                if (checkIsSolved()) {
-                    alert('Puzzle is already solved!');
-                    if (autoPlayBtn) {
-                        autoPlayBtn.textContent = 'Auto Play';
-                        autoPlayBtn.disabled = true;
-                    }
-                    if (hintBtn) hintBtn.disabled = true;
-                    console.log('Auto Play blocked: Puzzle already solved');
-                    return;
-                }
-
-                if (!isSolvable(board, pattern)) {
-                    alert('Puzzle is unsolvable. Please randomize the board.');
-                    if (autoPlayBtn) {
-                        autoPlayBtn.textContent = 'Auto Play';
-                        autoPlayBtn.disabled = false;
-                    }
-                    if (hintBtn) hintBtn.disabled = false;
-                    console.log('Auto Play blocked: Unsolvable puzzle');
-                    return;
-                }
-
-                const path = findShortPath();
-                console.log('Path found:', path ? path.length : 'null');
-                if (path && path.length > 0) {
-                    isAutoPlaying = true;
-                    if (autoPlayBtn) autoPlayBtn.textContent = 'Stop';
-                    if (hintBtn) hintBtn.disabled = true;
-                    let i = 0;
-                    const executeNextMove = () => {
-                        if (!gameStarted || i >= path.length || checkIsSolved()) {
-                            if (autoInterval) {
-                                clearTimeout(autoInterval);
-                                autoInterval = null;
-                            }
-                            isAutoPlaying = false;
-                            if (autoPlayBtn) {
-                                autoPlayBtn.textContent = 'Auto Play';
-                                autoPlayBtn.disabled = checkIsSolved();
-                            }
-                            if (hintBtn) hintBtn.disabled = checkIsSolved();
-                            checkWin();
-                            console.log('Auto Play completed');
-                            return;
-                        }
-                        const speed = parseInt(document.getElementById('autoSpeed')?.value || 500);
-                        if (!isMoving) {
-                            isMoving = true;
-                            const moveStart = Date.now();
-                            history.push({board: board.map(row => row.slice()), empty: {...emptyPos}});
-                            moveLine(path[i].row, path[i].col);
-                            const moveDuration = (Date.now() - moveStart) / 1000;
-                            moves++;
-                            updateMoveTime(moveDuration, false);
-                            updateStats();
-                            console.log(`Move ${i + 1}: (${path[i].row}, ${path[i].col})`);
-                            i++;
-                            autoInterval = setTimeout(executeNextMove, speed);
-                        } else {
-                            autoInterval = setTimeout(executeNextMove, 50);
-                        }
-                    };
-                    autoInterval = setTimeout(executeNextMove, 0);
-                } else {
-                    alert('No valid solution found. Try randomizing the board.');
-                    if (autoPlayBtn) {
-                        autoPlayBtn.textContent = 'Auto Play';
-                        autoPlayBtn.disabled = false;
-                    }
-                    if (hintBtn) hintBtn.disabled = false;
-                    console.log('No valid path found');
-                }
-            } catch (error) {
-                console.error('Error in toggleAutoPlay:', error);
-            }
-        }
-    </script> 
+        newGame();
+    </script>
 </body>
 </html>
