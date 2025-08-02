@@ -1,198 +1,174 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Complex Sentence Builder</title>
-  <style>
-    body {
-      font-family: 'Comic Sans MS', sans-serif;
-      text-align: center;
-      padding: 20px;
-      transition: background 0.5s;
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Complex Sentence Builder</title>
+<style>
+body {
+font-family: 'Comic Sans MS', sans-serif;
+text-align: center;
+padding: 20px;
+transition: background 0.5s;
     }
-
-    h1 {
-      color: #fff;
+h1 {
+color: #fff;
     }
-
-    .sentence-builder {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 20px;
+.sentence-builder {
+display: flex;
+justify-content: center;
+gap: 10px;
+flex-wrap: wrap;
+margin-bottom: 20px;
     }
-
-    .word {
-      background-color: #ffe066;
-      padding: 10px 20px;
-      border-radius: 12px;
-      border: 2px solid #ffae00;
-      cursor: grab;
-      user-select: none;
-      font-size: 18px;
+.word {
+background-color: #ffe066;
+padding: 10px 20px;
+border-radius: 12px;
+border: 2px solid #ffae00;
+cursor: grab;
+user-select: none;
+font-size: 18px;
     }
-
-    .drop-zone {
-      width: 160px;
-      height: 50px;
-      border: 2px dashed #fff;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.2);
-      margin: 5px;
-      line-height: 50px;
-      font-size: 18px;
-      color: #fff;
+.drop-zone {
+width: 160px;
+height: 50px;
+border: 2px dashed #fff;
+border-radius: 12px;
+background: rgba(255, 255, 255, 0.2);
+margin: 5px;
+line-height: 50px;
+font-size: 18px;
+color: #fff;
     }
-
-    .correct {
-      background-color: #90ee90;
-      animation: bounce 0.8s ease;
+.correct {
+background-color: #90ee90;
+animation: bounce 0.8s ease;
     }
-
-    @keyframes bounce {
+@keyframes bounce {
       0% { transform: scale(1); }
       25% { transform: scale(1.1); }
       50% { transform: scale(0.95); }
       100% { transform: scale(1); }
     }
-
-    .feedback {
-      font-size: 20px;
-      font-weight: bold;
-      color: #ffffff;
-      margin-top: 10px;
+.feedback {
+font-size: 20px;
+font-weight: bold;
+color: #ffffff;
+margin-top: 10px;
     }
-
-    button, select {
-      margin: 10px;
-      padding: 10px 20px;
-      font-size: 18px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
+button, select {
+margin: 10px;
+padding: 10px 20px;
+font-size: 18px;
+border: none;
+border-radius: 8px;
+cursor: pointer;
     }
-
-    .score, .timer, .hint {
-      color: #fff;
-      font-size: 20px;
-      margin-bottom: 5px;
+.score, .timer, .hint {
+color: #fff;
+font-size: 20px;
+margin-bottom: 5px;
     }
-
-    .report-card {
-      background: white;
-      color: black;
-      padding: 20px;
-      border-radius: 10px;
-      width: 80%;
-      max-width: 400px;
-      margin: auto;
-      text-align: left;
-      display: none;
-      position: fixed;
-      top: 15%;
-      left: 0;
-      right: 0;
-      z-index: 10;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+.report-card {
+background: white;
+color: black;
+padding: 20px;
+border-radius: 10px;
+width: 80%;
+max-width: 400px;
+margin: auto;
+text-align: left;
+display: none;
+position: fixed;
+top: 15%;
+left: 0;
+right: 0;
+z-index: 10;
+box-shadow: 0 0 10px rgba(0,0,0,0.5);
     }
-
-    .report-card h2 {
-      text-align: center;
+.report-card h2 {
+text-align: center;
     }
-
-    /* Themes */
-    body.space {
-      background: radial-gradient(ellipse at top, #0d1b2a 0%, #1b263b 100%);
+/* Themes */
+body.space {
+background: radial-gradient(ellipse at top, #0d1b2a 0%, #1b263b 100%);
     }
-
-    body.jungle {
-      background: linear-gradient(to right, #228B22, #2e8b57);
+body.jungle {
+background: linear-gradient(to right, #228B22, #2e8b57);
     }
-
-    body.underwater {
-      background: linear-gradient(to bottom, #00bfff, #1e90ff);
+body.underwater {
+background: linear-gradient(to bottom, #00bfff, #1e90ff);
     }
-
-    #overlay {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.5);
-      z-index: 9;
+#overlay {
+display: none;
+position: fixed;
+top: 0; left: 0; right: 0; bottom: 0;
+background: rgba(0,0,0,0.5);
+z-index: 9;
     }
-    .sparkle {
-        position: absolute;
-        width: 6px;
-        height: 6px;
-        background: white;
-        border-radius: 50%;
-        box-shadow: 0 0 6px 2px rgba(255, 255, 255, 0.8);
-        pointer-events: none;
-        animation: fadeOut 1s linear forwards;
+.sparkle {
+position: absolute;
+width: 6px;
+height: 6px;
+background: white;
+border-radius: 50%;
+box-shadow: 0 0 6px 2px rgba(255, 255, 255, 0.8);
+pointer-events: none;
+animation: fadeOut 1s linear forwards;
         }
-
-        @keyframes fadeOut {
+@keyframes fadeOut {
         0% { opacity: 1; transform: scale(1); }
         100% { opacity: 0; transform: scale(0); }
         }
-
-        #sentencePreview {
-        color: #fff;
-        font-size: 22px;
-        margin: 20px auto;
-        max-width: 90%;
-        font-style: italic;
-        }    
-
-    .word:active {
-         cursor: grabbing;
+#sentencePreview {
+color: #fff;
+font-size: 22px;
+margin: 20px auto;
+max-width: 90%;
+font-style: italic;
+        }
+.word:active {
+cursor: grabbing;
     }
-  </style>
+</style>
 </head>
 <body class="space">
-
-  <h1>🌟 Build a Complex Sentence!</h1>
-
-  <div class="score" id="scoreDisplay">Score: 0</div>
-  <div class="timer" id="timerDisplay">Time left: 30s</div>
-  <div class="hint" id="hintDisplay">Hint: A complex sentence has a conjunction and two ideas.</div>
-
-  <label for="theme">Choose a theme: </label>
-  <select id="theme" onchange="changeTheme()">
-    <option value="space">Space</option>
-    <option value="jungle">Jungle</option>
-    <option value="underwater">Underwater</option>
-  </select>
-
-  <div class="sentence-builder" id="word-bank"></div>
-  <div class="sentence-builder" id="drop-zone-container"></div>
-
-  <div id="sentencePreview">📝 Sentence Preview: </div>
-  <div class="feedback" id="feedback"></div>
-
-  <button onclick="resetGame()">Next Sentence</button>
-  <button onclick="autoComplete()">🤖 Auto-Complete</button>
-  <button onclick="showReport()">📄 View Report Card</button>
-  <label>
-    <input type="checkbox" id="slowmoToggle" />
+<h1>🌟 Build a Complex Sentence!</h1>
+<div class="score" id="scoreDisplay">Score: 0</div>
+<div class="timer" id="timerDisplay">Time left: 30s</div>
+<div class="hint" id="hintDisplay">Hint: A complex sentence has a conjunction and two ideas.</div>
+<label for="theme">Choose a theme: </label>
+<select id="theme" onchange="changeTheme()">
+<option value="space">Space</option>
+<option value="jungle">Jungle</option>
+<option value="underwater">Underwater</option>
+</select>
+<div class="sentence-builder" id="word-bank"></div>
+<div class="sentence-builder" id="drop-zone-container"></div>
+<div id="sentencePreview">📝 Sentence Preview: </div>
+<div class="feedback" id="feedback"></div>
+<button onclick="resetGame()">Next Sentence</button>
+<button onclick="autoComplete()">🤖 Auto-Complete</button>
+<button onclick="showReport()">📄 View Report Card</button>
+<label>
+<input type="checkbox" id="slowmoToggle" />
     🐢 Slow-Mo Mode
-  </label>
-  <div id="overlay" onclick="hideReport()"></div>
-  <div class="report-card" id="reportCard">
-    <h2>📝 Report Card</h2>
-    <p id="reportText"></p>
-    <button onclick="hideReport()">Close</button>
-  </div>
-  <button onclick="showAllSentences()">📚 View All Sentences</button>
-  <div class="report-card" id="allSentencesCard" style="max-height: 70vh; overflow-y: auto;">
-    <h2>📚 All Complex Sentences</h2>
-    <ul id="sentenceList" style="padding-left: 20px;"></ul>
-    <button onclick="hideAllSentences()">Close</button>
-  </div>
-  <script>
-    const sentences = [
+</label>
+<div id="overlay" onclick="hideReport()"></div>
+<div class="report-card" id="reportCard">
+<h2>📝 Report Card</h2>
+<p id="reportText"></p>
+<button onclick="hideReport()">Close</button>
+</div>
+<button onclick="showAllSentences()">📚 View All Sentences</button>
+<div class="report-card" id="allSentencesCard" style="max-height: 70vh; overflow-y: auto;">
+<h2>📚 All Complex Sentences</h2>
+<ul id="sentenceList" style="padding-left: 20px;"></ul>
+<button onclick="hideAllSentences()">Close</button>
+</div>
+<script>
+const sentences = [
       { correct: ["Although", "it", "was", "raining", ",", "we", "played", "soccer"], hint: "This sentence has a dependent clause starting with 'Although'" },
       { correct: ["Because", "she", "was", "tired", ",", "she", "went", "to", "bed"], hint: "Look for cause-effect: 'Because...'" },
       { correct: ["When", "I", "finished", "my", "homework", ",", "I", "watched", "TV"], hint: "'When' introduces a dependent clause" },
@@ -223,244 +199,245 @@
     { correct: ["Since", "she", "loves", "reading", ",", "she", "joined", "the", "book", "club"], hint: "'Since' gives the reason" }, { correct: ["Although", "the", "movie", "was", "boring", ",", "we", "stayed", "until", "the", "end"], hint: "'Although' shows contrast" },
     { correct: ["If", "you", "practice", ",", "you", "will", "get", "better"], hint: "'If' introduces a condition" },
     { correct: ["When", "the", "bell", "rings", ",", "we", "can", "leave"], hint: "'When' indicates a time condition" },
-    { correct: ["Even", "though", "it", "was", "late", ",", "they", "continued", "to", "talk"], hint: "'Even though' shows unexpected behavior" }    
+    { correct: ["Even", "though", "it", "was", "late", ",", "they", "continued", "to", "talk"], hint: "'Even though' shows unexpected behavior" }
 ];
-
-    const correctSound = new Audio("https://cdn.pixabay.com/download/audio/2022/03/26/audio_91a857d63d.mp3");
-    const wrongSound = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_29b3566d26.mp3");
-
-    let currentSentence;
-    let score = parseInt(localStorage.getItem("sentenceScore")) || 0;
-    let completed = parseInt(localStorage.getItem("sentenceCompleted")) || 0;
-    let timer;
-    let timeLeft = 30;
-
-    document.getElementById("scoreDisplay").textContent = `Score: ${score}`;
-
-    function shuffle(array) {
-      return array
+const correctSound = new Audio("https://cdn.pixabay.com/download/audio/2022/03/26/audio_91a857d63d.mp3");
+const wrongSound = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_29b3566d26.mp3");
+let currentSentence;
+let score = parseInt(localStorage.getItem("sentenceScore")) || 0;
+let completed = parseInt(localStorage.getItem("sentenceCompleted")) || 0;
+let timer;
+let timeLeft = 30;
+document.getElementById("scoreDisplay").textContent = `Score: ${score}`;
+let draggingWord = null;
+let dragClone = null;
+function shuffle(array) {
+return array
         .map(value => ({ value, sort: Math.random() }))
         .sort((a, b) => a.sort - b.sort)
         .map(({ value }) => value);
     }
-
-    function createWordBank(words) {
-      const wordBank = document.getElementById("word-bank");
-      wordBank.innerHTML = "";
-      shuffle(words).forEach(word => {
-        const span = document.createElement("span");
-        span.className = "word";
-        span.draggable = true;
-        span.textContent = word;
-        span.ondragstart = e => {
-            e.dataTransfer.setData("text", word);
-
-            // Fix: make the actual word visible while dragging
-            const dragIcon = span.cloneNode(true);
-            dragIcon.style.position = 'absolute';
-            dragIcon.style.top = '-9999px'; // hide from layout
-            dragIcon.style.left = '-9999px';
-            document.body.appendChild(dragIcon);
-            e.dataTransfer.setDragImage(dragIcon, 0, 0);
-
-            setTimeout(() => document.body.removeChild(dragIcon), 0);
-            };        
-        wordBank.appendChild(span);
+function createWordBank(words) {
+const wordBank = document.getElementById("word-bank");
+wordBank.innerHTML = "";
+shuffle(words).forEach(word => {
+const span = document.createElement("span");
+span.className = "word";
+span.draggable = true;
+span.textContent = word;
+span.ondragstart = e => {
+e.dataTransfer.setData("text", word);
+// Fix: make the actual word visible while dragging
+const dragIcon = span.cloneNode(true);
+dragIcon.style.position = 'absolute';
+dragIcon.style.top = '-9999px'; // hide from layout
+dragIcon.style.left = '-9999px';
+document.body.appendChild(dragIcon);
+e.dataTransfer.setDragImage(dragIcon, 0, 0);
+setTimeout(() => document.body.removeChild(dragIcon), 0);
+            };
+wordBank.appendChild(span);
       });
+const wordElements = document.querySelectorAll('.word');
+wordElements.forEach(span => {
+  span.addEventListener('touchstart', handleTouchStart, { passive: false });
+});
     }
-
-    function createDropZones(count) {
-      const container = document.getElementById("drop-zone-container");
-      container.innerHTML = "";
-      for (let i = 0; i < count; i++) {
-        const zone = document.createElement("div");
-        zone.className = "drop-zone";
-        zone.ondragover = e => e.preventDefault();
-        zone.ondrop = e => {
-          const word = e.dataTransfer.getData("text");
-          if (!zone.textContent) {
-            zone.textContent = word;
-            checkSentence();
+function handleTouchStart(e) {
+  draggingWord = e.target.textContent;
+  dragClone = e.target.cloneNode(true);
+  dragClone.style.position = 'absolute';
+  dragClone.style.zIndex = 1000;
+  document.body.appendChild(dragClone);
+  positionClone(e.touches[0]);
+}
+function positionClone(touch) {
+  dragClone.style.left = `${touch.pageX - dragClone.offsetWidth / 2}px`;
+  dragClone.style.top = `${touch.pageY - dragClone.offsetHeight / 2}px`;
+}
+document.addEventListener('touchmove', (e) => {
+  if (draggingWord) {
+    e.preventDefault();
+    positionClone(e.touches[0]);
+  }
+}, { passive: false });
+document.addEventListener('touchend', (e) => {
+  if (draggingWord) {
+    const touch = e.changedTouches[0];
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (target && target.classList.contains('drop-zone') && !target.textContent) {
+      target.textContent = draggingWord;
+      checkSentence();
+    }
+    dragClone.remove();
+    draggingWord = null;
+    dragClone = null;
+  }
+}, { passive: false });
+function createDropZones(count) {
+const container = document.getElementById("drop-zone-container");
+container.innerHTML = "";
+for (let i = 0; i < count; i++) {
+const zone = document.createElement("div");
+zone.className = "drop-zone";
+zone.ondragover = e => e.preventDefault();
+zone.ondrop = e => {
+const word = e.dataTransfer.getData("text");
+if (!zone.textContent) {
+zone.textContent = word;
+checkSentence();
           }
         };
-        container.appendChild(zone);
+container.appendChild(zone);
       }
     }
-
-    function checkSentence() {
-      const zones = document.querySelectorAll(".drop-zone");
-      const userSentence = Array.from(zones).map(z => z.textContent);
-      if (userSentence.includes("")) return;
-
-      const correct = currentSentence.correct.join(" ");
-      const attempt = userSentence.join(" ");
-
-      const feedback = document.getElementById("feedback");
-      if (attempt === correct) {
-        feedback.textContent = "🎉 Correct!";
-        correctSound.play();
-        zones.forEach(z => z.classList.add("correct"));
-        score++;
-        completed++;
-        updateStorage();
-        stopTimer();
+function checkSentence() {
+const zones = document.querySelectorAll(".drop-zone");
+const userSentence = Array.from(zones).map(z => z.textContent);
+if (userSentence.includes("")) return;
+const correct = currentSentence.correct.join(" ");
+const attempt = userSentence.join(" ");
+const feedback = document.getElementById("feedback");
+if (attempt === correct) {
+feedback.textContent = "🎉 Correct!";
+correctSound.play();
+zones.forEach(z => z.classList.add("correct"));
+score++;
+completed++;
+updateStorage();
+stopTimer();
       } else {
-        feedback.textContent = "🙈 Oops! Try again!";
-        wrongSound.play();
+feedback.textContent = "🙈 Oops! Try again!";
+wrongSound.play();
       }
     }
-
-    function updateStorage() {
-      localStorage.setItem("sentenceScore", score);
-      localStorage.setItem("sentenceCompleted", completed);
-      document.getElementById("scoreDisplay").textContent = `Score: ${score}`;
+function updateStorage() {
+localStorage.setItem("sentenceScore", score);
+localStorage.setItem("sentenceCompleted", completed);
+document.getElementById("scoreDisplay").textContent = `Score: ${score}`;
     }
-
-    function resetGame() {
-      document.getElementById("feedback").textContent = "";
-      currentSentence = sentences[Math.floor(Math.random() * sentences.length)];
-      createWordBank(currentSentence.correct);
-      createDropZones(currentSentence.correct.length);
-      document.getElementById("hintDisplay").textContent = "Hint: " + currentSentence.hint;
-      startTimer();
+function resetGame() {
+document.getElementById("feedback").textContent = "";
+currentSentence = sentences[Math.floor(Math.random() * sentences.length)];
+createWordBank(currentSentence.correct);
+createDropZones(currentSentence.correct.length);
+document.getElementById("hintDisplay").textContent = "Hint: " + currentSentence.hint;
+startTimer();
     }
-
-    function startTimer() {
-      timeLeft = 30;
-      updateTimerDisplay();
-      if (timer) clearInterval(timer);
-      timer = setInterval(() => {
-        timeLeft--;
-        updateTimerDisplay();
-        if (timeLeft <= 0) {
-          stopTimer();
-          document.getElementById("feedback").textContent = "⏰ Time’s up! Try the next one.";
-          completed++;
-          updateStorage();
+function startTimer() {
+timeLeft = 30;
+updateTimerDisplay();
+if (timer) clearInterval(timer);
+timer = setInterval(() => {
+timeLeft--;
+updateTimerDisplay();
+if (timeLeft <= 0) {
+stopTimer();
+document.getElementById("feedback").textContent = "⏰ Time’s up! Try the next one.";
+completed++;
+updateStorage();
         }
       }, 1000);
     }
-
-    function stopTimer() {
-      clearInterval(timer);
+function stopTimer() {
+clearInterval(timer);
     }
-
-    function updateTimerDisplay() {
-      document.getElementById("timerDisplay").textContent = `Time left: ${timeLeft}s`;
+function updateTimerDisplay() {
+document.getElementById("timerDisplay").textContent = `Time left: ${timeLeft}s`;
     }
-
-    function changeTheme() {
-      const theme = document.getElementById("theme").value;
-      document.body.className = theme;
+function changeTheme() {
+const theme = document.getElementById("theme").value;
+document.body.className = theme;
     }
-
-    function autoComplete() {
-  stopTimer();
-  const slowMo = document.getElementById("slowmoToggle").checked;
-  const delayPerWord = slowMo ? 700 : 300;
-  const moveDuration = slowMo ? 1000 : 600;
-
-  const container = document.getElementById("drop-zone-container");
-  const zones = container.querySelectorAll(".drop-zone");
-  const words = currentSentence.correct;
-
-  const wordBank = document.getElementById("word-bank");
-  const wordSpans = Array.from(wordBank.children);
-  const preview = document.getElementById("sentencePreview");
-  preview.textContent = "📝 Sentence Preview: ";
-
-  zones.forEach((zone, i) => {
-    const wordText = words[i];
-    const source = wordSpans.find(span => span.textContent === wordText);
-    const clone = source.cloneNode(true);
-    clone.style.position = 'absolute';
-    clone.style.zIndex = 1000;
-    clone.style.background = '#ffe066';
-    clone.style.padding = '10px 20px';
-    clone.style.borderRadius = '12px';
-    clone.style.border = '2px solid #ffae00';
-    clone.style.fontSize = '18px';
-
-    const startRect = source.getBoundingClientRect();
-    const endRect = zone.getBoundingClientRect();
-
-    clone.style.left = `${startRect.left}px`;
-    clone.style.top = `${startRect.top}px`;
-    clone.style.transition = `all ${moveDuration}ms ease`;
-    document.body.appendChild(clone);
-
-    setTimeout(() => {
-      clone.style.left = `${endRect.left}px`;
-      clone.style.top = `${endRect.top}px`;
-
-      // Add sparkle trail
-      const sparkleInterval = setInterval(() => {
-        const sparkle = document.createElement("div");
-        sparkle.className = "sparkle";
-        sparkle.style.left = `${clone.getBoundingClientRect().left + 10}px`;
-        sparkle.style.top = `${clone.getBoundingClientRect().top + 10}px`;
-        document.body.appendChild(sparkle);
-        setTimeout(() => sparkle.remove(), 1000);
+function autoComplete() {
+stopTimer();
+const slowMo = document.getElementById("slowmoToggle").checked;
+const delayPerWord = slowMo ? 700 : 300;
+const moveDuration = slowMo ? 1000 : 600;
+const container = document.getElementById("drop-zone-container");
+const zones = container.querySelectorAll(".drop-zone");
+const words = currentSentence.correct;
+const wordBank = document.getElementById("word-bank");
+const wordSpans = Array.from(wordBank.children);
+const preview = document.getElementById("sentencePreview");
+preview.textContent = "📝 Sentence Preview: ";
+zones.forEach((zone, i) => {
+const wordText = words[i];
+const source = wordSpans.find(span => span.textContent === wordText);
+const clone = source.cloneNode(true);
+clone.style.position = 'absolute';
+clone.style.zIndex = 1000;
+clone.style.background = '#ffe066';
+clone.style.padding = '10px 20px';
+clone.style.borderRadius = '12px';
+clone.style.border = '2px solid #ffae00';
+clone.style.fontSize = '18px';
+const startRect = source.getBoundingClientRect();
+const endRect = zone.getBoundingClientRect();
+clone.style.left = `${startRect.left}px`;
+clone.style.top = `${startRect.top}px`;
+clone.style.transition = `all ${moveDuration}ms ease`;
+document.body.appendChild(clone);
+setTimeout(() => {
+clone.style.left = `${endRect.left}px`;
+clone.style.top = `${endRect.top}px`;
+// Add sparkle trail
+const sparkleInterval = setInterval(() => {
+const sparkle = document.createElement("div");
+sparkle.className = "sparkle";
+sparkle.style.left = `${clone.getBoundingClientRect().left + 10}px`;
+sparkle.style.top = `${clone.getBoundingClientRect().top + 10}px`;
+document.body.appendChild(sparkle);
+setTimeout(() => sparkle.remove(), 1000);
       }, 50);
-
-      setTimeout(() => clearInterval(sparkleInterval), moveDuration);
+setTimeout(() => clearInterval(sparkleInterval), moveDuration);
     }, i * delayPerWord);
-
-    setTimeout(() => {
-      zone.textContent = wordText;
-      zone.classList.add("correct");
-      clone.remove();
-      preview.textContent += wordText + " ";
-
-      if (i === zones.length - 1) {
-        document.getElementById("feedback").textContent = "✨ Auto-completed!";
-        correctSound.play();
-        score++;
-        completed++;
-        updateStorage();
+setTimeout(() => {
+zone.textContent = wordText;
+zone.classList.add("correct");
+clone.remove();
+preview.textContent += wordText + " ";
+if (i === zones.length - 1) {
+document.getElementById("feedback").textContent = "✨ Auto-completed!";
+correctSound.play();
+score++;
+completed++;
+updateStorage();
       }
     }, i * delayPerWord + moveDuration);
   });
 }
-
-    function showReport() {
-      const accuracy = completed > 0 ? ((score / completed) * 100).toFixed(0) : 0;
-      const text = `
+function showReport() {
+const accuracy = completed > 0 ? ((score / completed) * 100).toFixed(0) : 0;
+const text = `
         🏆 Total Sentences Completed: ${completed}<br>
         ✅ Correct Sentences: ${score}<br>
         📊 Accuracy: ${accuracy}%<br>
       `;
-      document.getElementById("reportText").innerHTML = text;
-      document.getElementById("reportCard").style.display = "block";
-      document.getElementById("overlay").style.display = "block";
+document.getElementById("reportText").innerHTML = text;
+document.getElementById("reportCard").style.display = "block";
+document.getElementById("overlay").style.display = "block";
     }
-
-    function hideReport() {
-      document.getElementById("reportCard").style.display = "none";
-      document.getElementById("overlay").style.display = "none";
+function hideReport() {
+document.getElementById("reportCard").style.display = "none";
+document.getElementById("overlay").style.display = "none";
     }
-
-
-    function showAllSentences() {
-        const list = document.getElementById("sentenceList");
-        list.innerHTML = ""; // Clear list
-
-        sentences.forEach((s, index) => {
-            const li = document.createElement("li");
-            li.textContent = `${index + 1}. ${s.correct.join(" ")}`;
-            list.appendChild(li);
+function showAllSentences() {
+const list = document.getElementById("sentenceList");
+list.innerHTML = ""; // Clear list
+sentences.forEach((s, index) => {
+const li = document.createElement("li");
+li.textContent = `${index + 1}. ${s.correct.join(" ")}`;
+list.appendChild(li);
         });
-
-        document.getElementById("allSentencesCard").style.display = "block";
-        document.getElementById("overlay").style.display = "block";
+document.getElementById("allSentencesCard").style.display = "block";
+document.getElementById("overlay").style.display = "block";
         }
-
-        function hideAllSentences() {
-        document.getElementById("allSentencesCard").style.display = "none";
-        document.getElementById("overlay").style.display = "none";
+function hideAllSentences() {
+document.getElementById("allSentencesCard").style.display = "none";
+document.getElementById("overlay").style.display = "none";
         }
-
-    resetGame();
-  </script>
+resetGame();
+</script>
 </body>
 </html>
