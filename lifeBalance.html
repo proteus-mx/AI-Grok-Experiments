@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Life Balance</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #e0e7ff, #bfdbfe);
+      font-family: 'Inter', Arial, sans-serif;
+      touch-action: manipulation;
+      overflow: hidden;
+    }
+    canvas {
+      width: 100vw;
+      max-height: 60vh;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+      background: white;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+    canvas.zoom-in {
+      transform: scale(1.03);
+      opacity: 0.97;
+    }
+    .title {
+      font-size: 32px;
+      font-weight: 800;
+      color: #1e3a8a;
+      margin: 20px 0;
+      text-align: center;
+      text-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      animation: fadeIn 1s ease-in;
+    }
+    .balance-score {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 24px;
+      font-weight: 700;
+      color: #1e3a8a;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 8px 16px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s ease;
+    }
+    .balance-score:hover {
+      transform: scale(1.05);
+    }
+    .progress-bar-container {
+      width: 100vw;
+      height: 10px;
+      background: linear-gradient(to right, #ef4444, #f59e0b, #10b981);
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    .progress-indicator {
+      position: absolute;
+      top: 0;
+      width: 0;
+      height: 0;
+      border-left: 8px solid transparent;
+      border-right: 8px solid transparent;
+      border-top: 10px solid #1e3a8a;
+      transition: left 0.5s ease;
+    }
+    .panel {
+      width: 90%;
+      max-width: 500px;
+      background: rgba(255, 255, 255, 0.97);
+      border-radius: 12px;
+      padding: 24px;
+      margin-top: 12px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+      text-align: center;
+      transition: transform 0.3s ease;
+    }
+    .panel:hover {
+      transform: translateY(-6px);
+    }
+    .panel p {
+      margin: 8px 0;
+      font-size: 12px;
+      color: #111827;
+    }
+    .panel button {
+      background: linear-gradient(135deg, #6366f1, #3b82f6);
+      color: white;
+      border: none;
+      padding: 12px 28px;
+      margin: 6px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+      touch-action: auto;
+    }
+    .panel button:hover {
+      background: linear-gradient(135deg, #4f46e5, #2563eb);
+      transform: scale(1.06);
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
+    }
+    .panel button:active {
+      transform: scale(0.94);
+    }
+    .back-button, .settings-button {
+      position: absolute;
+      background: linear-gradient(135deg, #f87171, #ef4444);
+      color: white;
+      border: none;
+      padding: 10px 22px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+      touch-action: auto;
+    }
+    .back-button {
+      top: 20px;
+      left: 100px;
+    }
+    .settings-button {
+      top: 20px;
+      left: 20px;
+      background: linear-gradient(135deg, #10b981, #059669);
+    }
+    .back-button:hover, .settings-button:hover {
+      transform: scale(1.06);
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
+    }
+    .back-button:hover {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+    }
+    .settings-button:hover {
+      background: linear-gradient(135deg, #059669, #047857);
+    }
+    .back-button:active, .settings-button:active {
+      transform: scale(0.94);
+    }
+    .settings-panel, .recommendations-panel {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 85%;
+      max-width: 450px;
+      background: rgba(255, 255, 255, 0.98);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      text-align: left;
+      animation: slideIn 0.4s ease;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .sub-area-window {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+      font-size: 14px;
+      color: #1f2937;
+      max-width: 200px;
+    }
+    .sub-area-window p {
+      margin: 4px 0;
+    }
+    .settings-panel h2, .recommendations-panel h2 {
+      font-size: 24px;
+      color: #1e3a8a;
+      margin-bottom: 18px;
+      font-weight: 700;
+    }
+    .settings-panel p, .recommendations-panel p {
+      font-size: 15px;
+      color: #1f2937;
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
+    .settings-panel button, .recommendations-panel button {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+    }
+    .recommendation-radar {
+      width: 100px;
+      height: 100px;
+      margin: 10px 0;
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translate(-50%, -60%); }
+      to { opacity: 1; transform: translate(-50%, -50%); }
+    }
+  </style>
+</head>
+<body>
+    <div class="progress-bar-container">
+    <div class="progress-bar" id="progress-bar"></div>
+    <div class="progress-indicator" id="progress-indicator"></div>
+  </div>
+  <div class="title">Life Balance</div>
+  <div class="balance-score" id="balance-score">100%</div>
+  <button class="back-button" id="back-button" style="display: none;" onclick="goBack()">Back</button>
+  <button class="settings-button" id="settings-button" onclick="toggleSettings()">Settings</button>
+  <div id="canvas-holder"></div>
+  <div class="panel" id="panel">
+    <p id="area-text"></p>
+    <p id="score-text"></p>
+    <p id="info-text">Double-tap radar label to select area, single-tap to view sub-areas, drag points to adjust score</p>
+    <button onclick="toggleGridView()">Sub-Radars</button>
+    <button onclick="showRecommendations()">Recommendations</button>
+    <button onclick="randomizeMainScores()">Randomize Life Areas</button>
+    <button onclick="randomizeSubScores()">Randomize Sub-Areas</button>
+    <button onclick="toggleAutoBalance()">Auto Balance</button>
+    <button onclick="toggleAutoSubBalance()">Auto Sub-Balance</button>
+  </div>
+  <div class="settings-panel" id="settings-panel">
+    <h2>Instructions</h2>
+    <p><strong>Main View:</strong> Double-tap a life area label to view its sub-areas or drag the colored points to adjust scores. Single-tap a label to see a list of sub-areas. Scores are balanced; increasing one area decreases others. Selected areas are highlighted with bold text, lines, throbbing circles, and bright sub-radars, while others are 50% transparent.</p>
+    <p><strong>Sub-Area View:</strong> Drag points to adjust sub-area scores, which affect the main area score. Tap the mini-radar (top-right) to return to the main view. Labels with two or more words span two lines.</p>
+    <p><strong>Grid View:</strong> Tap "Show All Sub-Radars" to see all sub-area radars. Tap a radar to view its sub-area details. Tap elsewhere to return to the main view.</p>
+    <p><strong>Recommendations:</strong> Tap "Get Recommendations" to see suggestions for improving out-of-balance areas, with mini-radars for context.</p>
+    <p><strong>Randomize:</strong> Use "Randomize Life Areas" or "Randomize Sub-Areas" to shuffle scores. "Auto Balance" and "Auto Sub-Balance" smoothly adjust life area or sub-area scores continuously (both can run together).</p>
+    <p><strong>Goal:</strong> Adjust scores to align your radars with the transparent "balanced" shapes for harmony across all life areas. Balance score (top-right) and progress bar (top) show how evenly distributed your life areas are.</p>
+    <button onclick="toggleSettings()">Close</button>
+  </div>
+  <div class="recommendations-panel" id="recommendations-panel" style="display: none;">
+    <h2>Recommendations</h2>
+    <div id="recommendations-content"></div>
+    <button onclick="closeRecommendations()">Close</button>
+  </div>
+<script>
+  
+let areas = [
+  { name: "Health", sub: [{name: "Mental Health", score: 50}, {name: "Sleep", score: 50}, {name: "Fitness", score: 50}, {name: "Nutrition", score: 50}, {name: "Hygiene", score: 50}], score: 50, color: [255, 99, 132] },
+  { name: "Appearance", sub: [{name: "Body Image", score: 50}, {name: "Skincare", score: 50}, {name: "Hair", score: 50}, {name: "Fashion", score: 50}, {name: "Aesthetic Care", score: 50}], score: 50, color: [54, 162, 235] },
+  { name: "Love", sub: [{name: "Self-love", score: 50}, {name: "Romantic Relationships", score: 50}, {name: "Partnership", score: 50}, {name: "Dating Life", score: 50}, {name: "Intimacy", score: 50}], score: 50, color: [255, 206, 86] },
+  { name: "Family", sub: [{name: "Bonding Time", score: 50}, {name: "Support Systems", score: 50}, {name: "Responsibilities", score: 50}, {name: "Stability", score: 50}, {name: "Traditions", score: 50}], score: 50, color: [75, 192, 192] },
+  { name: "Friends", sub: [{name: "Social Circle", score: 50}, {name: "Social Support", score: 50}, {name: "Social Events", score: 50}, {name: "Shared Experiences", score: 50}, {name: "Cultural Exchange", score: 50}], score: 50, color: [153, 102, 255] },
+  { name: "Career", sub: [{name: "Formal Education", score: 50}, {name: "Skill Development", score: 50}, {name: "Learning", score: 50}, {name: "Networking", score: 50}, {name: "Work-Life Balance", score: 50}], score: 50, color: [255, 159, 64] },
+  { name: "Money", sub: [{name: "Income", score: 50}, {name: "Savings", score: 50}, {name: "Investing", score: 50}, {name: "Financial Planning", score: 50}, {name: "Financial Independence", score: 50}], score: 50, color: [83, 83, 83] },
+  { name: "Self-Growth", sub: [{name: "Purpose", score: 50}, {name: "Goal Setting", score: 50}, {name: "Habits and Routines", score: 50}, {name: "Self-Reflection", score: 50}, {name: "Self-Awareness", score: 50}], score: 50, color: [255, 99, 255] },
+  { name: "Spirituality", sub: [{name: "Mindfulness", score: 50}, {name: "Connection with People", score: 50}, {name: "Compassion", score: 50}, {name: "Personal Beliefs", score: 50}, {name: "Connection with Nature", score: 50}], score: 50, color: [102, 255, 102] },
+  { name: "Recreation", sub: [{name: "Hobbies", score: 50}, {name: "Leisure", score: 50}, {name: "Entertainment", score: 50}, {name: "Pleasure", score: 50}, {name: "Sport", score: 50}], score: 50, color: [255, 182, 193] },
+  { name: "Environment", sub: [{name: "Travel", score: 50}, {name: "Organization", score: 50}, {name: "Cleanliness", score: 50}, {name: "Comfort", score: 50}, {name: "Maintenance", score: 50}], score: 50, color: [70, 130, 180] },
+  { name: "Community", sub: [{name: "Aesthetics", score: 50}, {name: "Connections", score: 50}, {name: "Social Responsibility", score: 50}, {name: "Helping Others", score: 50}, {name: "Local Events", score: 50}], score: 50, color: [218, 165, 32] }
+];
+
+
+
+let selectedArea = null;
+let viewMode = 'main';
+let draggedPoint = null;
+let hoveredPoint = null;
+let autoBalanceActive = false;
+let autoSubBalanceActive = false;
+let autoBalanceTime = 0;
+let lastTapTime = 0;
+let lastTapIndex = null;
+const DOUBLE_TAP_THRESHOLD = 300; // ms
+let subAreaWindow = null;
+const TOTAL_AREA = 600;
+const BALANCED_SCORE = TOTAL_AREA / areas.length;
+const SUB_BALANCED_SCORE = 50;
+
+
+restoreState();
+
+
+function setup() {
+  let canvas = createCanvas(windowWidth, min(windowHeight * 0.6, 500));
+  canvas.parent('canvas-holder');
+  textAlign(CENTER, CENTER);
+  textSize(12);
+  normalizeMainScores();
+  updatePanel();
+  updateBalanceScore();
+}
+
+function calculateBalanceScore() {
+  let deviations = areas.map(area => Math.abs(area.score - BALANCED_SCORE));
+  let maxDeviation = 100;
+  let totalDeviation = deviations.reduce((sum, dev) => sum + dev, 0);
+  let averageDeviation = totalDeviation / areas.length;
+  let balanceScore = constrain(100 - (averageDeviation / maxDeviation) * 100, 0, 100);
+  return Math.round(balanceScore);
+}
+
+function updateBalanceScore() {
+  let score = calculateBalanceScore();
+  document.getElementById('balance-score').innerText = `${score}%`;
+  document.getElementById('progress-indicator').style.left = `${score}%`;
+}
+
+function generateRadarSVG(area, size = 100) {
+  let r = size * 0.4;
+  let cx = size / 2;
+  let cy = size / 2;
+  let points = [];
+  let balancedPoints = [];
+  for (let j = 0; j < area.sub.length; j++) {
+    let angle = TWO_PI / area.sub.length * j - PI / 2;
+    let score = area.sub[j].score / 100 * r;
+    let balancedScore = SUB_BALANCED_SCORE / 100 * r;
+    let px = cx + cos(angle) * score;
+    let py = cy + sin(angle) * score;
+    let bpx = cx + cos(angle) * balancedScore;
+    let bpy = cy + sin(angle) * balancedScore;
+    points.push(`${px},${py}`);
+    balancedPoints.push(`${bpx},${bpy}`);
+  }
+  let rgb = area.color.join(',');
+  return `
+    <svg width="${size}" height="${size}" class="recommendation-radar">
+      <polygon points="${balancedPoints.join(' ')}" fill="rgba(200,200,200,0.3)" stroke="none"/>
+      <polygon points="${points.join(' ')}" fill="rgba(${rgb},0.5)" stroke="none"/>
+    </svg>
+  `;
+}
+
+function removeSubAreaWindow() {
+  if (subAreaWindow) {
+    subAreaWindow.remove();
+    subAreaWindow = null;
+  }
+}
+
+function createSubAreaWindow(areaIndex, x, y) {
+  removeSubAreaWindow();
+  let area = areas[areaIndex];
+  subAreaWindow = document.createElement('div');
+  subAreaWindow.className = 'sub-area-window';
+  let subAreasList = area.sub.map(sub => `<p>${sub.name} (${Math.round(sub.percentage)}%)</p>`).join('');
+  subAreaWindow.innerHTML = subAreasList;
+  
+  let canvasRect = document.querySelector('canvas').getBoundingClientRect();
+  let windowX = x + canvasRect.left + 10;
+  let windowY = y + canvasRect.top + 10;
+  let maxX = window.innerWidth - 200;
+  let maxY = window.innerHeight - (area.sub.length * 20 + 24);
+  windowX = Math.max(10, Math.min(windowX, maxX));
+  windowY = Math.max(10, Math.min(windowY, maxY));
+  
+  subAreaWindow.style.left = `${windowX}px`;
+  subAreaWindow.style.top = `${windowY}px`;
+  document.body.appendChild(subAreaWindow);
+}
+
+function randomizeMainScores() {
+  let total = TOTAL_AREA;
+  let scores = new Array(areas.length).fill(BALANCED_SCORE);
+  let maxDeviation = 10;
+  for (let i = 0; i < areas.length; i++) {
+    scores[i] += Math.random() * maxDeviation * 2 - maxDeviation;
+  }
+  let sum = scores.reduce((acc, val) => acc + val, 0);
+  let factor = total / sum;
+  areas.forEach((area, i) => {
+    area.score = constrain(scores[i] * factor, 0, 100);
+    area.percentage = (area.score / TOTAL_AREA) * 100;
+    normalizeSubScores(area);
+  });
+  updateBalanceScore();
+  updatePanel();
+}
+
+function randomizeSubScores() {
+  if (viewMode === 'main') {
+    areas.forEach(area => {
+      let total = area.score * area.sub.length;
+      let scores = new Array(area.sub.length).fill(SUB_BALANCED_SCORE);
+      let maxDeviation = 20;
+      for (let i = 0; i < area.sub.length; i++) {
+        scores[i] += Math.random() * maxDeviation * 2 - maxDeviation;
+      }
+      let sum = scores.reduce((acc, val) => acc + val, 0);
+      let factor = total / sum;
+      area.sub.forEach((sub, i) => {
+        sub.score = constrain(scores[i] * factor, 0, 100);
+        sub.percentage = (sub.score / (area.score * area.sub.length)) * 100 || 0;
+      });
+      area.score = area.sub.reduce((acc, sub) => acc + sub.score, 0) / area.sub.length;
+      area.percentage = (area.score / TOTAL_AREA) * 100;
+    });
+  } else if (selectedArea !== null) {
+    let area = areas[selectedArea];
+    let total = area.score * area.sub.length;
+    let scores = new Array(area.sub.length).fill(SUB_BALANCED_SCORE);
+    let maxDeviation = 20;
+    for (let i = 0; i < area.sub.length; i++) {
+      scores[i] += Math.random() * maxDeviation * 2 - maxDeviation;
+    }
+    let sum = scores.reduce((acc, val) => acc + val, 0);
+    let factor = total / sum;
+    area.sub.forEach((sub, i) => {
+      sub.score = constrain(scores[i] * factor, 0, 100);
+      sub.percentage = (sub.score / (area.score * area.sub.length)) * 100 || 0;
+    });
+    area.score = area.sub.reduce((acc, sub) => acc + sub.score, 0) / area.sub.length;
+    area.percentage = (area.score / TOTAL_AREA) * 100;
+    normalizeMainScores();
+  }
+  updateBalanceScore();
+  updatePanel();
+}
+
+function toggleAutoBalance() {
+  autoBalanceActive = !autoBalanceActive;
+  autoBalanceTime = 0;
+  document.getElementById('panel').querySelectorAll('button')[4].innerText = autoBalanceActive ? 'Stop Auto Balance' : 'Auto Balance';
+}
+
+function toggleAutoSubBalance() {
+  autoSubBalanceActive = !autoSubBalanceActive;
+  autoBalanceTime = 0;
+  document.getElementById('panel').querySelectorAll('button')[5].innerText = autoSubBalanceActive ? 'Stop Auto Sub-Balance' : 'Auto Sub-Balance';
+}
+
+function normalizeMainScores() {
+  let sum = areas.reduce((acc, area) => acc + area.score, 0);
+  let factor = TOTAL_AREA / sum;
+  areas.forEach(area => {
+    area.score = constrain(area.score * factor, 0, 100);
+    area.percentage = (area.score / TOTAL_AREA) * 100;
+    normalizeSubScores(area);
+  });
+  updateBalanceScore();
+}
+
+function normalizeSubScores(area) {
+  let sum = area.sub.reduce((acc, sub) => acc + sub.score, 0);
+  let factor = (area.score * area.sub.length) / sum;
+  area.sub.forEach(sub => {
+    sub.score = constrain(sub.score * factor, 0, 100);
+    sub.percentage = (sub.score / (area.score * area.sub.length)) * 100 || 0;
+  });
+  area.score = area.sub.reduce((acc, sub) => acc + sub.score, 0) / area.sub.length;
+  area.percentage = (area.score / TOTAL_AREA) * 100;
+}
+
+function adjustMainScores(changedIndex, newScore) {
+  let oldScore = areas[changedIndex].score;
+  let delta = newScore - oldScore;
+  areas[changedIndex].score = newScore;
+  areas[changedIndex].percentage = (newScore / TOTAL_AREA) * 100;
+  let otherIndices = areas.map((_, i) => i).filter(i => i !== changedIndex);
+  let totalOtherScore = otherIndices.reduce((acc, i) => acc + areas[i].score, 0);
+  if (totalOtherScore > 0) {
+    let factor = (totalOtherScore - delta) / totalOtherScore;
+    otherIndices.forEach(i => {
+      areas[i].score = constrain(areas[i].score * factor, 0, 100);
+      areas[i].percentage = (areas[i].score / TOTAL_AREA) * 100;
+      normalizeSubScores(areas[i]);
+    });
+  }
+  normalizeSubScores(areas[changedIndex]);
+  updateBalanceScore();
+}
+
+function adjustSubScores(area, changedIndex, newScore) {
+  let oldScore = area.sub[changedIndex].score;
+  let delta = newScore - oldScore;
+  area.sub[changedIndex].score = newScore;
+  area.sub[changedIndex].percentage = (newScore / (area.score * area.sub.length)) * 100 || 0;
+  let otherIndices = area.sub.map((_, i) => i).filter(i => i !== changedIndex);
+  let totalOtherScore = otherIndices.reduce((acc, i) => acc + area.sub[i].score, 0);
+  if (totalOtherScore > 0) {
+    let factor = (totalOtherScore - delta) / totalOtherScore;
+    otherIndices.forEach(i => {
+      area.sub[i].score = constrain(area.sub[i].score * factor, 0, 100);
+      area.sub[i].percentage = (area.sub[i].score / (area.score * area.sub.length)) * 100 || 0;
+    });
+  }
+  area.score = area.sub.reduce((acc, sub) => acc + sub.score, 0) / area.sub.length;
+  area.percentage = (area.score / TOTAL_AREA) * 100;
+  normalizeMainScores();
+}
+
+function generateRecommendations() {
+  let recs = [];
+  const mainThreshold = BALANCED_SCORE * 0.7;
+  const subThreshold = SUB_BALANCED_SCORE * 0.7;
+
+  areas.forEach(area => {
+    if (area.score < mainThreshold) {
+      let radarSvg = generateRadarSVG(area);
+      recs.push(`<p><strong>Focus on ${area.name} (Current: ${Math.round(area.percentage)}%):</strong></p>${radarSvg}`);
+      let subRecs = [];
+      area.sub.forEach(sub => {
+        if (sub.score < subThreshold) {
+          subRecs.push(`<p>- ${sub.name} (Current: ${Math.round(sub.percentage)}%)</p>`);
+        }
+      });
+      if (subRecs.length > 0) {
+        recs.push(...subRecs);
+        recs.push(`<p>Spend time improving these aspects.</p>`);
+      }
+    }
+  });
+  return recs.length > 0 ? recs.join('') : "<p>Your life areas are well-balanced!</p>";
+}
+
+function draw() {
+  background(255);
+  if (autoBalanceActive) {
+    autoBalanceTime += 0.016;
+    let t = autoBalanceTime % 10;
+    areas.forEach((area, i) => {
+      let randomOffset = Math.random() * 40 - 20;
+      let targetScore = BALANCED_SCORE + (40 + randomOffset) * Math.sin(TWO_PI * t / 10 + i * TWO_PI / areas.length + randomOffset);
+      let currentScore = area.score;
+      let newScore = lerp(currentScore, targetScore, 0.02);
+      adjustMainScores(i, newScore);
+    });
+  }
+  if (autoSubBalanceActive) {
+    autoBalanceTime += 0.016;
+    let t = autoBalanceTime % 10;
+    areas.forEach((area, i) => {
+      area.sub.forEach((sub, j) => {
+        let randomOffset = Math.random() * 20 - 10;
+        let targetScore = SUB_BALANCED_SCORE + (20 + randomOffset) * Math.sin(TWO_PI * t / 10 + j * TWO_PI / area.sub.length + i + randomOffset);
+        let currentScore = sub.score;
+        let newScore = lerp(currentScore, targetScore, 0.02);
+        adjustSubScores(area, j, newScore);
+      });
+    });
+  }
+  let cx = width / 2, cy = height / 2;
+  let r = min(width, height) * 0.4;
+  if (viewMode === 'grid') {
+    drawGridView();
+  } else if (viewMode === 'main') {
+    drawMainRadar(cx, cy, r);
+  } else if (selectedArea !== null) {
+    drawMainRadar(width * 0.85, height * 0.15, r * 0.35, false);
+    drawSubRadar(cx, cy, r);
+  }
+}
+
+function drawMainRadar(cx, cy, r, showLabels = true) {
+  let points = [];
+  let balancedPoints = [];
+  hoveredPoint = null;
+  for (let i = 0; i < areas.length; i++) {
+    let angle = TWO_PI / areas.length * i - PI / 2;
+    let x = cx + cos(angle) * r;
+    let y = cy + sin(angle) * r;
+    let score = areas[i].score / 100 * r;
+    let balancedScore = BALANCED_SCORE / 100 * r;
+    let px = cx + cos(angle) * score;
+    let py = cy + sin(angle) * score;
+    let bpx = cx + cos(angle) * balancedScore;
+    let bpy = cy + sin(angle) * balancedScore;
+    points.push([px, py]);
+    balancedPoints.push([bpx, bpy]);
+
+    if (showLabels) {
+      let subAreas = areas[i].sub;
+      let subPoints = [];
+      let subBalancedPoints = [];
+      let subR = r * 0.3;
+      for (let j = 0; j < subAreas.length; j++) {
+        let subAngle = TWO_PI / subAreas.length * j - PI / 2;
+        let subScore = subAreas[j].score / 100 * subR;
+        let subBalancedScore = SUB_BALANCED_SCORE / 100 * subR;
+        let subPx = x + cos(subAngle) * subScore;
+        let subPy = y + sin(subAngle) * subScore;
+        let subBpx = x + cos(subAngle) * subBalancedScore;
+        let subBpy = y + sin(subAngle) * subBalancedScore;
+        subPoints.push([subPx, subPy]);
+        subBalancedPoints.push([subBpx, subBpy]);
+      }
+
+      fill(200, 200, 200, selectedArea === i && viewMode === 'main' ? 30 : 15);
+      noStroke();
+      beginShape();
+      subBalancedPoints.forEach(([spx, spy]) => vertex(spx, spy));
+      endShape(CLOSE);
+
+      fill(areas[i].color[0], areas[i].color[1], areas[i].color[2], selectedArea === i && viewMode === 'main' ? 255 : 50);
+      beginShape();
+      subPoints.forEach(([spx, spy]) => vertex(spx, spy));
+      endShape(CLOSE);
+
+      stroke(0, selectedArea === i && viewMode === 'main' ? 100 : 25);
+      strokeWeight(selectedArea === i && viewMode === 'main' ? 2 : 1);
+      line(cx, cy, x, y);
+      fill(0, selectedArea === i && viewMode === 'main' ? 255 : 128);
+      noStroke();
+      textStyle((selectedArea === i && viewMode === 'main' && !draggedPoint) || dist(mouseX, mouseY, x, y) < 30 ? BOLD : NORMAL);
+      if (dist(mouseX, mouseY, x, y) < 30) {
+        fill(0, 0, 0, 200);
+        textStyle(BOLD);
+      }
+      text(`${areas[i].name} (${Math.round(areas[i].percentage)}%)`, x, y);
+    }
+
+    if (dist(mouseX, mouseY, px, py) < 20) {
+      hoveredPoint = { type: 'main', index: i };
+    }
+  }
+
+  fill(200, 200, 200, 50);
+  noStroke();
+  beginShape();
+  balancedPoints.forEach(([px, py]) => vertex(px, py));
+  endShape(CLOSE);
+
+  fill(129, 140, 248, 100);
+  beginShape();
+  points.forEach(([px, py]) => vertex(px, py));
+  endShape(CLOSE);
+
+  points.forEach(([px, py], i) => {
+    fill(areas[i].color[0], areas[i].color[1], areas[i].color[2]);
+    noStroke();
+    let size = (hoveredPoint && hoveredPoint.type === 'main' && hoveredPoint.index === i) ? 18 : 15;
+    if (selectedArea === i && viewMode === 'main') {
+      size += 3 * sin(frameCount * 0.1);
+    }
+    size *= (r / (min(width, height) * 0.4));
+    ellipse(px, py, size, size);
+  });
+}
+
+function drawSubRadar(cx, cy, r) {
+  let subAreas = areas[selectedArea].sub;
+  let points = [];
+  let balancedPoints = [];
+  hoveredPoint = null;
+
+  fill(0);
+  noStroke();
+  textSize(24);
+  textStyle(BOLD);
+  text(areas[selectedArea].name, cx, cy - r - 30);
+
+  for (let i = 0; i < subAreas.length; i++) {
+    let angle = TWO_PI / subAreas.length * i - PI / 2;
+    let x = cx + cos(angle) * r;
+    let y = cy + sin(angle) * r;
+    let score = subAreas[i].score / 100 * r;
+    let balancedScore = SUB_BALANCED_SCORE / 100 * r;
+    let px = cx + cos(angle) * score;
+    let py = cy + sin(angle) * score;
+    let bpx = cx + cos(angle) * balancedScore;
+    let bpy = cy + sin(angle) * balancedScore;
+    points.push([px, py]);
+    balancedPoints.push([bpx, bpy]);
+
+    stroke(0, 50);
+    line(cx, cy, x, y);
+    fill(0);
+    noStroke();
+    textSize(12);
+    if (dist(mouseX, mouseY, x, y) < 30) {
+      fill(0, 0, 0, 200);
+      textStyle(BOLD);
+    }
+    let label = subAreas[i].name;
+    let percentage = `(${Math.round(subAreas[i].percentage)}%)`;
+    if (label.split(' ').length >= 2) {
+      let words = label.split(' ');
+      let firstLine = words.slice(0, Math.ceil(words.length / 2)).join(' ');
+      let secondLine = words.slice(Math.ceil(words.length / 2)).join(' ');
+      text(firstLine, x, y - 8);
+      text(secondLine + ' ' + percentage, x, y + 8);
+    } else {
+      text(`${label} ${percentage}`, x, y);
+    }
+    textStyle(NORMAL);
+
+    if (dist(mouseX, mouseY, px, py) < 20) {
+      hoveredPoint = { type: 'sub', index: i };
+    }
+  }
+
+  fill(200, 200, 200, 50);
+  noStroke();
+  beginShape();
+  balancedPoints.forEach(([px, py]) => vertex(px, py));
+  endShape(CLOSE);
+
+  fill(areas[selectedArea].color[0], areas[selectedArea].color[1], areas[selectedArea].color[2], 150);
+  beginShape();
+  points.forEach(([px, py]) => vertex(px, py));
+  endShape(CLOSE);
+
+  points.forEach(([px, py], i) => {
+    fill(areas[selectedArea].color[0], areas[selectedArea].color[1], areas[selectedArea].color[2]);
+    noStroke();
+    let size = (hoveredPoint && hoveredPoint.type === 'sub' && hoveredPoint.index === i) ? 18 : 15;
+    ellipse(px, py, size, size);
+  });
+}
+
+function drawGridView() {
+  let cols = 3;
+  let rows = Math.ceil(areas.length / cols);
+  let radarSize = min(width / cols, height / (rows + 1)) * 0.98;
+  let r = radarSize * 0.4;
+
+  for (let i = 0; i < areas.length; i++) {
+    let col = i % cols;
+    let row = Math.floor(i / cols);
+    let cx = (col + 0.5) * width / cols;
+    let cy = (row + 0.5) * height / rows;
+
+    let subAreas = areas[i].sub;
+    let points = [];
+    let balancedPoints = [];
+    for (let j = 0; j < subAreas.length; j++) {
+      let angle = TWO_PI / subAreas.length * j - PI / 2;
+      let score = subAreas[j].score / 100 * r;
+      let balancedScore = SUB_BALANCED_SCORE / 100 * r;
+      let px = cx + cos(angle) * score;
+      let py = cy + sin(angle) * score;
+      let bpx = cx + cos(angle) * balancedScore;
+      let bpy = cy + sin(angle) * balancedScore;
+      points.push([px, py]);
+      balancedPoints.push([bpx, bpy]);
+    }
+
+    fill(200, 200, 200, 50);
+    noStroke();
+    beginShape();
+    balancedPoints.forEach(([px, py]) => vertex(px, py));
+    endShape(CLOSE);
+
+    fill(areas[i].color[0], areas[i].color[1], areas[i].color[2], dist(mouseX, mouseY, cx, cy) < r ? 180 : 150);
+    beginShape();
+    points.forEach(([px, py]) => vertex(px, py));
+    endShape(CLOSE);
+
+    fill(0);
+    noStroke();
+    textSize(10);
+    textStyle(dist(mouseX, mouseY, cx, cy) < r ? BOLD : NORMAL);
+    text(`${areas[i].name} (${Math.round(areas[i].percentage)}%)`, cx, cy - r - 10);
+  }
+}
+
+function touchStarted() {
+  if (mouseX < 0 || mouseX > width || mouseY < 0 || mouseY > height) {
+    return true;
+  }
+
+  let canvas = select('canvas');
+  if (viewMode !== 'grid') {
+    canvas.addClass('zoom-in');
+    setTimeout(() => canvas.removeClass('zoom-in'), 200);
+  }
+
+  let cx = width / 2, cy = height / 2;
+  let r = min(width, height) * 0.4;
+
+  if (viewMode === 'grid') {
+    let cols = 3;
+    let rows = Math.ceil(areas.length / cols);
+    let radarSize = min(width / cols, height / (rows + 1)) * 0.98;
+    let r = radarSize * 0.4;
+    for (let i = 0; i < areas.length; i++) {
+      let col = i % cols;
+      let row = Math.floor(i / cols);
+      let cx = (col + 0.5) * width / cols;
+      let cy = (row + 0.5) * height / rows;
+      if (dist(mouseX, mouseY, cx, cy) < r) {
+        selectedArea = i;
+        viewMode = 'sub';
+        removeSubAreaWindow();
+        document.getElementById('back-button').style.display = 'block';
+        document.getElementById('settings-panel').style.display = 'none';
+        document.getElementById('recommendations-panel').style.display = 'none';
+        updatePanel();
+        return false;
+      }
+    }
+    goBack();
+    return false;
+  }
+
+  if (viewMode === 'main') {
+    for (let i = 0; i < areas.length; i++) {
+      let angle = TWO_PI / areas.length * i - PI / 2;
+      let score = areas[i].score / 100 * r;
+      let px = cx + cos(angle) * score;
+      let py = cy + sin(angle) * score;
+      if (dist(mouseX, mouseY, px, py) < 20) {
+        draggedPoint = { type: 'main', index: i };
+        removeSubAreaWindow();
+        return false;
+      }
+      let x = cx + cos(angle) * r;
+      let y = cy + sin(angle) * r;
+      if (dist(mouseX, mouseY, x, y) < 30) {
+        let currentTime = millis();
+        if (lastTapIndex === i && currentTime - lastTapTime < DOUBLE_TAP_THRESHOLD) {
+          selectedArea = i;
+          viewMode = 'sub';
+          removeSubAreaWindow();
+          document.getElementById('back-button').style.display = 'block';
+          updatePanel();
+        } else {
+          createSubAreaWindow(i, mouseX, mouseY);
+          lastTapTime = currentTime;
+          lastTapIndex = i;
+        }
+        return false;
+      }
+    }
+    removeSubAreaWindow();
+  } else if (viewMode === 'sub' && selectedArea !== null) {
+    let subAreas = areas[selectedArea].sub;
+    for (let i = 0; i < subAreas.length; i++) {
+      let angle = TWO_PI / subAreas.length * i - PI / 2;
+      let score = subAreas[i].score / 100 * r;
+      let px = cx + cos(angle) * score;
+      let py = cy + sin(angle) * score;
+      if (dist(mouseX, mouseY, px, py) < 20) {
+        draggedPoint = { type: 'sub', index: i };
+        removeSubAreaWindow();
+        return false;
+      }
+    }
+    let miniCx = width * 0.85, miniCy = height * 0.15;
+    let miniR = r * 0.35;
+    if (dist(mouseX, mouseY, miniCx, miniCy) < miniR) {
+      goBack();
+      return false;
+    }
+    removeSubAreaWindow();
+  }
+  return false;
+}
+
+function touchMoved() {
+  if (draggedPoint) {
+    let cx = width / 2, cy = height / 2;
+    let r = min(width, height) * 0.4;
+    let dx = mouseX - cx;
+    let dy = mouseY - cy;
+    let dist = sqrt(dx * dx + dy * dy);
+    let score = constrain((dist / r) * 100, 0, 100);
+
+    if (draggedPoint.type === 'main') {
+      adjustMainScores(draggedPoint.index, score);
+    } else if (draggedPoint.type === 'sub') {
+      adjustSubScores(areas[selectedArea], draggedPoint.index, score);
+    }
+    updatePanel();
+    return false;
+  }
+  return false;
+}
+
+function touchEnded() {
+  draggedPoint = null;
+  return true;
+}
+
+function goBack() {
+  viewMode = viewMode === 'grid' ? 'main' : 'main';
+  selectedArea = null;
+  autoBalanceActive = false;
+  autoSubBalanceActive = false;
+  removeSubAreaWindow();
+  document.getElementById('panel').querySelectorAll('button')[4].innerText = 'Auto Balance';
+  document.getElementById('panel').querySelectorAll('button')[5].innerText = 'Auto Sub-Balance';
+  document.getElementById('back-button').style.display = viewMode === 'sub' ? 'block' : 'none';
+  document.getElementById('settings-panel').style.display = 'none';
+  document.getElementById('recommendations-panel').style.display = 'none';
+  updatePanel();
+}
+
+function toggleGridView() {
+  viewMode = viewMode === 'grid' ? 'main' : 'grid';
+  autoBalanceActive = false;
+  autoSubBalanceActive = false;
+  removeSubAreaWindow();
+  document.getElementById('panel').querySelectorAll('button')[4].innerText = 'Auto Balance';
+  document.getElementById('panel').querySelectorAll('button')[5].innerText = 'Auto Sub-Balance';
+  document.getElementById('back-button').style.display = viewMode === 'grid' ? 'block' : 'none';
+  document.getElementById('settings-panel').style.display = 'none';
+  document.getElementById('recommendations-panel').style.display = 'none';
+  updatePanel();
+}
+
+function toggleSettings() {
+  let settingsPanel = document.getElementById('settings-panel');
+  settingsPanel.style.display = settingsPanel.style.display === 'block' ? 'none' : 'block';
+  document.getElementById('recommendations-panel').style.display = 'none';
+  document.getElementById('back-button').style.display = viewMode === 'sub' || viewMode === 'grid' ? 'block' : 'none';
+  removeSubAreaWindow();
+  updatePanel();
+}
+
+function showRecommendations() {
+  let recPanel = document.getElementById('recommendations-panel');
+  document.getElementById('recommendations-content').innerHTML = generateRecommendations();
+  recPanel.style.display = 'block';
+  document.getElementById('settings-panel').style.display = 'none';
+  document.getElementById('back-button').style.display = viewMode === 'sub' || viewMode === 'grid' ? 'block' : 'none';
+  removeSubAreaWindow();
+  // Example state
+  let appState = {
+      BALANCED_SCORE: BALANCED_SCORE,
+      SUB_BALANCED_SCORE: SUB_BALANCED_SCORE,
+      areas: areas
+  };
+
+  // Send to Swift
+  window.webkit.messageHandlers.saveState.postMessage(appState);
+}
+
+function restoreState(state) {
+  try {
+    console.log("Restoring state:", state);
+    areas = state.areas || areas;
+    BALANCED_SCORE = state.BALANCED_SCORE || BALANCED_SCORE;
+    SUB_BALANCED_SCORE = state.SUB_BALANCED_SCORE || SUB_BALANCED_SCORE;
+  } catch (error) {
+    console.warn("Error restoring state:", error);
+  }
+}
+
+function closeRecommendations() {
+  document.getElementById('recommendations-panel').style.display = 'none';
+  document.getElementById('settings-panel').style.display = 'none';
+  removeSubAreaWindow();
+  updatePanel();
+}
+
+function updatePanel() {
+  if (viewMode === 'main') {
+    document.getElementById('area-text').innerText = "Select a Life Area";
+    document.getElementById('score-text').innerText = "";
+    document.getElementById('info-text').innerText = "Single-tap to view sub-areas, double-tap radar label to select area, drag points to adjust levels";
+  } else if (viewMode === 'sub' && selectedArea !== null) {
+    document.getElementById('area-text').innerText = areas[selectedArea].name;
+    document.getElementById('score-text').innerText = `Average Score: ${Math.round(areas[selectedArea].score)} (${Math.round(areas[selectedArea].percentage)}%)`;
+    document.getElementById('info-text').innerText = "Drag points to adjust sub-area scores or tap mini-radar to go back";
+  } else if (viewMode === 'grid') {
+    document.getElementById('area-text').innerText = "All Sub-Area Radars";
+    document.getElementById('score-text').innerText = "";
+    document.getElementById('info-text').innerText = "Tap a radar to view details or elsewhere to return";
+  }
+}
+</script>
+</body>
+</html>
