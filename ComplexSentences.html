@@ -28,17 +28,17 @@ border-radius: 12px;
 border: 2px solid #ffae00;
 cursor: grab;
 user-select: none;
-font-size: 18px;
+font-size: 16px;
     }
 .drop-zone {
-width: 160px;
-height: 50px;
+width: 120px;
+height: 40px;
 border: 2px dashed #fff;
 border-radius: 12px;
 background: rgba(255, 255, 255, 0.2);
 margin: 5px;
-line-height: 50px;
-font-size: 18px;
+line-height: 40px;
+font-size: 16px;
 color: #fff;
     }
 .correct {
@@ -244,10 +244,12 @@ wordElements.forEach(span => {
 });
     }
 function handleTouchStart(e) {
+  e.preventDefault();
   draggingWord = e.target.textContent;
   dragClone = e.target.cloneNode(true);
   dragClone.style.position = 'absolute';
   dragClone.style.zIndex = 1000;
+  dragClone.style.pointerEvents = 'none';
   document.body.appendChild(dragClone);
   positionClone(e.touches[0]);
 }
@@ -267,6 +269,8 @@ document.addEventListener('touchend', (e) => {
     const target = document.elementFromPoint(touch.clientX, touch.clientY);
     if (target && target.classList.contains('drop-zone') && !target.textContent) {
       target.textContent = draggingWord;
+      const source = Array.from(document.querySelectorAll('.word')).find(s => s.textContent === draggingWord);
+      if (source) source.remove();
       checkSentence();
     }
     dragClone.remove();
@@ -285,6 +289,8 @@ zone.ondrop = e => {
 const word = e.dataTransfer.getData("text");
 if (!zone.textContent) {
 zone.textContent = word;
+const source = Array.from(document.querySelectorAll('.word')).find(s => s.textContent === word);
+if (source) source.remove();
 checkSentence();
           }
         };
