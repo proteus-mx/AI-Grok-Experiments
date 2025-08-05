@@ -187,6 +187,16 @@
                 return Math.round(balanceScore * 10) / 10;
             };
 
+            const getGrade = (score) => {
+                const ideal = 5;
+                const deviation = Math.abs(score - ideal);
+                if (deviation <= 0.05) return 'A';
+                if (deviation <= 1) return 'B';
+                if (deviation <= 2) return 'C';
+                if (deviation <= 3) return 'D';
+                return 'E';
+            };
+
             const overallScore = calculateOverallScore();
 
             const getColor = (score) => {
@@ -513,6 +523,7 @@
                         subAreas: area.subAreas.map(subArea => ({
                             name: subArea,
                             score: subScores[area.name]?.[subArea] || 5,
+                            grade: getGrade(subScores[area.name]?.[subArea] || 5),
                             status: Math.abs((subScores[area.name]?.[subArea] || 5) - ideal) <= threshold ? '✅' : '⚠️'
                         }))
                     }))
@@ -521,6 +532,7 @@
                         area: item.name,
                         emoji: item.emoji,
                         score: item.score,
+                        grade: getGrade(item.score),
                         recommendation: `Focus on improving ${item.name}. Your score of ${item.score.toFixed(1)} is outside the ideal range. Consider small, actionable steps like setting specific goals or seeking support in this area.`,
                         tips: lifeAreas.find(a => a.name === item.name).subAreas.map(subArea => ({
                             subArea,
@@ -532,6 +544,7 @@
                     area: "All",
                     emoji: "",
                     score: overallScore,
+                    grade: getGrade(overallScore),
                     recommendation: "All areas are within the ideal balance range. Keep maintaining your life balance!",
                     tips: [],
                     subAreas: []
@@ -572,9 +585,9 @@
             const getReportSummary = () => {
                 if (!report) return "";
                 if (report.length === 1 && report[0].area === "All") {
-                    return `✅ Your life is well-balanced with an overall score of ${overallScore}. All areas are within the ideal range.`;
+                    return `✅ Your life is well-balanced with an overall score of ${overallScore} (Grade: ${report[0].grade}). All areas are within the ideal range.`;
                 }
-                return `Your overall balance score is ${overallScore}. ${report.length} area(s) need attention to achieve optimal balance.`;
+                return `Your overall balance score is ${overallScore} (Grade: ${getGrade(overallScore)}). ${report.length} area(s) need attention to achieve optimal balance.`;
             };
 
             const getCategoryStatus = () => {
@@ -584,10 +597,12 @@
                     name: area.name,
                     emoji: area.emoji,
                     score: scores[index].toFixed(1),
+                    grade: getGrade(scores[index]),
                     status: Math.abs(scores[index] - ideal) <= threshold ? '✅' : '⚠️',
                     subAreas: area.subAreas.map(subArea => ({
                         name: subArea,
                         score: (subScores[area.name]?.[subArea] || 5).toFixed(1),
+                        grade: getGrade(subScores[area.name]?.[subArea] || 5),
                         status: Math.abs((subScores[area.name]?.[subArea] || 5) - ideal) <= threshold ? '✅' : '⚠️'
                     }))
                 }));
@@ -657,18 +672,20 @@
                                     { className: 'bg-gray-100' },
                                     React.createElement('th', { className: 'p-2 text-left' }, 'Category'),
                                     React.createElement('th', { className: 'p-2 text-left' }, 'Score'),
+                                    React.createElement('th', { className: 'p-2 text-left' }, 'Grade'),
                                     React.createElement('th', { className: 'p-2 text-left' }, 'Status')
                                 )
                             ),
                             React.createElement(
                                 'tbody',
                                 null,
-                                getCategoryStatus().map(({ name, emoji, score, status, subAreas }) =>
+                                getCategoryStatus().map(({ name, emoji, score, grade, status }) =>
                                     React.createElement(
                                         'tr',
                                         { key: name, className: 'border-t' },
                                         React.createElement('td', { className: 'p-2' }, emoji, ' ', name),
                                         React.createElement('td', { className: 'p-2' }, score),
+                                        React.createElement('td', { className: 'p-2' }, grade),
                                         React.createElement('td', { className: 'p-2' }, status)
                                     )
                                 )
@@ -719,18 +736,20 @@
                                         { className: 'bg-gray-50' },
                                         React.createElement('th', { className: 'p-2 text-left' }, 'Sub-Category'),
                                         React.createElement('th', { className: 'p-2 text-left' }, 'Score'),
+                                        React.createElement('th', { className: 'p-2 text-left' }, 'Grade'),
                                         React.createElement('th', { className: 'p-2 text-left' }, 'Status')
                                     )
                                 ),
                                 React.createElement(
                                     'tbody',
                                     null,
-                                    report[currentRecommendationIndex].subAreas.map(({ name, score, status }) =>
+                                    report[currentRecommendationIndex].subAreas.map(({ name, score, grade, status }) =>
                                         React.createElement(
                                             'tr',
                                             { key: name, className: 'border-t' },
                                             React.createElement('td', { className: 'p-2 pl-4' }, name),
                                             React.createElement('td', { className: 'p-2' }, score),
+                                            React.createElement('td', { className: 'p-2' }, grade),
                                             React.createElement('td', { className: 'p-2' }, status)
                                         )
                                     )
