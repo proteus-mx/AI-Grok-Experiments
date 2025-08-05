@@ -1,971 +1,783 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Life Balance</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
-  <style>
-    body {
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #e0e7ff, #bfdbfe);
-      font-family: 'Inter', Arial, sans-serif;
-      touch-action: manipulation;
-      overflow: hidden;
-    }
-    canvas {
-      width: 100vw;
-      max-height: 60vh;
-      border-radius: 12px;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-      background: white;
-      transition: transform 0.3s ease, opacity 0.3s ease;
-    }
-    canvas.zoom-in {
-      transform: scale(1.03);
-      opacity: 0.97;
-    }
-    .title {
-      font-size: 32px;
-      font-weight: 800;
-      color: #1e3a8a;
-      margin: 20px 0;
-      text-align: center;
-      text-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-      animation: fadeIn 1s ease-in;
-    }
-    .balance-score {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      font-size: 24px;
-      font-weight: 700;
-      color: #1e3a8a;
-      background: rgba(255, 255, 255, 0.9);
-      padding: 8px 16px;
-      border-radius: 8px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-      transition: transform 0.2s ease;
-    }
-    .balance-score:hover {
-      transform: scale(1.05);
-    }
-    .progress-bar-container {
-      width: 100vw;
-      height: 10px;
-      background: linear-gradient(to right, #ef4444, #f59e0b, #10b981);
-      position: absolute;
-      top: 0;
-      left: 0;
-    }
-    .progress-indicator {
-      position: absolute;
-      top: 0;
-      width: 0;
-      height: 0;
-      border-left: 8px solid transparent;
-      border-right: 8px solid transparent;
-      border-top: 10px solid #1e3a8a;
-      transition: left 0.5s ease;
-    }
-    .panel {
-      width: 90%;
-      max-width: 500px;
-      background: rgba(255, 255, 255, 0.97);
-      border-radius: 12px;
-      padding: 24px;
-      margin-top: 12px;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-      text-align: center;
-      transition: transform 0.3s ease;
-    }
-    .panel:hover {
-      transform: translateY(-6px);
-    }
-    .panel p {
-      margin: 8px 0;
-      font-size: 12px;
-      color: #111827;
-    }
-    .panel button {
-      background: linear-gradient(135deg, #6366f1, #3b82f6);
-      color: white;
-      border: none;
-      padding: 12px 28px;
-      margin: 6px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 16px;
-      font-weight: 600;
-      transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
-      touch-action: auto;
-    }
-    .panel button:hover {
-      background: linear-gradient(135deg, #4f46e5, #2563eb);
-      transform: scale(1.06);
-      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
-    }
-    .panel button:active {
-      transform: scale(0.94);
-    }
-    .back-button, .settings-button {
-      position: absolute;
-      background: linear-gradient(135deg, #f87171, #ef4444);
-      color: white;
-      border: none;
-      padding: 10px 22px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 15px;
-      font-weight: 600;
-      transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
-      touch-action: auto;
-    }
-    .back-button {
-      top: 20px;
-      left: 100px;
-    }
-    .settings-button {
-      top: 20px;
-      left: 20px;
-      background: linear-gradient(135deg, #10b981, #059669);
-    }
-    .back-button:hover, .settings-button:hover {
-      transform: scale(1.06);
-      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
-    }
-    .back-button:hover {
-      background: linear-gradient(135deg, #ef4444, #dc2626);
-    }
-    .settings-button:hover {
-      background: linear-gradient(135deg, #059669, #047857);
-    }
-    .back-button:active, .settings-button:active {
-      transform: scale(0.94);
-    }
-    .settings-panel, .recommendations-panel {
-      display: none;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 85%;
-      max-width: 450px;
-      background: rgba(255, 255, 255, 0.98);
-      border-radius: 12px;
-      padding: 24px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-      text-align: left;
-      animation: slideIn 0.4s ease;
-      border: 1px solid rgba(0, 0, 0, 0.05);
-      max-height: 80vh;
-      overflow-y: auto;
-    }
-    .sub-area-window {
-      position: absolute;
-      background: rgba(255, 255, 255, 0.8);
-      border-radius: 8px;
-      padding: 12px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-      z-index: 1000;
-      font-size: 14px;
-      color: #1f2937;
-      max-width: 200px;
-    }
-    .sub-area-window p {
-      margin: 4px 0;
-    }
-    .settings-panel h2, .recommendations-panel h2 {
-      font-size: 24px;
-      color: #1e3a8a;
-      margin-bottom: 18px;
-      font-weight: 700;
-    }
-    .settings-panel p, .recommendations-panel p {
-      font-size: 15px;
-      color: #1f2937;
-      line-height: 1.6;
-      margin-bottom: 12px;
-    }
-    .settings-panel button, .recommendations-panel button {
-      width: 100%;
-      padding: 12px;
-      font-size: 16px;
-    }
-    .recommendation-radar {
-      width: 100px;
-      height: 100px;
-      margin: 10px 0;
-      display: block;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes slideIn {
-      from { opacity: 0; transform: translate(-50%, -60%); }
-      to { opacity: 1; transform: translate(-50%, -50%); }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Balance Game</title>
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        canvas { max-width: 100%; height: auto; }
+        .radar-container { max-width: 600px; margin: auto; }
+        .mini-radar-container { max-width: 300px; margin: auto; }
+        .grid-radar-container { max-width: 250px; margin: auto; }
+        .floating-radar-container {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 150px;
+            z-index: 1000;
+            transition: opacity 0.3s;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            padding: 8px;
+        }
+        .floating-radar-container.hidden { opacity: 0; }
+        .floating-buttons-container {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            transition: opacity 0.3s;
+        }
+        .range-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .range-input::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .typewriter {
+            display: inline-block;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+    </style>
 </head>
-<body>
-    <div class="progress-bar-container">
-    <div class="progress-bar" id="progress-bar"></div>
-    <div class="progress-indicator" id="progress-indicator"></div>
-  </div>
-  <div class="title">Life Balance</div>
-  <div class="balance-score" id="balance-score">100%</div>
-  <button class="back-button" id="back-button" style="display: none;" onclick="goBack()">Back</button>
-  <button class="settings-button" id="settings-button" onclick="toggleSettings()">Settings</button>
-  <div id="canvas-holder"></div>
-  <div class="panel" id="panel">
-    <p id="area-text"></p>
-    <p id="score-text"></p>
-    <p id="info-text">Double-tap radar label to select area, single-tap to view sub-areas, drag points to adjust score</p>
-    <button onclick="toggleGridView()">Sub-Radars</button>
-    <button onclick="showRecommendations()">Recommendations</button>
-    <button onclick="randomizeMainScores()">Randomize Life Areas</button>
-    <button onclick="randomizeSubScores()">Randomize Sub-Areas</button>
-    <button onclick="toggleAutoBalance()">Auto Balance</button>
-    <button onclick="toggleAutoSubBalance()">Auto Sub-Balance</button>
-  </div>
-  <div class="settings-panel" id="settings-panel">
-    <h2>Instructions</h2>
-    <p><strong>Main View:</strong> Double-tap a life area label to view its sub-areas or drag the colored points to adjust scores. Single-tap a label to see a list of sub-areas. Scores are balanced; increasing one area decreases others. Selected areas are highlighted with bold text, lines, throbbing circles, and bright sub-radars, while others are 50% transparent.</p>
-    <p><strong>Sub-Area View:</strong> Drag points to adjust sub-area scores, which affect the main area score. Tap the mini-radar (top-right) to return to the main view. Labels with two or more words span two lines.</p>
-    <p><strong>Grid View:</strong> Tap "Show All Sub-Radars" to see all sub-area radars. Tap a radar to view its sub-area details. Tap elsewhere to return to the main view.</p>
-    <p><strong>Recommendations:</strong> Tap "Get Recommendations" to see suggestions for improving out-of-balance areas, with mini-radars for context.</p>
-    <p><strong>Randomize:</strong> Use "Randomize Life Areas" or "Randomize Sub-Areas" to shuffle scores. "Auto Balance" and "Auto Sub-Balance" smoothly adjust life area or sub-area scores continuously (both can run together).</p>
-    <p><strong>Goal:</strong> Adjust scores to align your radars with the transparent "balanced" shapes for harmony across all life areas. Balance score (top-right) and progress bar (top) show how evenly distributed your life areas are.</p>
-    <button onclick="toggleSettings()">Close</button>
-  </div>
-  <div class="recommendations-panel" id="recommendations-panel" style="display: none;">
-    <h2>Recommendations</h2>
-    <div id="recommendations-content"></div>
-    <button onclick="closeRecommendations()">Close</button>
-  </div>
-<script>
-  
-let areas = [
-  { name: "Health", sub: [{name: "Mental Health", score: 50}, {name: "Sleep", score: 50}, {name: "Fitness", score: 50}, {name: "Nutrition", score: 50}, {name: "Hygiene", score: 50}], score: 50, color: [255, 99, 132] },
-  { name: "Appearance", sub: [{name: "Body Image", score: 50}, {name: "Skincare", score: 50}, {name: "Hair", score: 50}, {name: "Fashion", score: 50}, {name: "Aesthetic Care", score: 50}], score: 50, color: [54, 162, 235] },
-  { name: "Love", sub: [{name: "Self-love", score: 50}, {name: "Romantic Relationships", score: 50}, {name: "Partnership", score: 50}, {name: "Dating Life", score: 50}, {name: "Intimacy", score: 50}], score: 50, color: [255, 206, 86] },
-  { name: "Family", sub: [{name: "Bonding Time", score: 50}, {name: "Support Systems", score: 50}, {name: "Responsibilities", score: 50}, {name: "Stability", score: 50}, {name: "Traditions", score: 50}], score: 50, color: [75, 192, 192] },
-  { name: "Friends", sub: [{name: "Social Circle", score: 50}, {name: "Social Support", score: 50}, {name: "Social Events", score: 50}, {name: "Shared Experiences", score: 50}, {name: "Cultural Exchange", score: 50}], score: 50, color: [153, 102, 255] },
-  { name: "Career", sub: [{name: "Formal Education", score: 50}, {name: "Skill Development", score: 50}, {name: "Learning", score: 50}, {name: "Networking", score: 50}, {name: "Work-Life Balance", score: 50}], score: 50, color: [255, 159, 64] },
-  { name: "Money", sub: [{name: "Income", score: 50}, {name: "Savings", score: 50}, {name: "Investing", score: 50}, {name: "Financial Planning", score: 50}, {name: "Financial Independence", score: 50}], score: 50, color: [83, 83, 83] },
-  { name: "Self-Growth", sub: [{name: "Purpose", score: 50}, {name: "Goal Setting", score: 50}, {name: "Habits and Routines", score: 50}, {name: "Self-Reflection", score: 50}, {name: "Self-Awareness", score: 50}], score: 50, color: [255, 99, 255] },
-  { name: "Spirituality", sub: [{name: "Mindfulness", score: 50}, {name: "Connection with People", score: 50}, {name: "Compassion", score: 50}, {name: "Personal Beliefs", score: 50}, {name: "Connection with Nature", score: 50}], score: 50, color: [102, 255, 102] },
-  { name: "Recreation", sub: [{name: "Hobbies", score: 50}, {name: "Leisure", score: 50}, {name: "Entertainment", score: 50}, {name: "Pleasure", score: 50}, {name: "Sport", score: 50}], score: 50, color: [255, 182, 193] },
-  { name: "Environment", sub: [{name: "Travel", score: 50}, {name: "Organization", score: 50}, {name: "Cleanliness", score: 50}, {name: "Comfort", score: 50}, {name: "Maintenance", score: 50}], score: 50, color: [70, 130, 180] },
-  { name: "Community", sub: [{name: "Aesthetics", score: 50}, {name: "Connections", score: 50}, {name: "Social Responsibility", score: 50}, {name: "Helping Others", score: 50}, {name: "Local Events", score: 50}], score: 50, color: [218, 165, 32] }
-];
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 font-sans min-h-screen">
+    <div id="root"></div>
+    <script type="text/javascript">
+        const lifeAreas = [
+            { name: "Health", emoji: "💪", subAreas: ["Mental Health", "Sleep", "Fitness", "Nutrition", "Hygiene"], description: "Physical and mental well-being for a vibrant life.", tips: {
+                "Mental Health": score => score < 4 ? "Practice mindfulness or seek professional support." : score < 7 ? "Incorporate daily stress-relief activities." : "Maintain your mental wellness routine.",
+                "Sleep": score => score < 4 ? "Establish a consistent sleep schedule." : score < 7 ? "Limit screen time before bed." : "Continue prioritising quality sleep.",
+                "Fitness": score => score < 4 ? "Start with short daily workouts." : score < 7 ? "Vary your exercise routine." : "Keep up your fitness regimen.",
+                "Nutrition": score => score < 4 ? "Plan balanced meals." : score < 7 ? "Reduce processed foods." : "Sustain your healthy eating habits.",
+                "Hygiene": score => score < 4 ? "Set a daily hygiene routine." : score < 7 ? "Focus on consistent self-care." : "Maintain excellent hygiene practices."
+            }},
+            { name: "Appearance", emoji: "🪞", subAreas: ["Body Image", "Skincare", "Hair", "Fashion", "Aesthetic Care"], description: "Confidence in your personal style and grooming.", tips: {
+                "Body Image": score => score < 4 ? "Practice self-compassion exercises." : score < 7 ? "Focus on positive affirmations." : "Continue embracing your body confidence.",
+                "Skincare": score => score < 4 ? "Start a basic skincare routine." : score < 7 ? "Use sunscreen daily." : "Keep up your skincare regimen.",
+                "Hair": score => score < 4 ? "Consult a stylist for care tips." : score < 7 ? "Maintain regular hair care." : "Sustain your hair care routine.",
+                "Fashion": score => score < 4 ? "Explore styles that suit you." : score < 7 ? "Update your wardrobe gradually." : "Keep expressing your style.",
+                "Aesthetic Care": score => score < 4 ? "Try simple grooming habits." : score < 7 ? "Experiment with new looks." : "Maintain your aesthetic routine."
+            }},
+            { name: "Love", emoji: "❤️", subAreas: ["Self-love", "Romantic Relationships", "Partnership", "Dating Life", "Intimacy"], description: "Nurturing self-love and romantic connections.", tips: {
+                "Self-love": score => score < 4 ? "Practice daily self-care rituals." : score < 7 ? "Reflect on personal strengths." : "Continue fostering self-love.",
+                "Romantic Relationships": score => score < 4 ? "Communicate openly with partners." : score < 7 ? "Plan quality time together." : "Maintain strong romantic bonds.",
+                "Partnership": score => score < 4 ? "Work on mutual goals." : score < 7 ? "Strengthen trust with partner." : "Keep nurturing your partnership.",
+                "Dating Life": score => score < 4 ? "Explore new social settings." : score < 7 ? "Be open to new connections." : "Enjoy your active dating life.",
+                "Intimacy": score => score < 4 ? "Discuss needs with partner." : score < 7 ? "Build emotional closeness." : "Sustain intimate connections."
+            }},
+            { name: "Family", emoji: "👨‍👩‍👧‍👦", subAreas: ["Bonding Time", "Support Systems", "Responsibilities", "Stability", "Traditions"], description: "Strengthening family ties and support.", tips: {
+                "Bonding Time": score => score < 4 ? "Schedule family activities." : score < 7 ? "Plan regular family time." : "Keep family bonding strong.",
+                "Support Systems": score => score < 4 ? "Reach out to family." : score < 7 ? "Strengthen family communication." : "Maintain family support networks.",
+                "Responsibilities": score => score < 4 ? "Delegate family tasks." : score < 7 ? "Balance family duties." : "Continue managing responsibilities.",
+                "Stability": score => score < 4 ? "Create a stable routine." : score < 7 ? "Focus on family consistency." : "Sustain family stability.",
+                "Traditions": score => score < 4 ? "Start new family traditions." : score < 7 ? "Reinforce existing traditions." : "Keep family traditions alive."
+            }},
+            { name: "Friends", emoji: "🤝", subAreas: ["Social Circle", "Social Support", "Social Events", "Shared Experiences", "Cultural Exchange"], description: "Building a supportive social network.", tips: {
+                "Social Circle": score => score < 4 ? "Join local groups." : score < 7 ? "Nurture existing friendships." : "Maintain a vibrant social circle.",
+                "Social Support": score => score < 4 ? "Seek supportive friends." : score < 7 ? "Offer help to friends." : "Continue building social support.",
+                "Social Events": score => score < 4 ? "Attend community events." : score < 7 ? "Plan social gatherings." : "Keep active in social events.",
+                "Shared Experiences": score => score < 4 ? "Create shared moments." : score < 7 ? "Engage in group activities." : "Sustain shared experiences.",
+                "Cultural Exchange": score => score < 4 ? "Explore diverse cultures." : score < 7 ? "Share cultural experiences." : "Continue cultural exchanges."
+            }},
+            { name: "Career", emoji: "💼", subAreas: ["Formal Education", "Skill Development", "Learning", "Networking", "Work-Life Balance"], description: "Advancing professional growth and balance.", tips: {
+                "Formal Education": score => score < 4 ? "Enroll in a course." : score < 7 ? "Pursue advanced learning." : "Maintain educational growth.",
+                "Skill Development": score => score < 4 ? "Learn a new skill." : score < 7 ? "Practice existing skills." : "Keep honing your skills.",
+                "Learning": score => score < 4 ? "Read industry materials." : score < 7 ? "Attend workshops." : "Continue lifelong learning.",
+                "Networking": score => score < 4 ? "Join professional groups." : score < 7 ? "Attend networking events." : "Maintain strong networks.",
+                "Work-Life Balance": score => score < 4 ? "Set work boundaries." : score < 7 ? "Prioritise personal time." : "Sustain work-life balance."
+            }},
+            { name: "Money", emoji: "💰", subAreas: ["Income", "Savings", "Investing", "Financial Planning", "Financial Independence"], description: "Securing financial stability and growth.", tips: {
+                "Income": score => score < 4 ? "Explore income opportunities." : score < 7 ? "Diversify income sources." : "Maintain steady income.",
+                "Savings": score => score < 4 ? "Start a savings plan." : score < 7 ? "Increase savings rate." : "Continue saving consistently.",
+                "Investing": score => score < 4 ? "Learn about investments." : score < 7 ? "Diversify investments." : "Keep managing investments.",
+                "Financial Planning": score => score < 4 ? "Create a budget." : score < 7 ? "Review financial goals." : "Sustain financial planning.",
+                "Financial Independence": score => score < 4 ? "Set independence goals." : score < 7 ? "Track progress to independence." : "Maintain financial independence."
+            }},
+            { name: "Self-Growth", emoji: "🌱", subAreas: ["Purpose", "Goal Setting", "Habits and Routines", "Self-Reflection", "Self-Awareness"], description: "Pursuing personal development and purpose.", tips: {
+                "Purpose": score => score < 4 ? "Explore personal values." : score < 7 ? "Align actions with purpose." : "Continue living purposefully.",
+                "Goal Setting": score => score < 4 ? "Set achievable goals." : score < 7 ? "Refine your goals." : "Keep pursuing your goals.",
+                "Habits and Routines": score => score < 4 ? "Build positive habits." : score < 7 ? "Tweak daily routines." : "Maintain productive habits.",
+                "Self-Reflection": score => score < 4 ? "Start journaling." : score < 7 ? "Reflect regularly." : "Continue self-reflection.",
+                "Self-Awareness": score => score < 4 ? "Practice mindfulness." : score < 7 ? "Deepen self-understanding." : "Sustain self-awareness."
+            }},
+            { name: "Spirituality", emoji: "🧘", subAreas: ["Mindfulness", "Connection with People", "Compassion", "Personal Beliefs", "Connection with Nature"], description: "Finding inner peace and connection.", tips: {
+                "Mindfulness": score => score < 4 ? "Try meditation." : score < 7 ? "Practice daily mindfulness." : "Maintain mindfulness practice.",
+                "Connection with People": score => score < 4 ? "Build deeper connections." : score < 7 ? "Nurture relationships." : "Keep strong connections.",
+                "Compassion": score => score < 4 ? "Practice kindness." : score < 7 ? "Volunteer for causes." : "Continue showing compassion.",
+                "Personal Beliefs": score => score < 4 ? "Explore spiritual beliefs." : score < 7 ? "Reflect on beliefs." : "Sustain personal beliefs.",
+                "Connection with Nature": score => score < 4 ? "Spend time outdoors." : score < 7 ? "Engage with nature." : "Maintain nature connection."
+            }},
+            { name: "Recreation", emoji: "🎮", subAreas: ["Hobbies", "Leisure", "Entertainment", "Pleasure", "Sport"], description: "Enjoying hobbies and leisure activities.", tips: {
+                "Hobbies": score => score < 4 ? "Try a new hobby." : score < 7 ? "Dedicate time to hobbies." : "Keep enjoying hobbies.",
+                "Leisure": score => score < 4 ? "Schedule leisure time." : score < 7 ? "Explore new leisure activities." : "Maintain leisure balance.",
+                "Entertainment": score => score < 4 ? "Find fun activities." : score < 7 ? "Vary entertainment choices." : "Continue enjoying entertainment.",
+                "Pleasure": score => score < 4 ? "Seek joyful experiences." : score < 7 ? "Balance pleasure activities." : "Keep finding pleasure.",
+                "Sport": score => score < 4 ? "Try a new sport." : score < 7 ? "Join a sports group." : "Maintain sports activities."
+            }},
+            { name: "Environment", emoji: "🏡", subAreas: ["Travel", "Organisation", "Cleanliness", "Comfort", "Maintenance"], description: "Creating a comfortable living space.", tips: {
+                "Travel": score => score < 4 ? "Plan a local trip." : score < 7 ? "Explore new destinations." : "Keep enjoying travel.",
+                "Organisation": score => score < 4 ? "Start decluttering." : score < 7 ? "Improve organisation systems." : "Maintain an organised space.",
+                "Cleanliness": score => score < 4 ? "Set cleaning routines." : score < 7 ? "Deep clean regularly." : "Keep a clean environment.",
+                "Comfort": score => score < 4 ? "Enhance home comfort." : score < 7 ? "Add cozy elements." : "Maintain a comfortable space.",
+                "Maintenance": score => score < 4 ? "Fix small issues." : score < 7 ? "Schedule regular maintenance." : "Keep up with maintenance."
+            }},
+            { name: "Community", emoji: "🌍", subAreas: ["Aesthetics", "Connections", "Social Responsibility", "Helping Others", "Local Events", "Volunteering"], description: "Contributing to your local community.", tips: {
+                "Aesthetics": score => score < 4 ? "Improve community spaces." : score < 7 ? "Contribute to local aesthetics." : "Maintain community beauty.",
+                "Connections": score => score < 4 ? "Meet local people." : score < 7 ? "Strengthen community ties." : "Keep community connections.",
+                "Social Responsibility": score => score < 4 ? "Learn about local issues." : score < 7 ? "Engage in community projects." : "Continue social responsibility.",
+                "Helping Others": score => score < 4 ? "Offer help locally." : score < 7 ? "Support community members." : "Keep helping others.",
+                "Local Events": score => score < 4 ? "Attend local events." : score < 7 ? "Organise community events." : "Stay active in local events.",
+                "Volunteering": score => score < 4 ? "Start volunteering." : score < 7 ? "Increase volunteer time." : "Maintain volunteer commitment."
+            }}
+        ];
 
+        function Typewriter({ text }) {
+            const [displayedText, setDisplayedText] = React.useState('');
+            const [index, setIndex] = React.useState(0);
 
+            React.useEffect(() => {
+                setDisplayedText('');
+                setIndex(0);
+            }, [text]);
 
-let selectedArea = null;
-let viewMode = 'main';
-let draggedPoint = null;
-let hoveredPoint = null;
-let autoBalanceActive = false;
-let autoSubBalanceActive = false;
-let autoBalanceTime = 0;
-let lastTapTime = 0;
-let lastTapIndex = null;
-const DOUBLE_TAP_THRESHOLD = 300; // ms
-let subAreaWindow = null;
-const TOTAL_AREA = 600;
-const BALANCED_SCORE = TOTAL_AREA / areas.length;
-const SUB_BALANCED_SCORE = 50;
+            React.useEffect(() => {
+                if (index < text.length) {
+                    const timeout = setTimeout(() => {
+                        setDisplayedText(prev => prev + text[index]);
+                        setIndex(prev => prev + 1);
+                    }, 50);
+                    return () => clearTimeout(timeout);
+                }
+            }, [index, text]);
 
-
-restoreState();
-
-
-function setup() {
-  let canvas = createCanvas(windowWidth, min(windowHeight * 0.6, 500));
-  canvas.parent('canvas-holder');
-  textAlign(CENTER, CENTER);
-  textSize(12);
-  normalizeMainScores();
-  updatePanel();
-  updateBalanceScore();
-}
-
-function calculateBalanceScore() {
-  let deviations = areas.map(area => Math.abs(area.score - BALANCED_SCORE));
-  let maxDeviation = 100;
-  let totalDeviation = deviations.reduce((sum, dev) => sum + dev, 0);
-  let averageDeviation = totalDeviation / areas.length;
-  let balanceScore = constrain(100 - (averageDeviation / maxDeviation) * 100, 0, 100);
-  return Math.round(balanceScore);
-}
-
-function updateBalanceScore() {
-  let score = calculateBalanceScore();
-  document.getElementById('balance-score').innerText = `${score}%`;
-  document.getElementById('progress-indicator').style.left = `${score}%`;
-}
-
-function generateRadarSVG(area, size = 100) {
-  let r = size * 0.4;
-  let cx = size / 2;
-  let cy = size / 2;
-  let points = [];
-  let balancedPoints = [];
-  for (let j = 0; j < area.sub.length; j++) {
-    let angle = TWO_PI / area.sub.length * j - PI / 2;
-    let score = area.sub[j].score / 100 * r;
-    let balancedScore = SUB_BALANCED_SCORE / 100 * r;
-    let px = cx + cos(angle) * score;
-    let py = cy + sin(angle) * score;
-    let bpx = cx + cos(angle) * balancedScore;
-    let bpy = cy + sin(angle) * balancedScore;
-    points.push(`${px},${py}`);
-    balancedPoints.push(`${bpx},${bpy}`);
-  }
-  let rgb = area.color.join(',');
-  return `
-    <svg width="${size}" height="${size}" class="recommendation-radar">
-      <polygon points="${balancedPoints.join(' ')}" fill="rgba(200,200,200,0.3)" stroke="none"/>
-      <polygon points="${points.join(' ')}" fill="rgba(${rgb},0.5)" stroke="none"/>
-    </svg>
-  `;
-}
-
-function removeSubAreaWindow() {
-  if (subAreaWindow) {
-    subAreaWindow.remove();
-    subAreaWindow = null;
-  }
-}
-
-function createSubAreaWindow(areaIndex, x, y) {
-  removeSubAreaWindow();
-  let area = areas[areaIndex];
-  subAreaWindow = document.createElement('div');
-  subAreaWindow.className = 'sub-area-window';
-  let subAreasList = area.sub.map(sub => `<p>${sub.name} (${Math.round(sub.percentage)}%)</p>`).join('');
-  subAreaWindow.innerHTML = subAreasList;
-  
-  let canvasRect = document.querySelector('canvas').getBoundingClientRect();
-  let windowX = x + canvasRect.left + 10;
-  let windowY = y + canvasRect.top + 10;
-  let maxX = window.innerWidth - 200;
-  let maxY = window.innerHeight - (area.sub.length * 20 + 24);
-  windowX = Math.max(10, Math.min(windowX, maxX));
-  windowY = Math.max(10, Math.min(windowY, maxY));
-  
-  subAreaWindow.style.left = `${windowX}px`;
-  subAreaWindow.style.top = `${windowY}px`;
-  document.body.appendChild(subAreaWindow);
-}
-
-function randomizeMainScores() {
-  let total = TOTAL_AREA;
-  let scores = new Array(areas.length).fill(BALANCED_SCORE);
-  let maxDeviation = 10;
-  for (let i = 0; i < areas.length; i++) {
-    scores[i] += Math.random() * maxDeviation * 2 - maxDeviation;
-  }
-  let sum = scores.reduce((acc, val) => acc + val, 0);
-  let factor = total / sum;
-  areas.forEach((area, i) => {
-    area.score = constrain(scores[i] * factor, 0, 100);
-    area.percentage = (area.score / TOTAL_AREA) * 100;
-    normalizeSubScores(area);
-  });
-  updateBalanceScore();
-  updatePanel();
-}
-
-function randomizeSubScores() {
-  if (viewMode === 'main') {
-    areas.forEach(area => {
-      let total = area.score * area.sub.length;
-      let scores = new Array(area.sub.length).fill(SUB_BALANCED_SCORE);
-      let maxDeviation = 20;
-      for (let i = 0; i < area.sub.length; i++) {
-        scores[i] += Math.random() * maxDeviation * 2 - maxDeviation;
-      }
-      let sum = scores.reduce((acc, val) => acc + val, 0);
-      let factor = total / sum;
-      area.sub.forEach((sub, i) => {
-        sub.score = constrain(scores[i] * factor, 0, 100);
-        sub.percentage = (sub.score / (area.score * area.sub.length)) * 100 || 0;
-      });
-      area.score = area.sub.reduce((acc, sub) => acc + sub.score, 0) / area.sub.length;
-      area.percentage = (area.score / TOTAL_AREA) * 100;
-    });
-  } else if (selectedArea !== null) {
-    let area = areas[selectedArea];
-    let total = area.score * area.sub.length;
-    let scores = new Array(area.sub.length).fill(SUB_BALANCED_SCORE);
-    let maxDeviation = 20;
-    for (let i = 0; i < area.sub.length; i++) {
-      scores[i] += Math.random() * maxDeviation * 2 - maxDeviation;
-    }
-    let sum = scores.reduce((acc, val) => acc + val, 0);
-    let factor = total / sum;
-    area.sub.forEach((sub, i) => {
-      sub.score = constrain(scores[i] * factor, 0, 100);
-      sub.percentage = (sub.score / (area.score * area.sub.length)) * 100 || 0;
-    });
-    area.score = area.sub.reduce((acc, sub) => acc + sub.score, 0) / area.sub.length;
-    area.percentage = (area.score / TOTAL_AREA) * 100;
-    normalizeMainScores();
-  }
-  updateBalanceScore();
-  updatePanel();
-}
-
-function toggleAutoBalance() {
-  autoBalanceActive = !autoBalanceActive;
-  autoBalanceTime = 0;
-  document.getElementById('panel').querySelectorAll('button')[4].innerText = autoBalanceActive ? 'Stop Auto Balance' : 'Auto Balance';
-}
-
-function toggleAutoSubBalance() {
-  autoSubBalanceActive = !autoSubBalanceActive;
-  autoBalanceTime = 0;
-  document.getElementById('panel').querySelectorAll('button')[5].innerText = autoSubBalanceActive ? 'Stop Auto Sub-Balance' : 'Auto Sub-Balance';
-}
-
-function normalizeMainScores() {
-  let sum = areas.reduce((acc, area) => acc + area.score, 0);
-  let factor = TOTAL_AREA / sum;
-  areas.forEach(area => {
-    area.score = constrain(area.score * factor, 0, 100);
-    area.percentage = (area.score / TOTAL_AREA) * 100;
-    normalizeSubScores(area);
-  });
-  updateBalanceScore();
-}
-
-function normalizeSubScores(area) {
-  let sum = area.sub.reduce((acc, sub) => acc + sub.score, 0);
-  let factor = (area.score * area.sub.length) / sum;
-  area.sub.forEach(sub => {
-    sub.score = constrain(sub.score * factor, 0, 100);
-    sub.percentage = (sub.score / (area.score * area.sub.length)) * 100 || 0;
-  });
-  area.score = area.sub.reduce((acc, sub) => acc + sub.score, 0) / area.sub.length;
-  area.percentage = (area.score / TOTAL_AREA) * 100;
-}
-
-function adjustMainScores(changedIndex, newScore) {
-  let oldScore = areas[changedIndex].score;
-  let delta = newScore - oldScore;
-  areas[changedIndex].score = newScore;
-  areas[changedIndex].percentage = (newScore / TOTAL_AREA) * 100;
-  let otherIndices = areas.map((_, i) => i).filter(i => i !== changedIndex);
-  let totalOtherScore = otherIndices.reduce((acc, i) => acc + areas[i].score, 0);
-  if (totalOtherScore > 0) {
-    let factor = (totalOtherScore - delta) / totalOtherScore;
-    otherIndices.forEach(i => {
-      areas[i].score = constrain(areas[i].score * factor, 0, 100);
-      areas[i].percentage = (areas[i].score / TOTAL_AREA) * 100;
-      normalizeSubScores(areas[i]);
-    });
-  }
-  normalizeSubScores(areas[changedIndex]);
-  updateBalanceScore();
-}
-
-function adjustSubScores(area, changedIndex, newScore) {
-  let oldScore = area.sub[changedIndex].score;
-  let delta = newScore - oldScore;
-  area.sub[changedIndex].score = newScore;
-  area.sub[changedIndex].percentage = (newScore / (area.score * area.sub.length)) * 100 || 0;
-  let otherIndices = area.sub.map((_, i) => i).filter(i => i !== changedIndex);
-  let totalOtherScore = otherIndices.reduce((acc, i) => acc + area.sub[i].score, 0);
-  if (totalOtherScore > 0) {
-    let factor = (totalOtherScore - delta) / totalOtherScore;
-    otherIndices.forEach(i => {
-      area.sub[i].score = constrain(area.sub[i].score * factor, 0, 100);
-      area.sub[i].percentage = (area.sub[i].score / (area.score * area.sub.length)) * 100 || 0;
-    });
-  }
-  area.score = area.sub.reduce((acc, sub) => acc + sub.score, 0) / area.sub.length;
-  area.percentage = (area.score / TOTAL_AREA) * 100;
-  normalizeMainScores();
-}
-
-function generateRecommendations() {
-  let recs = [];
-  const mainThreshold = BALANCED_SCORE * 0.7;
-  const subThreshold = SUB_BALANCED_SCORE * 0.7;
-
-  areas.forEach(area => {
-    if (area.score < mainThreshold) {
-      let radarSvg = generateRadarSVG(area);
-      recs.push(`<p><strong>Focus on ${area.name} (Current: ${Math.round(area.percentage)}%):</strong></p>${radarSvg}`);
-      let subRecs = [];
-      area.sub.forEach(sub => {
-        if (sub.score < subThreshold) {
-          subRecs.push(`<p>- ${sub.name} (Current: ${Math.round(sub.percentage)}%)</p>`);
+            return React.createElement('span', { className: 'typewriter italic' }, '💡Tip: ', displayedText);
         }
-      });
-      if (subRecs.length > 0) {
-        recs.push(...subRecs);
-        recs.push(`<p>Spend time improving these aspects.</p>`);
-      }
-    }
-  });
-  return recs.length > 0 ? recs.join('') : "<p>Your life areas are well-balanced!</p>";
-}
 
-function draw() {
-  background(255);
-  if (autoBalanceActive) {
-    autoBalanceTime += 0.016;
-    let t = autoBalanceTime % 10;
-    areas.forEach((area, i) => {
-      let randomOffset = Math.random() * 40 - 20;
-      let targetScore = BALANCED_SCORE + (40 + randomOffset) * Math.sin(TWO_PI * t / 10 + i * TWO_PI / areas.length + randomOffset);
-      let currentScore = area.score;
-      let newScore = lerp(currentScore, targetScore, 0.02);
-      adjustMainScores(i, newScore);
-    });
-  }
-  if (autoSubBalanceActive) {
-    autoBalanceTime += 0.016;
-    let t = autoBalanceTime % 10;
-    areas.forEach((area, i) => {
-      area.sub.forEach((sub, j) => {
-        let randomOffset = Math.random() * 20 - 10;
-        let targetScore = SUB_BALANCED_SCORE + (20 + randomOffset) * Math.sin(TWO_PI * t / 10 + j * TWO_PI / area.sub.length + i + randomOffset);
-        let currentScore = sub.score;
-        let newScore = lerp(currentScore, targetScore, 0.02);
-        adjustSubScores(area, j, newScore);
-      });
-    });
-  }
-  let cx = width / 2, cy = height / 2;
-  let r = min(width, height) * 0.4;
-  if (viewMode === 'grid') {
-    drawGridView();
-  } else if (viewMode === 'main') {
-    drawMainRadar(cx, cy, r);
-  } else if (selectedArea !== null) {
-    drawMainRadar(width * 0.85, height * 0.15, r * 0.35, false);
-    drawSubRadar(cx, cy, r);
-  }
-}
+        function App() {
+            const [scores, setScores] = React.useState(Array(12).fill(5));
+            const [selectedArea, setSelectedArea] = React.useState(null);
+            const [subScores, setSubScores] = React.useState({});
+            const [report, setReport] = React.useState(null);
+            const [currentRecommendationIndex, setCurrentRecommendationIndex] = React.useState(0);
+            const [showRadar, setShowRadar] = React.useState(true);
+            const [showGridView, setShowGridView] = React.useState(false);
+            const [showFloatingRadar, setShowFloatingRadar] = React.useState(false);
+            const panelRefs = React.useRef(lifeAreas.reduce((acc, area) => ({ ...acc, [area.name]: React.createRef() }), {}));
+            const radarRef = React.useRef(null);
 
-function drawMainRadar(cx, cy, r, showLabels = true) {
-  let points = [];
-  let balancedPoints = [];
-  hoveredPoint = null;
-  for (let i = 0; i < areas.length; i++) {
-    let angle = TWO_PI / areas.length * i - PI / 2;
-    let x = cx + cos(angle) * r;
-    let y = cy + sin(angle) * r;
-    let score = areas[i].score / 100 * r;
-    let balancedScore = BALANCED_SCORE / 100 * r;
-    let px = cx + cos(angle) * score;
-    let py = cy + sin(angle) * score;
-    let bpx = cx + cos(angle) * balancedScore;
-    let bpy = cy + sin(angle) * balancedScore;
-    points.push([px, py]);
-    balancedPoints.push([bpx, bpy]);
+            const calculateOverallScore = () => {
+                const ideal = 5;
+                const deviations = scores.map(score => Math.abs(score - ideal));
+                const balanceScore = Math.max(0, 10 - deviations.reduce((sum, dev) => sum + dev, 0) / scores.length);
+                return Math.round(balanceScore * 10) / 10;
+            };
 
-    if (showLabels) {
-      let subAreas = areas[i].sub;
-      let subPoints = [];
-      let subBalancedPoints = [];
-      let subR = r * 0.3;
-      for (let j = 0; j < subAreas.length; j++) {
-        let subAngle = TWO_PI / subAreas.length * j - PI / 2;
-        let subScore = subAreas[j].score / 100 * subR;
-        let subBalancedScore = SUB_BALANCED_SCORE / 100 * subR;
-        let subPx = x + cos(subAngle) * subScore;
-        let subPy = y + sin(subAngle) * subScore;
-        let subBpx = x + cos(subAngle) * subBalancedScore;
-        let subBpy = y + sin(subAngle) * subBalancedScore;
-        subPoints.push([subPx, subPy]);
-        subBalancedPoints.push([subBpx, subBpy]);
-      }
+            const overallScore = calculateOverallScore();
 
-      fill(200, 200, 200, selectedArea === i && viewMode === 'main' ? 30 : 15);
-      noStroke();
-      beginShape();
-      subBalancedPoints.forEach(([spx, spy]) => vertex(spx, spy));
-      endShape(CLOSE);
+            const getColor = (score) => {
+                const ideal = 5;
+                const maxDeviation = 5;
+                const deviation = Math.abs(score - ideal);
+                const ratio = Math.min(deviation / maxDeviation, 1);
+                const r = Math.round(34 + (239 - 34) * ratio);
+                const g = Math.round(197 - (197 - 68) * ratio);
+                const b = Math.round(94 - (94 - 68) * ratio);
+                return `rgb(${r}, ${g}, ${b})`;
+            };
 
-      fill(areas[i].color[0], areas[i].color[1], areas[i].color[2], selectedArea === i && viewMode === 'main' ? 255 : 50);
-      beginShape();
-      subPoints.forEach(([spx, spy]) => vertex(spx, spy));
-      endShape(CLOSE);
+            const getSliderColorClass = (score) => {
+                return `custom-${score.toFixed(1).replace('.', '-')}`;
+            };
 
-      stroke(0, selectedArea === i && viewMode === 'main' ? 100 : 25);
-      strokeWeight(selectedArea === i && viewMode === 'main' ? 2 : 1);
-      line(cx, cy, x, y);
-      fill(0, selectedArea === i && viewMode === 'main' ? 255 : 128);
-      noStroke();
-      textStyle((selectedArea === i && viewMode === 'main' && !draggedPoint) || dist(mouseX, mouseY, x, y) < 30 ? BOLD : NORMAL);
-      if (dist(mouseX, mouseY, x, y) < 30) {
-        fill(0, 0, 0, 200);
-        textStyle(BOLD);
-      }
-      text(`${areas[i].name} (${Math.round(areas[i].percentage)}%)`, x, y);
-    }
+            React.useEffect(() => {
+                const styles = scores.concat(
+                    Object.values(subScores).flatMap(area => Object.values(area || {}))
+                ).map(score => score || 5).map(score => {
+                    const color = getColor(score);
+                    const className = `.range-input.custom-${score.toFixed(1).replace('.', '-')}`;
+                    return `
+                        ${className}::-webkit-slider-thumb { background: ${color}; }
+                        ${className}::-moz-range-thumb { background: ${color}; }
+                    `;
+                }).join('\n');
+                
+                const styleSheet = document.createElement('style');
+                styleSheet.textContent = styles;
+                document.head.appendChild(styleSheet);
+                
+                return () => document.head.removeChild(styleSheet);
+            }, [scores, subScores]);
 
-    if (dist(mouseX, mouseY, px, py) < 20) {
-      hoveredPoint = { type: 'main', index: i };
-    }
-  }
+            React.useEffect(() => {
+                const handleScroll = () => {
+                    const radarContainer = document.querySelector('.radar-container');
+                    if (radarContainer) {
+                        const rect = radarContainer.getBoundingClientRect();
+                        setShowFloatingRadar(rect.bottom < 0);
+                    }
+                };
 
-  fill(200, 200, 200, 50);
-  noStroke();
-  beginShape();
-  balancedPoints.forEach(([px, py]) => vertex(px, py));
-  endShape(CLOSE);
+                window.addEventListener('scroll', handleScroll);
+                return () => window.removeEventListener('scroll', handleScroll);
+            }, []);
 
-  fill(129, 140, 248, 100);
-  beginShape();
-  points.forEach(([px, py]) => vertex(px, py));
-  endShape(CLOSE);
+            React.useEffect(() => {
+                if (!showRadar || showGridView) return;
+                const ctx = document.getElementById('radarChart').getContext('2d');
+                const idealData = Array(12).fill(5);
 
-  points.forEach(([px, py], i) => {
-    fill(areas[i].color[0], areas[i].color[1], areas[i].color[2]);
-    noStroke();
-    let size = (hoveredPoint && hoveredPoint.type === 'main' && hoveredPoint.index === i) ? 18 : 15;
-    if (selectedArea === i && viewMode === 'main') {
-      size += 3 * sin(frameCount * 0.1);
-    }
-    size *= (r / (min(width, height) * 0.4));
-    ellipse(px, py, size, size);
-  });
-}
+                let lastTapTime = 0;
+                let lastTappedIndex = null;
 
-function drawSubRadar(cx, cy, r) {
-  let subAreas = areas[selectedArea].sub;
-  let points = [];
-  let balancedPoints = [];
-  hoveredPoint = null;
+                const chart = new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: lifeAreas.map(area => selectedArea === area.name ? `${area.emoji} ${area.name}` : area.emoji),
+                        datasets: [
+                            {
+                                label: 'Life Balance',
+                                data: scores,
+                                backgroundColor: 'rgba(59, 130, 246, 0.3)',
+                                borderColor: 'rgba(59, 130, 246, 1)',
+                                borderWidth: 3,
+                                pointBackgroundColor: scores.map(score => getColor(score)),
+                                pointRadius: 8,
+                                pointHoverRadius: 12
+                            },
+                            {
+                                label: 'Ideal Balance',
+                                data: idealData,
+                                backgroundColor: 'rgba(200, 200, 200, 0.2)',
+                                borderColor: 'rgba(200, 200, 200, 1)',
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                fill: true
+                            }
+                        ]
+                    },
+                    options: {
+                        scales: {
+                            r: {
+                                min: 0,
+                                max: 10,
+                                ticks: { stepSize: 2, font: { size: 14 } },
+                                pointLabels: { 
+                                    font: { size: 22, weight: 'bold' },
+                                    callback: (label, index) => label
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        onClick: (e, elements, chart) => {
+                            const points = chart.getElementsAtEventForMode(e, 'point', { intersect: true }, true);
+                            if (points.length) {
+                                const index = points[0].index;
+                                const areaName = lifeAreas[index].name;
+                                setSelectedArea(areaName === selectedArea ? null : areaName);
+                            }
 
-  fill(0);
-  noStroke();
-  textSize(24);
-  textStyle(BOLD);
-  text(areas[selectedArea].name, cx, cy - r - 30);
+                            const labelPosition = chart.getElementsAtEventForMode(e, 'index', { intersect: false }, true);
+                            if (labelPosition.length) {
+                                const index = labelPosition[0].index;
+                                const currentTime = new Date().getTime();
+                                const tapLength = currentTime - lastTapTime;
 
-  for (let i = 0; i < subAreas.length; i++) {
-    let angle = TWO_PI / subAreas.length * i - PI / 2;
-    let x = cx + cos(angle) * r;
-    let y = cy + sin(angle) * r;
-    let score = subAreas[i].score / 100 * r;
-    let balancedScore = SUB_BALANCED_SCORE / 100 * r;
-    let px = cx + cos(angle) * score;
-    let py = cy + sin(angle) * score;
-    let bpx = cx + cos(angle) * balancedScore;
-    let bpy = cy + sin(angle) * balancedScore;
-    points.push([px, py]);
-    balancedPoints.push([bpx, bpy]);
+                                if (tapLength < 300 && lastTappedIndex === index) {
+                                    const areaName = lifeAreas[index].name;
+                                    setSelectedArea(areaName);
+                                    if (panelRefs.current[areaName].current) {
+                                        panelRefs.current[areaName].current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    }
+                                    lastTapTime = 0;
+                                    lastTappedIndex = null;
+                                } else {
+                                    lastTapTime = currentTime;
+                                    lastTappedIndex = index;
+                                }
+                            }
+                        }
+                    }
+                });
 
-    stroke(0, 50);
-    line(cx, cy, x, y);
-    fill(0);
-    noStroke();
-    textSize(12);
-    if (dist(mouseX, mouseY, x, y) < 30) {
-      fill(0, 0, 0, 200);
-      textStyle(BOLD);
-    }
-    let label = subAreas[i].name;
-    let percentage = `(${Math.round(subAreas[i].percentage)}%)`;
-    if (label.split(' ').length >= 2) {
-      let words = label.split(' ');
-      let firstLine = words.slice(0, Math.ceil(words.length / 2)).join(' ');
-      let secondLine = words.slice(Math.ceil(words.length / 2)).join(' ');
-      text(firstLine, x, y - 8);
-      text(secondLine + ' ' + percentage, x, y + 8);
-    } else {
-      text(`${label} ${percentage}`, x, y);
-    }
-    textStyle(NORMAL);
+                return () => chart.destroy();
+            }, [scores, showRadar, showGridView, selectedArea]);
 
-    if (dist(mouseX, mouseY, px, py) < 20) {
-      hoveredPoint = { type: 'sub', index: i };
-    }
-  }
+            React.useEffect(() => {
+                if (showFloatingRadar && showRadar && !showGridView && !report) {
+                    const ctx = document.getElementById('floatingRadarChart').getContext('2d');
+                    const idealData = Array(12).fill(5);
 
-  fill(200, 200, 200, 50);
-  noStroke();
-  beginShape();
-  balancedPoints.forEach(([px, py]) => vertex(px, py));
-  endShape(CLOSE);
+                    let lastTapTime = 0;
 
-  fill(areas[selectedArea].color[0], areas[selectedArea].color[1], areas[selectedArea].color[2], 150);
-  beginShape();
-  points.forEach(([px, py]) => vertex(px, py));
-  endShape(CLOSE);
+                    const chart = new Chart(ctx, {
+                        type: 'radar',
+                        data: {
+                            labels: lifeAreas.map(area => selectedArea === area.name ? `${area.emoji} ${area.name}` : area.emoji),
+                            datasets: [
+                                {
+                                    label: 'Life Balance',
+                                    data: scores,
+                                    backgroundColor: 'rgba(59, 130, 246, 0.3)',
+                                    borderColor: 'rgba(59, 130, 246, 1)',
+                                    borderWidth: 2,
+                                    pointBackgroundColor: scores.map(score => getColor(score)),
+                                    pointRadius: 4,
+                                    pointHoverRadius: 6
+                                },
+                                {
+                                    label: 'Ideal Balance',
+                                    data: idealData,
+                                    backgroundColor: 'rgba(200, 200, 200, 0.2)',
+                                    borderColor: 'rgba(200, 200, 200, 1)',
+                                    borderWidth: 1,
+                                    pointRadius: 0,
+                                    fill: true
+                                }
+                            ]
+                        },
+                        options: {
+                            scales: {
+                                r: {
+                                    min: 0,
+                                    max: 10,
+                                    ticks: { stepSize: 2, font: { size: 8 } },
+                                    pointLabels: { font: { size: 8 } }
+                                }
+                            },
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            onClick: (e, elements, chart) => {
+                                const currentTime = new Date().getTime();
+                                const tapLength = currentTime - lastTapTime;
 
-  points.forEach(([px, py], i) => {
-    fill(areas[selectedArea].color[0], areas[selectedArea].color[1], areas[selectedArea].color[2]);
-    noStroke();
-    let size = (hoveredPoint && hoveredPoint.type === 'sub' && hoveredPoint.index === i) ? 18 : 15;
-    ellipse(px, py, size, size);
-  });
-}
+                                if (tapLength < 300) {
+                                    if (radarRef.current) {
+                                        radarRef.current.scrollIntoView({ behavior: 'smooth' });
+                                    }
+                                    lastTapTime = 0;
+                                    return;
+                                } else {
+                                    lastTapTime = currentTime;
+                                }
+                            }
+                        }
+                    });
+                    return () => chart.destroy();
+                }
+            }, [scores, showRadar, showGridView, showFloatingRadar, report, selectedArea]);
 
-function drawGridView() {
-  let cols = 3;
-  let rows = Math.ceil(areas.length / cols);
-  let radarSize = min(width / cols, height / (rows + 1)) * 0.98;
-  let r = radarSize * 0.4;
+            React.useEffect(() => {
+                if (selectedArea && showRadar && !showGridView) {
+                    const area = lifeAreas.find(a => a.name === selectedArea);
+                    const subAreaData = area.subAreas.map(subArea => subScores[selectedArea]?.[subArea] || 5);
+                    const idealSubData = Array(area.subAreas.length).fill(5);
+                    const ctx = document.getElementById(`miniRadarChart-${selectedArea}`).getContext('2d');
 
-  for (let i = 0; i < areas.length; i++) {
-    let col = i % cols;
-    let row = Math.floor(i / cols);
-    let cx = (col + 0.5) * width / cols;
-    let cy = (row + 0.5) * height / rows;
+                    const chart = new Chart(ctx, {
+                        type: 'radar',
+                        data: {
+                            labels: area.subAreas,
+                            datasets: [
+                                {
+                                    label: `${selectedArea} Balance`,
+                                    data: subAreaData,
+                                    backgroundColor: 'rgba(59, 130, 246, 0.3)',
+                                    borderColor: 'rgba(59, 130, 246, 1)',
+                                    borderWidth: 1,
+                                    pointBackgroundColor: subAreaData.map(score => getColor(score)),
+                                    pointRadius: 6,
+                                    pointHoverRadius: 8
+                                },
+                                {
+                                    label: 'Ideal Balance',
+                                    data: idealSubData,
+                                    backgroundColor: 'rgba(200, 200, 200, 0.2)',
+                                    borderColor: 'rgba(200, 200, 200, 1)',
+                                    borderWidth: 0.5,
+                                    pointRadius: 0,
+                                    fill: true
+                                }
+                            ]
+                        },
+                        options: {
+                            scales: {
+                                r: {
+                                    min: 0,
+                                    max: 10,
+                                    ticks: { stepSize: 2, font: { size: 12 } },
+                                    pointLabels: { font: { size: 12 } }
+                                }
+                            },
+                            plugins: {
+                                legend: { display: false }
+                            }
+                        }
+                    });
+                    return () => chart.destroy();
+                }
+            }, [selectedArea, subScores, showRadar, showGridView]);
 
-    let subAreas = areas[i].sub;
-    let points = [];
-    let balancedPoints = [];
-    for (let j = 0; j < subAreas.length; j++) {
-      let angle = TWO_PI / subAreas.length * j - PI / 2;
-      let score = subAreas[j].score / 100 * r;
-      let balancedScore = SUB_BALANCED_SCORE / 100 * r;
-      let px = cx + cos(angle) * score;
-      let py = cy + sin(angle) * score;
-      let bpx = cx + cos(angle) * balancedScore;
-      let bpy = cy + sin(angle) * balancedScore;
-      points.push([px, py]);
-      balancedPoints.push([bpx, bpy]);
-    }
+            React.useEffect(() => {
+                if (showGridView && showRadar) {
+                    lifeAreas.forEach(area => {
+                        const subAreaData = area.subAreas.map(subArea => subScores[area.name]?.[subArea] || 5);
+                        const idealSubData = Array(area.subAreas.length).fill(5);
+                        const ctx = document.getElementById(`gridRadarChart-${area.name}`).getContext('2d');
 
-    fill(200, 200, 200, 50);
-    noStroke();
-    beginShape();
-    balancedPoints.forEach(([px, py]) => vertex(px, py));
-    endShape(CLOSE);
+                        const chart = new Chart(ctx, {
+                            type: 'radar',
+                            data: {
+                                labels: area.subAreas,
+                                datasets: [
+                                    {
+                                        label: `${area.name} Balance`,
+                                        data: subAreaData,
+                                        backgroundColor: 'rgba(59, 130, 246, 0.3)',
+                                        borderColor: 'rgba(59, 130, 246, 1)',
+                                        borderWidth: 1,
+                                        pointBackgroundColor: subAreaData.map(score => getColor(score)),
+                                        pointRadius: 6,
+                                        pointHoverRadius: 8
+                                    },
+                                    {
+                                        label: 'Ideal Balance',
+                                        data: idealSubData,
+                                        backgroundColor: 'rgba(200, 200, 200, 0.2)',
+                                        borderColor: 'rgba(200, 200, 200, 1)',
+                                        borderWidth: 0.5,
+                                        pointRadius: 0,
+                                        fill: true
+                                    }
+                                ]
+                            },
+                            options: {
+                                scales: {
+                                    r: {
+                                        min: 0,
+                                        max: 10,
+                                        ticks: { stepSize: 2, font: { size: 10 } },
+                                        pointLabels: { font: { size: 10 } }
+                                    }
+                                },
+                                plugins: {
+                                    legend: { display: false }
+                                }
+                            }
+                        });
+                        return () => chart.destroy();
+                    });
+                }
+            }, [subScores, showRadar, showGridView]);
 
-    fill(areas[i].color[0], areas[i].color[1], areas[i].color[2], dist(mouseX, mouseY, cx, cy) < r ? 180 : 150);
-    beginShape();
-    points.forEach(([px, py]) => vertex(px, py));
-    endShape(CLOSE);
+            const updateCategoryScore = (area) => {
+                const areaIndex = lifeAreas.findIndex(a => a.name === area);
+                const subAreaData = lifeAreas.find(a => a.name === area).subAreas.map(sub => subScores[area]?.[sub] || 5);
+                const averageScore = subAreaData.reduce((sum, score) => sum + score, 0) / subAreaData.length;
+                const newScores = [...scores];
+                newScores[areaIndex] = Math.round(averageScore * 10) / 10;
+                setScores(newScores);
+            };
 
-    fill(0);
-    noStroke();
-    textSize(10);
-    textStyle(dist(mouseX, mouseY, cx, cy) < r ? BOLD : NORMAL);
-    text(`${areas[i].name} (${Math.round(areas[i].percentage)}%)`, cx, cy - r - 10);
-  }
-}
+            const handleSubScoreChange = (area, subArea, value) => {
+                const newSubScores = { ...subScores, [area]: { ...subScores[area], [subArea]: value } };
+                setSubScores(newSubScores);
+                updateCategoryScore(area);
+            };
 
-function touchStarted() {
-  if (mouseX < 0 || mouseX > width || mouseY < 0 || mouseY > height) {
-    return true;
-  }
+            const generateReport = () => {
+                const ideal = 5;
+                const threshold = ideal * 0.01;
+                const lowScores = lifeAreas
+                    .map((area, index) => ({ name: area.name, score: scores[index] }))
+                    .filter(item => Math.abs(item.score - ideal) > threshold)
+                    .map(item => ({
+                        area: item.name,
+                        recommendation: `Focus on improving ${item.name}. Your score of ${item.score.toFixed(1)} is outside the ideal range. Consider small, actionable steps like setting specific goals or seeking support in this area.`,
+                        tips: lifeAreas.find(a => a.name === item.name).subAreas.map(subArea => ({
+                            subArea,
+                            tip: lifeAreas.find(a => a.name === item.name).tips[subArea](subScores[item.name]?.[subArea] || 5)
+                        }))
+                    }));
+                setReport(lowScores.length ? lowScores : [{
+                    area: "All",
+                    recommendation: "All areas are within the ideal balance range. Keep maintaining your life balance!",
+                    tips: []
+                }]);
+                setCurrentRecommendationIndex(0);
+                setShowRadar(false);
+            };
 
-  let canvas = select('canvas');
-  if (viewMode !== 'grid') {
-    canvas.addClass('zoom-in');
-    setTimeout(() => canvas.removeClass('zoom-in'), 200);
-  }
+            const nextRecommendation = () => {
+                if (report && currentRecommendationIndex < report.length - 1) {
+                    setCurrentRecommendationIndex(currentRecommendationIndex + 1);
+                }
+            };
 
-  let cx = width / 2, cy = height / 2;
-  let r = min(width, height) * 0.4;
+            const prevRecommendation = () => {
+                if (report && currentRecommendationIndex > 0) {
+                    setCurrentRecommendationIndex(currentRecommendationIndex - 1);
+                }
+            };
 
-  if (viewMode === 'grid') {
-    let cols = 3;
-    let rows = Math.ceil(areas.length / cols);
-    let radarSize = min(width / cols, height / (rows + 1)) * 0.98;
-    let r = radarSize * 0.4;
-    for (let i = 0; i < areas.length; i++) {
-      let col = i % cols;
-      let row = Math.floor(i / cols);
-      let cx = (col + 0.5) * width / cols;
-      let cy = (row + 0.5) * height / rows;
-      if (dist(mouseX, mouseY, cx, cy) < r) {
-        selectedArea = i;
-        viewMode = 'sub';
-        removeSubAreaWindow();
-        document.getElementById('back-button').style.display = 'block';
-        document.getElementById('settings-panel').style.display = 'none';
-        document.getElementById('recommendations-panel').style.display = 'none';
-        updatePanel();
-        return false;
-      }
-    }
-    goBack();
-    return false;
-  }
+            const exitReport = () => {
+                setReport(null);
+                setShowRadar(true);
+            };
 
-  if (viewMode === 'main') {
-    for (let i = 0; i < areas.length; i++) {
-      let angle = TWO_PI / areas.length * i - PI / 2;
-      let score = areas[i].score / 100 * r;
-      let px = cx + cos(angle) * score;
-      let py = cy + sin(angle) * score;
-      if (dist(mouseX, mouseY, px, py) < 20) {
-        draggedPoint = { type: 'main', index: i };
-        removeSubAreaWindow();
-        return false;
-      }
-      let x = cx + cos(angle) * r;
-      let y = cy + sin(angle) * r;
-      if (dist(mouseX, mouseY, x, y) < 30) {
-        let currentTime = millis();
-        if (lastTapIndex === i && currentTime - lastTapTime < DOUBLE_TAP_THRESHOLD) {
-          selectedArea = i;
-          viewMode = 'sub';
-          removeSubAreaWindow();
-          document.getElementById('back-button').style.display = 'block';
-          updatePanel();
-        } else {
-          createSubAreaWindow(i, mouseX, mouseY);
-          lastTapTime = currentTime;
-          lastTapIndex = i;
+            const toggleGridView = () => {
+                setShowGridView(!showGridView);
+                setSelectedArea(null);
+            };
+
+            const getReportSummary = () => {
+                if (!report) return "";
+                if (report.length === 1 && report[0].area === "All") {
+                    return `✅ Your life is well-balanced with an overall score of ${overallScore}. All areas are within the ideal range.`;
+                }
+                return `Your overall balance score is ${overallScore}. ${report.length} area(s) need attention to achieve optimal balance.`;
+            };
+
+            return React.createElement(
+                'div',
+                { className: 'p-6 max-w-5xl mx-auto' },
+                React.createElement(
+                    'div',
+                    { className: 'flex justify-between items-center mb-6' },
+                    React.createElement('h1', { className: 'text-3xl font-extrabold text-indigo-700' }, 'Life Radar'),
+                    React.createElement(
+                        'div',
+                        { className: 'text-right' },
+                        React.createElement('span', { className: 'text-lg font-semibold text-gray-800' }, 'Score: '),
+                        React.createElement('span', { className: 'text-2xl font-bold text-indigo-600' }, overallScore)
+                    )
+                ),
+                showRadar && !showGridView && React.createElement(
+                    'div',
+                    { className: 'radar-container bg-white rounded-xl shadow-lg p-4', ref: radarRef },
+                    React.createElement('canvas', { id: 'radarChart' })
+                ),
+                React.createElement(
+                    'div',
+                    { className: `floating-radar-container ${showFloatingRadar && !report ? '' : 'hidden'}` },
+                    React.createElement('canvas', { id: 'floatingRadarChart' })
+                ),
+                showRadar && React.createElement(
+                    'div',
+                    { className: 'floating-buttons-container flex space-x-4' },
+                    React.createElement(
+                        'button',
+                        {
+                            onClick: generateReport,
+                            className: 'w-32 bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition-colors'
+                        },
+                        '📄 Report'
+                    ),
+                    React.createElement(
+                        'button',
+                        {
+                            onClick: toggleGridView,
+                            className: 'w-32 bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition-colors'
+                        },
+                        showGridView ? 'Radar' : 'All Radars'
+                    )
+                ),
+                report && React.createElement(
+                    'div',
+                    { className: 'mt-6 p-6 bg-white rounded-xl shadow-md' },
+                    React.createElement('h2', { className: 'text-2xl font-semibold text-indigo-600 mb-4' }, '📄 Life Balance Report'),
+                    React.createElement('p', { className: 'text-lg text-gray-800 mb-6' }, getReportSummary()),
+                    React.createElement(
+                        'div',
+                        { className: 'mb-3' },
+                        React.createElement(
+                            'p',
+                            { className: 'text-lg text-gray-800' },
+                            React.createElement('strong', { className: 'text-indigo-600 text-xl' }, report[currentRecommendationIndex].area + ':'),
+                            ' ',
+                            report[currentRecommendationIndex].recommendation
+                        ),
+                        report[currentRecommendationIndex].tips.length > 0 && React.createElement(
+                            'div',
+                            { className: 'mt-4' },
+                            React.createElement('h2', { className: 'text-lg font-semibold text-gray-700 mb-2' }, React.createElement('strong', null, 'Tips')),
+                            React.createElement(
+                                'ul',
+                                { className: 'list-disc pl-5 text-sm text-gray-600' },
+                                report[currentRecommendationIndex].tips.map(({ subArea, tip }) =>
+                                    React.createElement('li', { key: subArea, className: 'typewriter italic' }, '💡Tip: ', tip)
+                                )
+                            )
+                        )
+                    ),
+                    React.createElement(
+                        'div',
+                        { className: 'flex justify-between mt-4' },
+                        React.createElement(
+                            'button',
+                            {
+                                onClick: prevRecommendation,
+                                disabled: currentRecommendationIndex === 0,
+                                className: 'bg-gray-300 text-gray-700 py-2 px-4 rounded-lg disabled:opacity-50 hover:bg-gray-400 transition-colors'
+                            },
+                            'Previous'
+                        ),
+                        React.createElement(
+                            'button',
+                            {
+                                onClick: nextRecommendation,
+                                disabled: currentRecommendationIndex === report.length - 1,
+                                className: 'bg-gray-300 text-gray-700 py-2 px-4 rounded-lg disabled:opacity-50 hover:bg-gray-400 transition-colors'
+                            },
+                            'Next'
+                        ),
+                        React.createElement(
+                            'button',
+                            {
+                                onClick: exitReport,
+                                className: 'bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors'
+                            },
+                            'Exit Report'
+                        )
+                    )
+                ),
+                showRadar && !showGridView && React.createElement(
+                    'div',
+                    { className: 'mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6' },
+                    lifeAreas.map((area, index) =>
+                        React.createElement(
+                            'div',
+                            {
+                                key: area.name,
+                                className: `p-5 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow relative ${selectedArea && selectedArea !== area.name ? 'opacity-50 pointer-events-none' : ''}`,
+                                ref: panelRefs.current[area.name]
+                            },
+                            React.createElement(
+                                'div',
+                                { className: 'flex justify-between items-center' },
+                                React.createElement('h2', { className: 'text-xl font-semibold text-indigo-600 mb-2' }, area.emoji, ' ', area.name),
+                                React.createElement(
+                                    'button',
+                                    {
+                                        onClick: () => setSelectedArea(lifeAreas[index].name === selectedArea ? null : lifeAreas[index].name),
+                                        disabled: selectedArea && selectedArea !== area.name,
+                                        className: 'text-indigo-600 hover:text-indigo-800 text-sm font-medium'
+                                    },
+                                    React.createElement('svg', {
+                                        className: 'w-5 h-5 mr-1',
+                                        fill: 'none',
+                                        stroke: 'currentColor',
+                                        viewBox: '0 0 24 24',
+                                        xmlns: 'http://www.w3.org/2000/svg'
+                                    }, React.createElement('path', {
+                                        strokeLinecap: 'round',
+                                        strokeLinejoin: 'round',
+                                        strokeWidth: '2',
+                                        d: selectedArea ? 'M6 18L18 6M6 6l12 12' : 'M4 8h16M4 16h16'
+                                    }))
+                                )
+                            ),
+                            React.createElement('p', { className: 'text-sm text-gray-600 mb-3' }, area.description),
+                            React.createElement(
+                                'div',
+                                { className: 'flex items-center' },
+                                React.createElement('input', {
+                                    type: 'range',
+                                    min: '0',
+                                    max: '10',
+                                    step: '0.1',
+                                    value: scores[index],
+                                    disabled: true,
+                                    className: `range-input w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-not-allowed ${getSliderColorClass(scores[index])}`
+                                })
+                            ),
+                            selectedArea === area.name && React.createElement(
+                                'div',
+                                { className: 'mt-4 space-y-3' },
+                                React.createElement(
+                                    'div',
+                                    { className: 'mini-radar-container' },
+                                    React.createElement('canvas', { id: `miniRadarChart-${area.name}` })
+                                ),
+                                area.subAreas.map(subArea =>
+                                    React.createElement(
+                                        'div',
+                                        { key: subArea, className: 'ml-4' },
+                                        React.createElement('label', { className: 'text-sm font-bold text-gray-600' }, subArea),
+                                        React.createElement(
+                                            'div',
+                                            { className: 'flex items-center space-x-3' },
+                                            React.createElement('input', {
+                                                type: 'range',
+                                                min: '0',
+                                                max: '10',
+                                                step: '0.1',
+                                                value: subScores[area.name]?.[subArea] || 5,
+                                                onChange: (e) => handleSubScoreChange(area.name, subArea, parseFloat(e.target.value)),
+                                                className: `range-input w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer ${getSliderColorClass(subScores[area.name]?.[subArea] || 5)}`
+                                            }),
+                                            React.createElement('span', { className: 'text-sm text-gray-700' }, (subScores[area.name]?.[subArea] || 5).toFixed(1))
+                                        ),
+                                        React.createElement(
+                                            'p',
+                                            { className: 'text-sm text-gray-600 mt-1' },
+                                            React.createElement(Typewriter, { text: area.tips[subArea](subScores[area.name]?.[subArea] || 5) })
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                ),
+                showRadar && showGridView && React.createElement(
+                    'div',
+                    { className: 'mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6' },
+                    lifeAreas.map(area =>
+                        React.createElement(
+                            'div',
+                            { key: area.name, className: 'p-5 bg-white rounded-xl shadow-md' },
+                            React.createElement('h2', { className: 'text-xl font-semibold text-indigo-600 mb-2' }, area.emoji, ' ', area.name),
+                            React.createElement(
+                                'div',
+                                { className: 'grid-radar-container' },
+                                React.createElement('canvas', { id: `gridRadarChart-${area.name}` })
+                            ),
+                            React.createElement(
+                                'div',
+                                { className: 'mt-4' },
+                                React.createElement('h3', { className: 'text-lg font-medium text-gray-700 mb-2' }, 'Tips'),
+                                React.createElement(
+                                    'ul',
+                                    { className: 'list-disc pl-5 text-sm text-gray-600' },
+                                    area.subAreas.map(subArea =>
+                                        React.createElement('li', { key: subArea, className: 'italic' }, '💡Tip: ', area.tips[subArea](subScores[area.name]?.[subArea] || 5))
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            );
         }
-        return false;
-      }
-    }
-    removeSubAreaWindow();
-  } else if (viewMode === 'sub' && selectedArea !== null) {
-    let subAreas = areas[selectedArea].sub;
-    for (let i = 0; i < subAreas.length; i++) {
-      let angle = TWO_PI / subAreas.length * i - PI / 2;
-      let score = subAreas[i].score / 100 * r;
-      let px = cx + cos(angle) * score;
-      let py = cy + sin(angle) * score;
-      if (dist(mouseX, mouseY, px, py) < 20) {
-        draggedPoint = { type: 'sub', index: i };
-        removeSubAreaWindow();
-        return false;
-      }
-    }
-    let miniCx = width * 0.85, miniCy = height * 0.15;
-    let miniR = r * 0.35;
-    if (dist(mouseX, mouseY, miniCx, miniCy) < miniR) {
-      goBack();
-      return false;
-    }
-    removeSubAreaWindow();
-  }
-  return false;
-}
 
-function touchMoved() {
-  if (draggedPoint) {
-    let cx = width / 2, cy = height / 2;
-    let r = min(width, height) * 0.4;
-    let dx = mouseX - cx;
-    let dy = mouseY - cy;
-    let dist = sqrt(dx * dx + dy * dy);
-    let score = constrain((dist / r) * 100, 0, 100);
-
-    if (draggedPoint.type === 'main') {
-      adjustMainScores(draggedPoint.index, score);
-    } else if (draggedPoint.type === 'sub') {
-      adjustSubScores(areas[selectedArea], draggedPoint.index, score);
-    }
-    updatePanel();
-    return false;
-  }
-  return false;
-}
-
-function touchEnded() {
-  draggedPoint = null;
-  return true;
-}
-
-function goBack() {
-  viewMode = viewMode === 'grid' ? 'main' : 'main';
-  selectedArea = null;
-  autoBalanceActive = false;
-  autoSubBalanceActive = false;
-  removeSubAreaWindow();
-  document.getElementById('panel').querySelectorAll('button')[4].innerText = 'Auto Balance';
-  document.getElementById('panel').querySelectorAll('button')[5].innerText = 'Auto Sub-Balance';
-  document.getElementById('back-button').style.display = viewMode === 'sub' ? 'block' : 'none';
-  document.getElementById('settings-panel').style.display = 'none';
-  document.getElementById('recommendations-panel').style.display = 'none';
-  updatePanel();
-}
-
-function toggleGridView() {
-  viewMode = viewMode === 'grid' ? 'main' : 'grid';
-  autoBalanceActive = false;
-  autoSubBalanceActive = false;
-  removeSubAreaWindow();
-  document.getElementById('panel').querySelectorAll('button')[4].innerText = 'Auto Balance';
-  document.getElementById('panel').querySelectorAll('button')[5].innerText = 'Auto Sub-Balance';
-  document.getElementById('back-button').style.display = viewMode === 'grid' ? 'block' : 'none';
-  document.getElementById('settings-panel').style.display = 'none';
-  document.getElementById('recommendations-panel').style.display = 'none';
-  updatePanel();
-}
-
-function toggleSettings() {
-  let settingsPanel = document.getElementById('settings-panel');
-  settingsPanel.style.display = settingsPanel.style.display === 'block' ? 'none' : 'block';
-  document.getElementById('recommendations-panel').style.display = 'none';
-  document.getElementById('back-button').style.display = viewMode === 'sub' || viewMode === 'grid' ? 'block' : 'none';
-  removeSubAreaWindow();
-  updatePanel();
-}
-
-function showRecommendations() {
-  let recPanel = document.getElementById('recommendations-panel');
-  document.getElementById('recommendations-content').innerHTML = generateRecommendations();
-  recPanel.style.display = 'block';
-  document.getElementById('settings-panel').style.display = 'none';
-  document.getElementById('back-button').style.display = viewMode === 'sub' || viewMode === 'grid' ? 'block' : 'none';
-  removeSubAreaWindow();
-  // Example state
-  let appState = {
-      BALANCED_SCORE: BALANCED_SCORE,
-      SUB_BALANCED_SCORE: SUB_BALANCED_SCORE,
-      areas: areas
-  };
-
-  // Send to Swift
-  window.webkit.messageHandlers.saveState.postMessage(appState);
-}
-
-function restoreState(state) {
-  try {
-    console.log("Restoring state:", state);
-    areas = state.areas || areas;
-    BALANCED_SCORE = state.BALANCED_SCORE || BALANCED_SCORE;
-    SUB_BALANCED_SCORE = state.SUB_BALANCED_SCORE || SUB_BALANCED_SCORE;
-  } catch (error) {
-    console.warn("Error restoring state:", error);
-  }
-}
-
-function closeRecommendations() {
-  document.getElementById('recommendations-panel').style.display = 'none';
-  document.getElementById('settings-panel').style.display = 'none';
-  removeSubAreaWindow();
-  updatePanel();
-}
-
-function updatePanel() {
-  if (viewMode === 'main') {
-    document.getElementById('area-text').innerText = "Select a Life Area";
-    document.getElementById('score-text').innerText = "";
-    document.getElementById('info-text').innerText = "Single-tap to view sub-areas, double-tap radar label to select area, drag points to adjust levels";
-  } else if (viewMode === 'sub' && selectedArea !== null) {
-    document.getElementById('area-text').innerText = areas[selectedArea].name;
-    document.getElementById('score-text').innerText = `Average Score: ${Math.round(areas[selectedArea].score)} (${Math.round(areas[selectedArea].percentage)}%)`;
-    document.getElementById('info-text').innerText = "Drag points to adjust sub-area scores or tap mini-radar to go back";
-  } else if (viewMode === 'grid') {
-    document.getElementById('area-text').innerText = "All Sub-Area Radars";
-    document.getElementById('score-text').innerText = "";
-    document.getElementById('info-text').innerText = "Tap a radar to view details or elsewhere to return";
-  }
-}
-</script>
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(App));
+    </script>
 </body>
 </html>
