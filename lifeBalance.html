@@ -176,6 +176,7 @@
             const [showRadar, setShowRadar] = React.useState(true);
             const [showGridView, setShowGridView] = React.useState(false);
             const [showFloatingRadar, setShowFloatingRadar] = React.useState(false);
+            const [isSubCategoriesExpanded, setIsSubCategoriesExpanded] = React.useState(false);
             const panelRefs = React.useRef(lifeAreas.reduce((acc, area) => ({ ...acc, [area.name]: React.createRef() }), {}));
             const radarRef = React.useRef(null);
 
@@ -505,34 +506,52 @@
                 const ideal = 5;
                 const threshold = ideal * 0.01;
                 const lowScores = lifeAreas
-                    .map((area, index) => ({ name: area.name, score: scores[index] }))
+                    .map((area, index) => ({ 
+                        name: area.name, 
+                        score: scores[index], 
+                        emoji: area.emoji,
+                        subAreas: area.subAreas.map(subArea => ({
+                            name: subArea,
+                            score: subScores[area.name]?.[subArea] || 5,
+                            status: Math.abs((subScores[area.name]?.[subArea] || 5) - ideal) <= threshold ? '✅' : '⚠️'
+                        }))
+                    }))
                     .filter(item => Math.abs(item.score - ideal) > threshold)
                     .map(item => ({
                         area: item.name,
+                        emoji: item.emoji,
+                        score: item.score,
                         recommendation: `Focus on improving ${item.name}. Your score of ${item.score.toFixed(1)} is outside the ideal range. Consider small, actionable steps like setting specific goals or seeking support in this area.`,
                         tips: lifeAreas.find(a => a.name === item.name).subAreas.map(subArea => ({
                             subArea,
                             tip: lifeAreas.find(a => a.name === item.name).tips[subArea](subScores[item.name]?.[subArea] || 5)
-                        }))
+                        })),
+                        subAreas: item.subAreas
                     }));
                 setReport(lowScores.length ? lowScores : [{
                     area: "All",
+                    emoji: "",
+                    score: overallScore,
                     recommendation: "All areas are within the ideal balance range. Keep maintaining your life balance!",
-                    tips: []
+                    tips: [],
+                    subAreas: []
                 }]);
                 setCurrentRecommendationIndex(0);
                 setShowRadar(false);
+                setIsSubCategoriesExpanded(false);
             };
 
             const nextRecommendation = () => {
                 if (report && currentRecommendationIndex < report.length - 1) {
                     setCurrentRecommendationIndex(currentRecommendationIndex + 1);
+                    setIsSubCategoriesExpanded(false);
                 }
             };
 
             const prevRecommendation = () => {
                 if (report && currentRecommendationIndex > 0) {
                     setCurrentRecommendationIndex(currentRecommendationIndex - 1);
+                    setIsSubCategoriesExpanded(false);
                 }
             };
 
@@ -546,12 +565,32 @@
                 setSelectedArea(null);
             };
 
+            const toggleSubCategories = () => {
+                setIsSubCategoriesExpanded(!isSubCategoriesExpanded);
+            };
+
             const getReportSummary = () => {
                 if (!report) return "";
                 if (report.length === 1 && report[0].area === "All") {
                     return `✅ Your life is well-balanced with an overall score of ${overallScore}. All areas are within the ideal range.`;
                 }
                 return `Your overall balance score is ${overallScore}. ${report.length} area(s) need attention to achieve optimal balance.`;
+            };
+
+            const getCategoryStatus = () => {
+                const ideal = 5;
+                const threshold = ideal * 0.01;
+                return lifeAreas.map((area, index) => ({
+                    name: area.name,
+                    emoji: area.emoji,
+                    score: scores[index].toFixed(1),
+                    status: Math.abs(scores[index] - ideal) <= threshold ? '✅' : '⚠️',
+                    subAreas: area.subAreas.map(subArea => ({
+                        name: subArea,
+                        score: (subScores[area.name]?.[subArea] || 5).toFixed(1),
+                        status: Math.abs((subScores[area.name]?.[subArea] || 5) - ideal) <= threshold ? '✅' : '⚠️'
+                    }))
+                }));
             };
 
             return React.createElement(
@@ -602,16 +641,101 @@
                     'div',
                     { className: 'mt-6 p-6 bg-white rounded-xl shadow-md' },
                     React.createElement('h2', { className: 'text-2xl font-semibold text-indigo-600 mb-4' }, '📄 Life Balance Report'),
-                    React.createElement('p', { className: 'text-lg text-gray-800 mb-6' }, getReportSummary()),
+                    React.createElement('p', { className: 'text-lg text-gray-800 mb-4' }, getReportSummary()),
+                    React.createElement(
+                        'div',
+                        { className: 'mb-4' },
+                        React.createElement('h3', { className: 'text-lg font-semibold text-gray-700 mb-2' }, 'Category Status'),
+                        React.createElement(
+                            'table',
+                            { className: 'w-full text-sm text-gray-600 border-collapse' },
+                            React.createElement(
+                                'thead',
+                                null,
+                                React.createElement(
+                                    'tr',
+                                    { className: 'bg-gray-100' },
+                                    React.createElement('th', { className: 'p-2 text-left' }, 'Category'),
+                                    React.createElement('th', { className: 'p-2 text-left' }, 'Score'),
+                                    React.createElement('th', { className: 'p-2 text-left' }, 'Status')
+                                )
+                            ),
+                            React.createElement(
+                                'tbody',
+                                null,
+                                getCategoryStatus().map(({ name, emoji, score, status, subAreas }) =>
+                                    React.createElement(
+                                        'tr',
+                                        { key: name, className: 'border-t' },
+                                        React.createElement('td', { className: 'p-2' }, emoji, ' ', name),
+                                        React.createElement('td', { className: 'p-2' }, score),
+                                        React.createElement('td', { className: 'p-2' }, status)
+                                    )
+                                )
+                            )
+                        )
+                    ),
                     React.createElement(
                         'div',
                         { className: 'mb-3' },
                         React.createElement(
                             'p',
                             { className: 'text-lg text-gray-800' },
-                            React.createElement('strong', { className: 'text-indigo-600 text-xl' }, report[currentRecommendationIndex].area + ':'),
+                            React.createElement('strong', { className: 'text-indigo-600 text-xl' }, report[currentRecommendationIndex].emoji, ' ', report[currentRecommendationIndex].area + ':'),
                             ' ',
                             report[currentRecommendationIndex].recommendation
+                        ),
+                        report[currentRecommendationIndex].subAreas.length > 0 && React.createElement(
+                            'div',
+                            { className: 'mt-4' },
+                            React.createElement(
+                                'button',
+                                {
+                                    onClick: toggleSubCategories,
+                                    className: 'text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center mb-2'
+                                },
+                                React.createElement('svg', {
+                                    className: 'w-5 h-5 mr-1',
+                                    fill: 'none',
+                                    stroke: 'currentColor',
+                                    viewBox: '0 0 24 24',
+                                    xmlns: 'http://www.w3.org/2000/svg'
+                                }, React.createElement('path', {
+                                    strokeLinecap: 'round',
+                                    strokeLinejoin: 'round',
+                                    strokeWidth: '2',
+                                    d: isSubCategoriesExpanded ? 'M19 14l-7-7-7 7' : 'M5 10l7 7 7-7'
+                                })),
+                                isSubCategoriesExpanded ? 'Hide Sub-Categories' : 'Show Sub-Categories'
+                            ),
+                            isSubCategoriesExpanded && React.createElement(
+                                'table',
+                                { className: 'w-full text-sm text-gray-600 border-collapse' },
+                                React.createElement(
+                                    'thead',
+                                    null,
+                                    React.createElement(
+                                        'tr',
+                                        { className: 'bg-gray-50' },
+                                        React.createElement('th', { className: 'p-2 text-left' }, 'Sub-Category'),
+                                        React.createElement('th', { className: 'p-2 text-left' }, 'Score'),
+                                        React.createElement('th', { className: 'p-2 text-left' }, 'Status')
+                                    )
+                                ),
+                                React.createElement(
+                                    'tbody',
+                                    null,
+                                    report[currentRecommendationIndex].subAreas.map(({ name, score, status }) =>
+                                        React.createElement(
+                                            'tr',
+                                            { key: name, className: 'border-t' },
+                                            React.createElement('td', { className: 'p-2 pl-4' }, name),
+                                            React.createElement('td', { className: 'p-2' }, score),
+                                            React.createElement('td', { className: 'p-2' }, status)
+                                        )
+                                    )
+                                )
+                            )
                         ),
                         report[currentRecommendationIndex].tips.length > 0 && React.createElement(
                             'div',
@@ -660,90 +784,91 @@
                 showRadar && !showGridView && React.createElement(
                     'div',
                     { className: 'mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6' },
-                    lifeAreas.map((area, index) =>
-                        React.createElement(
-                            'div',
-                            {
-                                key: area.name,
-                                className: `p-5 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow relative ${selectedArea && selectedArea !== area.name ? 'opacity-50 pointer-events-none' : ''}`,
-                                ref: panelRefs.current[area.name]
-                            },
+                    lifeAreas
+                        .filter(area => !selectedArea || area.name === selectedArea)
+                        .map((area, index) =>
                             React.createElement(
                                 'div',
-                                { className: 'flex justify-between items-center' },
-                                React.createElement('h2', { className: 'text-xl font-semibold text-indigo-600 mb-2' }, area.emoji, ' ', area.name),
-                                React.createElement(
-                                    'button',
-                                    {
-                                        onClick: () => setSelectedArea(lifeAreas[index].name === selectedArea ? null : lifeAreas[index].name),
-                                        disabled: selectedArea && selectedArea !== area.name,
-                                        className: 'text-indigo-600 hover:text-indigo-800 text-sm font-medium'
-                                    },
-                                    React.createElement('svg', {
-                                        className: 'w-5 h-5 mr-1',
-                                        fill: 'none',
-                                        stroke: 'currentColor',
-                                        viewBox: '0 0 24 24',
-                                        xmlns: 'http://www.w3.org/2000/svg'
-                                    }, React.createElement('path', {
-                                        strokeLinecap: 'round',
-                                        strokeLinejoin: 'round',
-                                        strokeWidth: '2',
-                                        d: selectedArea ? 'M6 18L18 6M6 6l12 12' : 'M4 8h16M4 16h16'
-                                    }))
-                                )
-                            ),
-                            React.createElement('p', { className: 'text-sm text-gray-600 mb-3' }, area.description),
-                            React.createElement(
-                                'div',
-                                { className: 'flex items-center' },
-                                React.createElement('input', {
-                                    type: 'range',
-                                    min: '0',
-                                    max: '10',
-                                    step: '0.1',
-                                    value: scores[index],
-                                    disabled: true,
-                                    className: `range-input w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-not-allowed ${getSliderColorClass(scores[index])}`
-                                })
-                            ),
-                            selectedArea === area.name && React.createElement(
-                                'div',
-                                { className: 'mt-4 space-y-3' },
+                                {
+                                    key: area.name,
+                                    className: 'p-5 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow',
+                                    ref: panelRefs.current[area.name]
+                                },
                                 React.createElement(
                                     'div',
-                                    { className: 'mini-radar-container' },
-                                    React.createElement('canvas', { id: `miniRadarChart-${area.name}` })
+                                    { className: 'flex justify-between items-center' },
+                                    React.createElement('h2', { className: 'text-xl font-semibold text-indigo-600 mb-2' }, area.emoji, ' ', area.name),
+                                    React.createElement(
+                                        'button',
+                                        {
+                                            onClick: () => setSelectedArea(lifeAreas.findIndex(a => a.name === area.name) === lifeAreas.findIndex(a => a.name === selectedArea) ? null : area.name),
+                                            className: 'text-indigo-600 hover:text-indigo-800 text-sm font-medium'
+                                        },
+                                        React.createElement('svg', {
+                                            className: 'w-5 h-5 mr-1',
+                                            fill: 'none',
+                                            stroke: 'currentColor',
+                                            viewBox: '0 0 24 24',
+                                            xmlns: 'http://www.w3.org/2000/svg'
+                                        }, React.createElement('path', {
+                                            strokeLinecap: 'round',
+                                            strokeLinejoin: 'round',
+                                            strokeWidth: '2',
+                                            d: selectedArea ? 'M6 18L18 6M6 6l12 12' : 'M4 8h16M4 16h16'
+                                        }))
+                                    )
                                 ),
-                                area.subAreas.map(subArea =>
+                                React.createElement('p', { className: 'text-sm text-gray-600 mb-3' }, area.description),
+                                React.createElement(
+                                    'div',
+                                    { className: 'flex items-center' },
+                                    React.createElement('input', {
+                                        type: 'range',
+                                        min: '0',
+                                        max: '10',
+                                        step: '0.1',
+                                        value: scores[lifeAreas.findIndex(a => a.name === area.name)],
+                                        disabled: true,
+                                        className: `range-input w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-not-allowed ${getSliderColorClass(scores[lifeAreas.findIndex(a => a.name === area.name)])}`
+                                    })
+                                ),
+                                selectedArea === area.name && React.createElement(
+                                    'div',
+                                    { className: 'mt-4 space-y-3' },
                                     React.createElement(
                                         'div',
-                                        { key: subArea, className: 'ml-4' },
-                                        React.createElement('label', { className: 'text-sm font-bold text-gray-600' }, subArea),
+                                        { className: 'mini-radar-container' },
+                                        React.createElement('canvas', { id: `miniRadarChart-${area.name}` })
+                                    ),
+                                    area.subAreas.map(subArea =>
                                         React.createElement(
                                             'div',
-                                            { className: 'flex items-center space-x-3' },
-                                            React.createElement('input', {
-                                                type: 'range',
-                                                min: '0',
-                                                max: '10',
-                                                step: '0.1',
-                                                value: subScores[area.name]?.[subArea] || 5,
-                                                onChange: (e) => handleSubScoreChange(area.name, subArea, parseFloat(e.target.value)),
-                                                className: `range-input w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer ${getSliderColorClass(subScores[area.name]?.[subArea] || 5)}`
-                                            }),
-                                            React.createElement('span', { className: 'text-sm text-gray-700' }, (subScores[area.name]?.[subArea] || 5).toFixed(1))
-                                        ),
-                                        React.createElement(
-                                            'p',
-                                            { className: 'text-sm text-gray-600 mt-1' },
-                                            React.createElement(Typewriter, { text: area.tips[subArea](subScores[area.name]?.[subArea] || 5) })
+                                            { key: subArea, className: 'ml-4' },
+                                            React.createElement('label', { className: 'text-sm font-bold text-gray-600' }, subArea),
+                                            React.createElement(
+                                                'div',
+                                                { className: 'flex items-center space-x-3' },
+                                                React.createElement('input', {
+                                                    type: 'range',
+                                                    min: '0',
+                                                    max: '10',
+                                                    step: '0.1',
+                                                    value: subScores[area.name]?.[subArea] || 5,
+                                                    onChange: (e) => handleSubScoreChange(area.name, subArea, parseFloat(e.target.value)),
+                                                    className: `range-input w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer ${getSliderColorClass(subScores[area.name]?.[subArea] || 5)}`
+                                                }),
+                                                React.createElement('span', { className: 'text-sm text-gray-700' }, (subScores[area.name]?.[subArea] || 5).toFixed(1))
+                                            ),
+                                            React.createElement(
+                                                'p',
+                                                { className: 'text-sm text-gray-600 mt-1' },
+                                                React.createElement(Typewriter, { text: area.tips[subArea](subScores[area.name]?.[subArea] || 5) })
+                                            )
                                         )
                                     )
                                 )
                             )
                         )
-                    )
                 ),
                 showRadar && showGridView && React.createElement(
                     'div',
