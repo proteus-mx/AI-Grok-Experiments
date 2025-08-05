@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Block Race 2</title>
+    <title>Block Race 2 Player</title>
     <style>
-        body { display: flex; flex-direction: column; align-items: center; font-family: Arial, sans-serif; background: #f0f0f0; margin: 0; padding: 20px; overflow: hidden }
-        #game-container { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 20px; }
+        body { display: flex; flex-direction: column; align-items: center; font-family: Arial, sans-serif; background: #f0f0f0; margin: 0; padding: 20px; overflow: hidden; }
+        #welcome-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #f0f0f0; }
+        #game-container { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 20px; display: none; }
         #pattern-container { display: flex; flex-direction: column; align-items: center; }
         #pattern { display: grid; grid-template-columns: repeat(3, 20px); gap: 1px; border: 2px solid #333; background: #fff; padding: 3px; border-radius: 6px; margin-bottom: 5px; }
         #board1, #board2 { display: grid; grid-template-columns: repeat(5, 40px); gap: 2px; border: 3px solid #333; background: #ddd; padding: 5px; border-radius: 10px; }
@@ -21,8 +22,8 @@
         .white { background: #FFFFFF; border: 1px solid #ccc; }
         .orange { background: #FF851B; }
         #stats1, #stats2 { font-size: 16px; margin: 10px 0; display: flex; flex-direction: column; gap: 5px; align-items: center; }
-        #controls { margin: 10px 0; }
-        button { padding: 8px 16px; margin: 5px; background: #0074D9; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        #controls1, #controls2 { margin: 5px 0; display: flex; gap: 5px; }
+        button { padding: 6px 12px; margin: 3px; background: #0074D9; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; }
         button:hover { background: #0056b3; }
         #randomize-pattern { padding: 5px 10px; font-size: 12px; }
         #gameover { 
@@ -51,7 +52,6 @@
             border-radius: 8px;
             font-size: 20px;
         }
-        #mode-selection { margin-bottom: 10px; }
         #solution { 
             margin-top: 20px; 
             max-height: 150px; 
@@ -80,32 +80,18 @@
             height: 100%;
             transition: width 0.3s;
         }
-        #progress1, #progress2 {
-            width: 100%;
-            max-width: 200px;
-            text-align: left;
-        }
-        #progress-bar1, #progress-bar2 {
-            height: 15px;
-            border-radius: 5px;
-            background: #ccc;
-            overflow: hidden;
-        }
-        #progress-fill1, #progress-fill2 {
-            height: 100%;
-            background: #2ECC40;
-            transition: width 0.3s;
-        }
         .easy { background: #2ECC40; }
         .medium { background: #FFDC00; }
         .hard { background: #FF4136; }
         .hint { animation: flash 0.5s infinite alternate; }
         @keyframes flash { from { box-shadow: 0 0 15px red; } to { box-shadow: 0 0 25px red; } }
         .player-label { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+        #welcome-screen button { padding: 10px 20px; font-size: 16px; margin: 10px; }
     </style>
 </head>
 <body>
-    <div id="mode-selection">
+    <div id="welcome-screen">
+        <h1>Block Race</h1>
         <button onclick="newGame('easy', 1)">1 Player - Easy</button>
         <button onclick="newGame('hard', 1)">1 Player - Hard</button>
         <button onclick="newGame('easy', 2)">2 Player - Easy</button>
@@ -115,17 +101,16 @@
         <div id="player1">
             <div class="player-label">Player 1</div>
             <div id="board1"></div>
+            <div id="controls1">
+                <button onclick="hint(1)">Hint</button>
+                <button onclick="autoComplete(1)">Auto Solve</button>
+                <button onclick="showSolution(1)">Show Solution</button>
+            </div>
             <div id="stats1">
                 <div>
                     <span id="timer1">Time: 0s</span>
                     <span id="moves1">Moves: 0</span>
                     <span id="points1">Points: 0</span>
-                </div>
-                <div id="progress1">
-                    <p>Games: <span id="games-played1">0</span> (<span id="games-won1">0</span>)</p>
-                    <div id="progress-bar1">
-                        <div id="progress-fill1"></div>
-                    </div>
                 </div>
                 <div id="difficulty1">
                     <p>Difficulty: <span id="move-count1">0</span> moves</p>
@@ -142,17 +127,16 @@
         <div id="player2" style="display: none;">
             <div class="player-label">Player 2</div>
             <div id="board2"></div>
+            <div id="controls2">
+                <button id="hint2" onclick="hint(2)">Hint</button>
+                <button id="auto2" onclick="autoComplete(2)">Auto Solve</button>
+                <button onclick="showSolution(2)">Show Solution</button>
+            </div>
             <div id="stats2">
                 <div>
                     <span id="timer2">Time: 0s</span>
                     <span id="moves2">Moves: 0</span>
                     <span id="points2">Points: 0</span>
-                </div>
-                <div id="progress2">
-                    <p>Games: <span id="games-played2">0</span> (<span id="games-won2">0</span>)</p>
-                    <div id="progress-bar2">
-                        <div id="progress-fill2"></div>
-                    </div>
                 </div>
                 <div id="difficulty2">
                     <p>Difficulty: <span id="move-count2">0</span> moves</p>
@@ -162,13 +146,6 @@
                 </div>
             </div>
         </div>
-    </div>
-    <div id="controls">
-        <button onclick="hint(1)">Hint P1</button>
-        <button onclick="autoComplete(1)">Auto Solve P1</button>
-        <button id="hint2" onclick="hint(2)" style="display: none;">Hint P2</button>
-        <button id="auto2" onclick="autoComplete(2)" style="display: none;">Auto Solve P2</button>
-        <button onclick="showSolution()">Show Solution</button>
     </div>
     <div id="solution"></div>
     <div id="gameover">
@@ -548,19 +525,8 @@
             const points = player === 1 ? points1 : points2;
             const movesElement = document.getElementById(`moves${player}`);
             const pointsElement = document.getElementById(`points${player}`);
-            const gamesPlayedElement = document.getElementById(`games-played${player}`);
-            const gamesWonElement = document.getElementById(`games-won${player}`);
-            const progressFill = document.getElementById(`progress-fill${player}`);
             if (movesElement) movesElement.innerText = `Moves: ${moveCount} (${optimalMoves})`;
             if (pointsElement) pointsElement.innerText = `Points: ${points}`;
-            if (gamesPlayedElement) gamesPlayedElement.innerText = player === 1 ? gamesPlayed1 : gamesPlayed2;
-            if (gamesWonElement) gamesWonElement.innerText = player === 1 ? gamesWon1 : gamesWon2;
-            if (progressFill) {
-                const winRate = (player === 1 ? gamesPlayed1 : gamesPlayed2) > 0 
-                    ? ((player === 1 ? gamesWon1 : gamesWon2) / (player === 1 ? gamesPlayed1 : gamesPlayed2)) * 100 
-                    : 0;
-                progressFill.style.width = `${winRate}%`;
-            }
         }
 
         function checkWin(player) {
@@ -655,19 +621,15 @@
             if (playerCount === 2) {
                 renderBoard(2);
                 const player2 = document.getElementById('player2');
-                const hint2 = document.getElementById('hint2');
-                const auto2 = document.getElementById('auto2');
+                const controls2 = document.getElementById('controls2');
                 if (player2) player2.style.display = 'block';
-                if (hint2) hint2.style.display = 'inline-block';
-                if (auto2) auto2.style.display = 'inline-block';
+                if (controls2) controls2.style.display = 'flex';
             } else {
                 const player2 = document.getElementById('player2');
-                const hint2 = document.getElementById('hint2');
-                const auto2 = document.getElementById('auto2');
+                const controls2 = document.getElementById('controls2');
                 const difficulty2 = document.getElementById('difficulty2');
                 if (player2) player2.style.display = 'none';
-                if (hint2) hint2.style.display = 'none';
-                if (auto2) auto2.style.display = 'none';
+                if (controls2) controls2.style.display = 'none';
                 if (difficulty2) difficulty2.style.display = 'none';
             }
             renderPattern();
@@ -684,8 +646,8 @@
             const board1Element = document.getElementById('board1');
             const patternElement = document.getElementById('pattern');
             const stats1 = document.getElementById('stats1');
-            const controls = document.getElementById('controls');
-            const modeSelection = document.getElementById('mode-selection');
+            const welcomeScreen = document.getElementById('welcome-screen');
+            const gameContainer = document.getElementById('game-container');
             if (gameover) gameover.style.display = 'none';
             if (thinking) thinking.style.display = 'none';
             if (solution) solution.style.display = 'none';
@@ -694,8 +656,8 @@
             if (board1Element) board1Element.style.display = 'grid';
             if (patternElement) patternElement.style.display = 'grid';
             if (stats1) stats1.style.display = 'flex';
-            if (controls) controls.style.display = 'block';
-            if (modeSelection) modeSelection.style.display = 'block';
+            if (welcomeScreen) welcomeScreen.style.display = 'none';
+            if (gameContainer) gameContainer.style.display = 'flex';
             moveCount1 = 0;
             moveCount2 = 0;
             gameWon = false;
@@ -760,10 +722,10 @@
             renderBoard(player);
         }
 
-        async function showSolution() {
+        async function showSolution(player) {
             const thinking = document.getElementById('thinking');
             if (thinking) thinking.style.display = 'block';
-            const moveSequence = await planSolution(currentPlayer);
+            const moveSequence = await planSolution(player);
             if (thinking) thinking.style.display = 'none';
 
             const solutionDiv = document.getElementById('solution');
@@ -773,7 +735,7 @@
                 solutionDiv.innerHTML = '<p>No solution found within time limit.</p>';
             } else {
                 const header = document.createElement('p');
-                header.innerText = `Solution for Player ${currentPlayer}: ${moveSequence.length} moves`;
+                header.innerText = `Solution for Player ${player}: ${moveSequence.length} moves`;
                 solutionDiv.appendChild(header);
                 moveSequence.forEach((move, index) => {
                     const {x, y, dx, dy} = move || {};
@@ -987,8 +949,6 @@
                 updateDifficulty(2);
             }
         });
-
-        newGame();
     </script>
 </body>
 </html>
