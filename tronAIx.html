@@ -7,39 +7,39 @@
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
         canvas { display: block; }
-        #ui { 
-            position: absolute; 
-            bottom: 10px; 
-            width: 100%; 
-            display: flex; 
-            justify-content: space-between; 
-            font-family: 'Arial', sans-serif; 
-            padding: 0 10px; 
-            box-sizing: border-box; 
+        #ui {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            font-family: 'Arial', sans-serif;
+            padding: 0 10px;
+            box-sizing: border-box;
         }
-        #redStats, #blueStats { 
-            background: rgba(0, 0, 0, 0.7); 
-            padding: 10px; 
-            border-radius: 5px; 
+        #redStats, #blueStats {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
         }
         #redStats { color: #ff0000; }
         #blueStats { color: #00b7eb; }
         #redStats div, #blueStats div { font-size: 12px; }
         #redStats div:first-child, #blueStats div:first-child { font-size: 16px; }
         #speedStats { color: #00ff00; }
-        #gameOver { 
-            position: absolute; 
-            top: 50%; 
-            left: 50%; 
-            transform: translate(-50%, -50%); 
-            font-family: 'Arial', sans-serif; 
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Arial', sans-serif;
             font-size: 18px;
-            text-align: center; 
-            display: none; 
-            background: rgba(0, 0, 0, 0.7); 
-            padding: 20px; 
-            border: 2px solid #00ff00; 
-            z-index: 5; 
+            text-align: center;
+            display: none;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border: 2px solid #00ff00;
+            z-index: 5;
             width: 75%
         }
         #gameOver div { color: #ffffff; }
@@ -69,31 +69,31 @@
         #restartButton:hover {
             background: #00b7eb;
         }
-        #bonusMessage { 
-            position: absolute; 
-            top: 110px; 
-            left: 50%; 
-            transform: translate(-50%, 0); 
-            font-family: 'Arial', sans-serif; 
-            font-size: 32px; 
-            color: #ffffff; 
-            text-align: center; 
-            display: none; 
-            text-shadow: 0 0 10px #00ff00; 
+        #bonusMessage {
+            position: absolute;
+            top: 110px;
+            left: 50%;
+            transform: translate(-50%, 0);
+            font-family: 'Arial', sans-serif;
+            font-size: 32px;
+            color: #ffffff;
+            text-align: center;
+            display: none;
+            text-shadow: 0 0 10px #00ff00;
         }
-        #countdownDisplay { 
-            position: absolute; 
-            top: 50%; 
-            left: 50%; 
-            transform: translate(-50%, -50%); 
-            font-family: 'Arial', sans-serif; 
+        #countdownDisplay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Arial', sans-serif;
             font-size: 144px;
-            color: #00ff00; 
-            text-align: center; 
-            display: none; 
-            text-shadow: 0 0 15px #00ff00; 
-            background: transparent; 
-            z-index: 5; 
+            color: #00ff00;
+            text-align: center;
+            display: none;
+            text-shadow: 0 0 15px #00ff00;
+            background: transparent;
+            z-index: 5;
         }
         #fadeOverlay {
             position: absolute;
@@ -320,7 +320,7 @@
             transform: translateX(-50%);
             background: rgba(0, 0, 0, 0.7);
             border: 2px solid #fff;
-            border-radius: 5px;
+            border-radius: 50%;
             display: none;
             justify-content: center;
             align-items: center;
@@ -330,8 +330,9 @@
             text-align: center;
             z-index: 6;
             width: 120px;
-            height: 90px;
+            height: 120px;
             opacity: 75%;
+            touch-action: none;
         }
         #controlBoxText {
             pointer-events: none;
@@ -410,8 +411,8 @@
                 padding: 6px 12px;
             }
             #controlBox {
-                width: 120px;
-                height: 90px;
+                width: 100px;
+                height: 100px;
                 font-size: 10px;
             }
         }
@@ -498,7 +499,7 @@
     <div id="bonusMessage"></div>
     <div id="countdownDisplay"></div>
     <div id="controlBox">
-        <span id="controlBoxText">Touch to move</span>
+        <span id="controlBoxText">Joystick</span>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
@@ -655,10 +656,10 @@
             starPositions[i + 2] = (Math.random() - 0.5) * 2000;
         }
         starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-        const starMaterial = new THREE.PointsMaterial({ 
-            color: 0xffffff, 
-            size: 2, 
-            sizeAttenuation: true 
+        const starMaterial = new THREE.PointsMaterial({
+            color: 0xffffff,
+            size: 2,
+            sizeAttenuation: true
         });
         const stars = new THREE.Points(starGeometry, starMaterial);
         scene.add(stars);
@@ -728,10 +729,10 @@
                 grid[x] = [];
                 for (let z = 0; z < gridSize; z++) {
                     const geometry = new THREE.PlaneGeometry(1, 1);
-                    const material = new THREE.MeshStandardMaterial({ 
-                        color: 0x111111, 
-                        side: THREE.DoubleSide, 
-                        transparent: true, 
+                    const material = new THREE.MeshStandardMaterial({
+                        color: 0x111111,
+                        side: THREE.DoubleSide,
+                        transparent: true,
                         opacity: 0,
                         emissive: 0x111111,
                         emissiveIntensity: 0.5
@@ -745,11 +746,11 @@
             }
 
             scene.remove(gridLines);
-            const gridLineMaterial = new THREE.LineBasicMaterial({ 
-                color: 0x00ff00, 
-                emissive: 0x00ff00, 
-                emissiveIntensity: 1, 
-                transparent: true, 
+            const gridLineMaterial = new THREE.LineBasicMaterial({
+                color: 0x00ff00,
+                emissive: 0x00ff00,
+                emissiveIntensity: 1,
+                transparent: true,
                 opacity: 0,
                 linewidth: 2
             });
@@ -789,39 +790,39 @@
         }
 
         const initialPositions = getInitialPlayerPositions();
-        const player1 = { 
-            x: initialPositions.player1.x, 
-            z: initialPositions.player1.z, 
-            color: 0xff0000, 
-            direction: 'right', 
-            distance: 0, 
-            lastPos: { x: initialPositions.player1.x, z: initialPositions.player1.z }, 
-            gridCovered: 0, 
-            wallsMade: 0, 
+        const player1 = {
+            x: initialPositions.player1.x,
+            z: initialPositions.player1.z,
+            color: 0xff0000,
+            direction: 'right',
+            distance: 0,
+            lastPos: { x: initialPositions.player1.x, z: initialPositions.player1.z },
+            gridCovered: 0,
+            wallsMade: 0,
             score: 0,
             lastMoveTime: performance.now(),
             isThrobbing: false
         };
-        const player2 = { 
-            x: initialPositions.player2.x, 
-            z: initialPositions.player2.z, 
-            color: 0x00b7eb, 
-            direction: 'left', 
-            distance: 0, 
-            lastPos: { x: initialPositions.player2.x, z: initialPositions.player2.z }, 
-            gridCovered: 0, 
-            wallsMade: 0, 
+        const player2 = {
+            x: initialPositions.player2.x,
+            z: initialPositions.player2.z,
+            color: 0x00b7eb,
+            direction: 'left',
+            distance: 0,
+            lastPos: { x: initialPositions.player2.x, z: initialPositions.player2.z },
+            gridCovered: 0,
+            wallsMade: 0,
             score: 0,
             lastMoveTime: performance.now(),
             isThrobbing: false
         };
 
         const player1Geometry = new THREE.BoxGeometry(0.8, 0.2, 0.8);
-        const player1Material = new THREE.MeshStandardMaterial({ 
-            color: player1.color, 
-            emissive: player1.color, 
-            emissiveIntensity: 0.8, 
-            metalness: 0.2, 
+        const player1Material = new THREE.MeshStandardMaterial({
+            color: player1.color,
+            emissive: player1.color,
+            emissiveIntensity: 0.8,
+            metalness: 0.2,
             roughness: 0.8,
             transparent: true,
             opacity: 0
@@ -831,9 +832,9 @@
         scene.add(player1Mesh);
 
         const player1BorderGeometry = new THREE.EdgesGeometry(player1Geometry);
-        const player1BorderMaterial = new THREE.LineBasicMaterial({ 
-            color: 0xffffff, 
-            emissive: 0xffffff, 
+        const player1BorderMaterial = new THREE.LineBasicMaterial({
+            color: 0xffffff,
+            emissive: 0xffffff,
             emissiveIntensity: 1,
             transparent: true,
             opacity: 0
@@ -842,11 +843,11 @@
         player1Mesh.add(player1Border);
 
         const player2Geometry = new THREE.BoxGeometry(0.8, 0.2, 0.8);
-        const player2Material = new THREE.MeshStandardMaterial({ 
-            color: player2.color, 
-            emissive: player2.color, 
-            emissiveIntensity: 0.8, 
-            metalness: 0.2, 
+        const player2Material = new THREE.MeshStandardMaterial({
+            color: player2.color,
+            emissive: player2.color,
+            emissiveIntensity: 0.8,
+            metalness: 0.2,
             roughness: 0.8,
             transparent: true,
             opacity: 0
@@ -856,9 +857,9 @@
         scene.add(player2Mesh);
 
         const player2BorderGeometry = new THREE.EdgesGeometry(player2Geometry);
-        const player2BorderMaterial = new THREE.LineBasicMaterial({ 
-            color: 0xffffff, 
-            emissive: 0xffffff, 
+        const player2BorderMaterial = new THREE.LineBasicMaterial({
+            color: 0xffffff,
+            emissive: 0xffffff,
             emissiveIntensity: 1,
             transparent: true,
             opacity: 0
@@ -913,41 +914,104 @@
         // Game mode
         let is1PlayerMode = false;
 
-        // Handle input for red player direction in 1 Player Mode
-        function handleInput(event) {
-            if (document.getElementById('welcomeScreen').style.display !== 'none' || !is1PlayerMode) return;
+        // Joystick control setup
+        let joystickActive = false;
+        let joystickOrigin = { x: 0, y: 0 };
+        let currentTouchId = null;
 
+        function handleJoystickStart(event) {
+            if (document.getElementById('welcomeScreen').style.display !== 'none' || !is1PlayerMode) return;
+            event.preventDefault();
+            const controlBox = document.getElementById('controlBox');
+            const rect = controlBox.getBoundingClientRect();
+            const touch = event.type.includes('touch') ? event.touches[0] : event;
+            const clientX = touch.clientX;
+            const clientY = touch.clientY;
+
+            if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+                joystickActive = true;
+                joystickOrigin = { x: clientX, y: clientY };
+                currentTouchId = event.type.includes('touch') ? event.touches[0].identifier : null;
+            }
+        }
+
+        function handleJoystickMove(event) {
+            if (!joystickActive || !is1PlayerMode || document.getElementById('welcomeScreen').style.display !== 'none') return;
+            event.preventDefault();
             const controlBox = document.getElementById('controlBox');
             const controlBoxText = document.getElementById('controlBoxText');
             const rect = controlBox.getBoundingClientRect();
-            const clientX = event.type.includes('touch') ? event.touches[0].clientX : event.clientX;
-            const clientY = event.type.includes('touch') ? event.touches[0].clientY : event.clientY;
+            let clientX, clientY;
 
-            if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
-                const relativeX = clientX - rect.left;
-                const relativeY = clientY - rect.top;
-                const boxWidth = rect.width;
-                const boxHeight = rect.height;
-
-                const edgeThreshold = 0.3;
-
-                if (relativeX < boxWidth * edgeThreshold) {
-                    player1.direction = 'left';
-                    controlBoxText.textContent = 'Left';
-                } else if (relativeX > boxWidth * (1 - edgeThreshold)) {
-                    player1.direction = 'right';
-                    controlBoxText.textContent = 'Right';
-                } else if (relativeY < boxHeight * edgeThreshold) {
-                    player1.direction = 'up';
-                    controlBoxText.textContent = 'Up';
-                } else if (relativeY > boxHeight * (1 - edgeThreshold)) {
-                    player1.direction = 'down';
-                    controlBoxText.textContent = 'Down';
-                } else {
-                    controlBoxText.textContent = 'Touch edges';
+            if (event.type.includes('touch')) {
+                let touch;
+                for (let i = 0; i < event.touches.length; i++) {
+                    if (event.touches[i].identifier === currentTouchId) {
+                        touch = event.touches[i];
+                        break;
+                    }
                 }
+                if (!touch) return;
+                clientX = touch.clientX;
+                clientY = touch.clientY;
+            } else {
+                clientX = event.clientX;
+                clientY = event.clientY;
+            }
+
+            const dx = clientX - joystickOrigin.x;
+            const dy = clientY - joystickOrigin.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const threshold = 20;
+
+            if (distance < threshold) {
+                controlBoxText.textContent = 'Joystick';
+                player1.direction = player1.direction || 'right';
+                return;
+            }
+
+            const angle = Math.atan2(dy, dx);
+            const angleDeg = (angle * 180 / Math.PI + 360) % 360;
+
+            if (angleDeg >= 315 || angleDeg < 45) {
+                player1.direction = 'right';
+                controlBoxText.textContent = 'Right';
+            } else if (angleDeg >= 45 && angleDeg < 135) {
+                player1.direction = 'down';
+                controlBoxText.textContent = 'Down';
+            } else if (angleDeg >= 135 && angleDeg < 225) {
+                player1.direction = 'left';
+                controlBoxText.textContent = 'Left';
+            } else {
+                player1.direction = 'up';
+                controlBoxText.textContent = 'Up';
             }
         }
+
+        function handleJoystickEnd(event) {
+            if (!joystickActive) return;
+            event.preventDefault();
+            if (event.type.includes('touch') && event.changedTouches) {
+                for (let i = 0; i < event.changedTouches.length; i++) {
+                    if (event.changedTouches[i].identifier === currentTouchId) {
+                        joystickActive = false;
+                        currentTouchId = null;
+                        document.getElementById('controlBoxText').textContent = 'Joystick';
+                        break;
+                    }
+                }
+            } else {
+                joystickActive = false;
+                document.getElementById('controlBoxText').textContent = 'Joystick';
+            }
+        }
+
+        document.addEventListener('touchstart', handleJoystickStart);
+        document.addEventListener('touchmove', handleJoystickMove);
+        document.addEventListener('touchend', handleJoystickEnd);
+        document.addEventListener('mousedown', handleJoystickStart);
+        document.addEventListener('mousemove', handleJoystickMove);
+        document.addEventListener('mouseup', handleJoystickEnd);
 
         // Camera toggle and speed boost
         let lastTap = 0;
@@ -962,13 +1026,7 @@
                 cameraMode = cameraModes[(currentIndex + 1) % cameraModes.length];
                 updateCamera();
             }
-            handleInput(e);
             lastTap = now;
-        });
-
-        document.addEventListener('click', (e) => {
-            if (document.getElementById('welcomeScreen').style.display !== 'none') return;
-            handleInput(e);
         });
 
         // Camera cycle button
@@ -1003,7 +1061,7 @@
                 { dir: 'left', x: player.x - 1, z: player.z },
                 { dir: 'right', x: player.x + 1, z: player.z }
             ];
-            return directions.every(({ x, z }) => 
+            return directions.every(({ x, z }) =>
                 x < 0 || x >= gridSize || z < 0 || z >= gridSize || grid[x][z].isWall
             );
         }
@@ -1016,7 +1074,7 @@
                 { x: x - 1, z: z },
                 { x: x + 1, z: z }
             ];
-            return neighbors.some(({ x, z }) => 
+            return neighbors.some(({ x, z }) =>
                 x >= 0 && x < gridSize && z >= 0 && z < gridSize && grid[x][z].isWall
             );
         }
@@ -1114,7 +1172,7 @@
             resetMiniGrid();
 
             document.getElementById('controlBox').style.display = 'none';
-            document.getElementById('controlBoxText').textContent = 'Touch to move';
+            document.getElementById('controlBoxText').textContent = 'Joystick';
 
             gameOver = false;
             gameStarted = false;
