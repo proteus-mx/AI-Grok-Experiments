@@ -19,14 +19,15 @@
             padding: 15px;
             border-radius: 10px;
             border: 1px solid #00ffcc;
+            display: none;
         }
         #redStats { color: #ff5050; text-shadow: 0 0 10px #ff5050; }
         #blueStats { color: #5050ff; text-shadow: 0 0 10px #5050ff; }
         #neutralStats { color: #e6e6fa; text-shadow: 0 0 10px #00ffcc; }
         #level {
             position: absolute;
-            bottom: 80px;
-            left: 45%;
+            top: 20px;
+            left: 50%;
             transform: translateX(-50%);
             color: #ffd700;
             font-family: 'Orbitron', sans-serif;
@@ -38,19 +39,19 @@
             border: 2px solid #ffd700;
             animation: pulse 1.2s infinite;
             z-index: 10;
+            display: none;
         }
         #gameOver {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 400px;
-            color: #e6e6fa;
+            width: 80%;
+            color: #ffffff;
             font-family: 'Orbitron', sans-serif;
-            font-size: 16px;
-            text-shadow: 0 0 10px #ff4500, 0 0 15px #ff4500;
-            background: rgba(0, 0, 0, 0.9);
-            padding: 20px;
+            font-size: 24px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px 40px;
             border-radius: 10px;
             border: 2px solid #00ffcc;
             text-align: center;
@@ -58,26 +59,27 @@
             z-index: 20;
         }
         #gameOver h1 {
+            font-size: 36px;
+            margin: 10px 0;
+        }
+        #gameOver p {
+            font-size: 18px;
+            margin: 5px 0;
             color: #ffffff;
-            font-size: 32px;
-            margin: 0 0 15px 0;
-            text-shadow: 0 0 10px #ffd700;
         }
         #gameOver button {
-            margin-top: 20px;
+            margin: 10px;
             padding: 10px 20px;
             font-family: 'Orbitron', sans-serif;
             font-size: 16px;
-            color: #e6e6fa;
+            color: #000000;
             background: #00ffcc;
-            border: 2px solid #ffd700;
+            border: 1px solid #00ffcc;
             border-radius: 5px;
             cursor: pointer;
-            text-shadow: 0 0 5px #000;
         }
         #gameOver button:hover {
-            background: #ffd700;
-            color: #000;
+            background: #00b38f;
         }
         #pointsFlash {
             position: absolute;
@@ -90,6 +92,18 @@
             text-shadow: 0 0 15px #00ffcc;
             animation: flash 1s ease-out;
             pointer-events: none;
+            z-index: 15;
+        }
+        #errorMessage {
+            position: absolute;
+            top: 35%;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            text-align: center;
+            display: none;
             z-index: 15;
         }
         #cameraDisplay {
@@ -105,6 +119,25 @@
             border-radius: 10px;
             border: 1px solid #00ffcc;
             z-index: 10;
+            display: none;
+        }
+        #cameraButton {
+            position: absolute;
+            top: 120px;
+            right: 20px;
+            color: #ffd700;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 1px solid #00ffcc;
+            cursor: pointer;
+            z-index: 10;
+            display: none;
+        }
+        #cameraButton:hover {
+            background: rgba(0, 255, 204, 0.3);
         }
         #introMessage {
             position: absolute;
@@ -144,6 +177,7 @@
             border: 2px solid #00ffcc;
             box-shadow: 0 0 8px #00ffcc;
             z-index: 10;
+            display: none;
         }
         #redProgress {
             height: 100%;
@@ -199,9 +233,6 @@
             font-size: 10px;
             text-shadow: 0 0 5px #000;
         }
-        .flashTimer {
-            animation: flashTimer 0.5s infinite alternate;
-        }
         #joystick {
             position: absolute;
             bottom: 20px;
@@ -210,18 +241,36 @@
             height: 100px;
             background: rgba(255, 255, 255, 0.2);
             border-radius: 50%;
-            border: 2px solid #ff5050;
+            display: none;
             z-index: 10;
-            touch-action: none;
         }
-        #joystick-knob {
+        #cameraJoystick {
             position: absolute;
-            width: 50px;
-            height: 50px;
+            bottom: 20px;
+            left: 20px;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: none;
+            z-index: 10;
+        }
+        #joystickHandle, #cameraJoystickHandle {
+            position: absolute;
+            width: 40px;
+            height: 40px;
             background: #ff5050;
             border-radius: 50%;
-            box-shadow: 0 0 10px #ff5050;
+            left: 50%;
+            top: 50%;
             transform: translate(-50%, -50%);
+            cursor: pointer;
+        }
+        #cameraJoystickHandle {
+            background: #ffd700;
+        }
+        .flashTimer {
+            animation: flashTimer 0.5s infinite alternate;
         }
         @keyframes pulse {
             0% { transform: translateX(-50%) scale(1); }
@@ -247,13 +296,11 @@
 <body>
     <div id="ui"></div>
     <div id="level"></div>
-    <div id="gameOver">
-        <h1>Game Over</h1>
-        <div id="gameOverStats"></div>
-        <button id="playAgain">Play Again</button>
-    </div>
+    <div id="gameOver"></div>
     <div id="pointsFlash"></div>
+    <div id="errorMessage"></div>
     <div id="cameraDisplay"></div>
+    <div id="cameraButton">Switch Camera</div>
     <div id="introMessage">
         <h1>Welcome to SphereTronics</h1>
         <p>Starting in...</p>
@@ -265,7 +312,10 @@
         <div id="remainingProgress" data-percentage="100"></div>
     </div>
     <div id="joystick">
-        <div id="joystick-knob"></div>
+        <div id="joystickHandle"></div>
+    </div>
+    <div id="cameraJoystick">
+        <div id="cameraJoystickHandle"></div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
@@ -602,12 +652,12 @@
 
         // Cameras
         const cameras = [
-            { name: 'Birds Eye', pos: new THREE.Vector3(0, 15, 0), lookAt: new THREE.Vector3(0, 0, 0) },
-            { name: 'Red Player', pos: new THREE.Vector3(), lookAt: players.red.pos },
-            { name: 'Blue Player', pos: new THREE.Vector3(), lookAt: players.blue.pos },
-            { name: 'Fly Around', pos: new THREE.Vector3(12, 0, 0), lookAt: new THREE.Vector3(0, 0, 0) },
-            { name: 'Center to Red', pos: new THREE.Vector3(0, 0, 0), lookAt: players.red.pos, targetLookAt: players.red.pos.clone() },
-            { name: 'Center to Blue', pos: new THREE.Vector3(0, 0, 0), lookAt: players.blue.pos, targetLookAt: players.blue.pos.clone() }
+            { name: 'Birds Eye', pos: new THREE.Vector3(0, 15, 0), lookAt: new THREE.Vector3(0, 0, 0), rotation: new THREE.Vector2(0, 0) },
+            { name: 'Red Player', pos: new THREE.Vector3(), lookAt: players.red.pos, rotation: new THREE.Vector2(0, 0) },
+            { name: 'Blue Player', pos: new THREE.Vector3(), lookAt: players.blue.pos, rotation: new THREE.Vector2(0, 0) },
+            { name: 'Fly Around', pos: new THREE.Vector3(12, 0, 0), lookAt: new THREE.Vector3(0, 0, 0), rotation: new THREE.Vector2(0, 0) },
+            { name: 'Center to Red', pos: new THREE.Vector3(0, 0, 0), lookAt: players.red.pos, targetLookAt: players.red.pos.clone(), rotation: new THREE.Vector2(0, 0) },
+            { name: 'Center to Blue', pos: new THREE.Vector3(0, 0, 0), lookAt: players.blue.pos, targetLookAt: players.blue.pos.clone(), rotation: new THREE.Vector2(0, 0) }
         ];
         let currentCamera = 0;
 
@@ -635,106 +685,138 @@
         const ui = document.getElementById('ui');
         const levelDisplay = document.getElementById('level');
         const gameOverDisplay = document.getElementById('gameOver');
-        const gameOverStats = document.getElementById('gameOverStats');
-        const playAgainButton = document.getElementById('playAgain');
         const pointsFlash = document.getElementById('pointsFlash');
+        const errorMessage = document.getElementById('errorMessage');
         const cameraDisplay = document.getElementById('cameraDisplay');
+        const cameraButton = document.getElementById('cameraButton');
         const redProgress = document.getElementById('redProgress');
         const blueProgress = document.getElementById('blueProgress');
         const remainingProgress = document.getElementById('remainingProgress');
 
         // Joystick
         const joystick = document.getElementById('joystick');
-        const joystickKnob = document.getElementById('joystick-knob');
-        let joystickActive = false;
+        const joystickHandle = document.getElementById('joystickHandle');
+        let isDragging = false;
         let joystickCenterX, joystickCenterY;
-        let joystickDirection = new THREE.Vector2();
-        let lastMoveTime = 0;
-        const moveCooldown = 0.5;
+        let joystickDirection = new THREE.Vector2(0, 0);
 
-        function initJoystick() {
+        // Camera Joystick
+        const cameraJoystick = document.getElementById('cameraJoystick');
+        const cameraJoystickHandle = document.getElementById('cameraJoystickHandle');
+        let isCameraDragging = false;
+        let cameraJoystickCenterX, cameraJoystickCenterY;
+        let cameraJoystickDirection = new THREE.Vector2(0, 0);
+
+        // Joystick event handlers
+        function startJoystick(event) {
+            if (gameOver || introActive) return;
+            isDragging = true;
             const rect = joystick.getBoundingClientRect();
             joystickCenterX = rect.left + rect.width / 2;
             joystickCenterY = rect.top + rect.height / 2;
-            joystickKnob.style.left = '50%';
-            joystickKnob.style.top = '50%';
+            updateJoystick(event);
         }
 
-        initJoystick();
-
-        window.addEventListener('resize', initJoystick);
-
-        joystick.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            joystickActive = true;
-        });
-
-        joystick.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            if (joystickActive) {
-                const touch = e.touches[0];
-                let dx = touch.clientX - joystickCenterX;
-                let dy = touch.clientY - joystickCenterY;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                const maxRadius = 50;
-                if (dist > maxRadius) {
-                    dx = (dx / dist) * maxRadius;
-                    dy = (dy / dist) * maxRadius;
-                }
-                joystickKnob.style.left = `calc(50% + ${dx}px)`;
-                joystickKnob.style.top = `calc(50% + ${dy}px)`;
-                joystickDirection.set(dx / maxRadius, dy / maxRadius);
+        function updateJoystick(event) {
+            if (!isDragging) return;
+            event.preventDefault();
+            let clientX, clientY;
+            if (event.type.includes('touch')) {
+                clientX = event.touches[0].clientX;
+                clientY = event.touches[0].clientY;
+            } else {
+                clientX = event.clientX;
+                clientY = event.clientY;
             }
-        });
+            const dx = clientX - joystickCenterX;
+            const dy = clientY - joystickCenterY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const maxDistance = 50; // Joystick radius
+            const normalizedDistance = Math.min(distance, maxDistance);
+            const angle = Math.atan2(dy, dx);
+            joystickDirection.set(
+                (normalizedDistance / maxDistance) * Math.cos(angle),
+                (normalizedDistance / maxDistance) * Math.sin(angle)
+            );
+            const offsetX = (normalizedDistance / maxDistance) * 30 * Math.cos(angle);
+            const offsetY = (normalizedDistance / maxDistance) * 30 * Math.sin(angle);
+            joystickHandle.style.transform = `translate(${offsetX - 20}px, ${offsetY - 20}px)`;
+        }
 
-        joystick.addEventListener('touchend', () => {
-            joystickActive = false;
-            joystickKnob.style.left = '50%';
-            joystickKnob.style.top = '50%';
+        function endJoystick() {
+            isDragging = false;
             joystickDirection.set(0, 0);
+            joystickHandle.style.transform = 'translate(-50%, -50%)';
+        }
+
+        // Camera Joystick event handlers
+        function startCameraJoystick(event) {
+            if (gameOver || introActive) return;
+            isCameraDragging = true;
+            const rect = cameraJoystick.getBoundingClientRect();
+            cameraJoystickCenterX = rect.left + rect.width / 2;
+            cameraJoystickCenterY = rect.top + rect.height / 2;
+            updateCameraJoystick(event);
+        }
+
+        function updateCameraJoystick(event) {
+            if (!isCameraDragging) return;
+            event.preventDefault();
+            let clientX, clientY;
+            if (event.type.includes('touch')) {
+                clientX = event.touches[0].clientX;
+                clientY = event.touches[0].clientY;
+            } else {
+                clientX = event.clientX;
+                clientY = event.clientY;
+            }
+            const dx = clientX - cameraJoystickCenterX;
+            const dy = clientY - cameraJoystickCenterY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const maxDistance = 50; // Joystick radius
+            const normalizedDistance = Math.min(distance, maxDistance);
+            const angle = Math.atan2(dy, dx);
+            cameraJoystickDirection.set(
+                (normalizedDistance / maxDistance) * Math.cos(angle),
+                (normalizedDistance / maxDistance) * Math.sin(angle)
+            );
+            const offsetX = (normalizedDistance / maxDistance) * 30 * Math.cos(angle);
+            const offsetY = (normalizedDistance / maxDistance) * 30 * Math.sin(angle);
+            cameraJoystickHandle.style.transform = `translate(${offsetX - 20}px, ${offsetY - 20}px)`;
+        }
+
+        function endCameraJoystick() {
+            isCameraDragging = false;
+            cameraJoystickDirection.set(0, 0);
+            cameraJoystickHandle.style.transform = 'translate(-50%, -50%)';
+            const cam = cameras[currentCamera];
+            cam.rotation.set(0, 0); // Reset camera rotation
+        }
+
+        joystickHandle.addEventListener('mousedown', startJoystick);
+        joystickHandle.addEventListener('touchstart', startJoystick);
+        document.addEventListener('mousemove', updateJoystick);
+        document.addEventListener('touchmove', updateJoystick);
+        document.addEventListener('mouseup', endJoystick);
+        document.addEventListener('touchend', endJoystick);
+
+        cameraJoystickHandle.addEventListener('mousedown', startCameraJoystick);
+        cameraJoystickHandle.addEventListener('touchstart', startCameraJoystick);
+        document.addEventListener('mousemove', updateCameraJoystick);
+        document.addEventListener('touchmove', updateCameraJoystick);
+        document.addEventListener('mouseup', endCameraJoystick);
+        document.addEventListener('touchend', endCameraJoystick);
+
+        // Camera switch button
+        cameraButton.addEventListener('click', () => {
+            if (!gameOver && !introActive) {
+                currentCamera = (currentCamera + 1) % cameras.length;
+                cameras[currentCamera].rotation.set(0, 0);
+            }
         });
 
         // Marks animation data
         const marks = [];
-
-        // Event listener for camera switch
-        document.addEventListener('click', (e) => {
-            if (!gameOver && !introActive && !joystick.contains(e.target)) {
-                currentCamera = (currentCamera + 1) % cameras.length;
-            }
-        });
-
-        // Play Again button
-        playAgainButton.addEventListener('click', () => {
-            gameOver = false;
-            timeLeft = 120;
-            level = 1;
-            levelTimer = 10;
-            explosionTriggered = false;
-            markerExplosionTriggered = false;
-            players.red.covered = 0;
-            players.red.points = 0;
-            players.red.moving = false;
-            players.blue.covered = 0;
-            players.blue.points = 0;
-            players.blue.moving = false;
-            hexagons.forEach(hex => {
-                hex.visits.red = 0;
-                hex.visits.blue = 0;
-                hex.owner = null;
-                hex.edgeWidth = 4;
-                hex.position.copy(hex.position.clone().normalize().multiplyScalar(radius));
-                hex.velocity.set(0, 0, 0);
-            });
-            marks.forEach(mark => scene.remove(mark));
-            marks.length = 0;
-            setOppositePositions();
-            updateHexagonColors();
-            updateProgressBar();
-            updateCentralSphereColor();
-            gameOverDisplay.style.display = 'none';
-            ui.style.display = 'block';
-        });
 
         function getNeighbors(index) {
             const neighbors = [];
@@ -752,6 +834,12 @@
             pointsFlash.style.color = player === players.red ? '#ff5050' : '#5050ff';
             pointsFlash.style.display = 'block';
             setTimeout(() => pointsFlash.style.display = 'none', 1000);
+        }
+
+        function showErrorMessage(message) {
+            errorMessage.innerHTML = message;
+            errorMessage.style.display = 'block';
+            setTimeout(() => errorMessage.style.display = 'none', 2000);
         }
 
         function updateProgressBar() {
@@ -776,7 +864,7 @@
             if (redPoints > bluePoints) {
                 centralSphereMaterial.color.setHex(0xff5050);
                 centralSphereMaterial.emissive.setHex(0x660000);
-            } else if (bluePoints > redPoints) {
+            } else if (bluePoints > bluePoints) {
                 centralSphereMaterial.color.setHex(0x5050ff);
                 centralSphereMaterial.emissive.setHex(0x000066);
             } else {
@@ -851,90 +939,59 @@
             markerExplosionGeometry.attributes.size.needsUpdate = true;
         }
 
-        function updateLasers(delta) {
-            const center = new THREE.Vector3(0, 0, 0);
-            const redDist = center.distanceTo(players.red.pos);
-            const blueDist = center.distanceTo(players.blue.pos);
-
-            // Update red laser
-            redLaser.scale.set(1, redDist, 1);
-            redLaser.position.copy(center).lerp(players.red.pos, 0.5);
-            redLaser.lookAt(players.red.pos);
-            redLaser.rotateX(Math.PI / 2);
-            redLaserGlow.position.copy(redLaser.position);
-            redLaserGlow.intensity = 2 + Math.sin(Date.now() * 0.005) * 0.5;
-
-            // Update blue laser
-            blueLaser.scale.set(1, blueDist, 1);
-            blueLaser.position.copy(center).lerp(players.blue.pos, 0.5);
-            blueLaser.lookAt(players.blue.pos);
-            blueLaser.rotateX(Math.PI / 2);
-            blueLaserGlow.position.copy(blueLaser.position);
-            blueLaserGlow.intensity = 2 + Math.sin(Date.now() * 0.005) * 0.5;
-
-            // Update laser particles
-            const laserPositions = laserParticleGeometry.attributes.position.array;
-            const laserColors = laserParticleGeometry.attributes.color.array;
-            const laserSizes = laserParticleGeometry.attributes.size.array;
-            for (let i = 0; i < laserParticleCount; i++) {
-                const idx = i * 3;
-                if (laserLifetimes[i] <= 0 && Math.random() < 0.1) {
-                    const player = Math.random() < 0.5 ? players.red : players.blue;
-                    const t = Math.random();
-                    const pos = center.clone().lerp(player.pos, t);
-                    laserPositions[idx] = pos.x + (Math.random() - 0.5) * 0.1;
-                    laserPositions[idx + 1] = pos.y + (Math.random() - 0.5) * 0.1;
-                    laserPositions[idx + 2] = pos.z + (Math.random() - 0.5) * 0.1;
-                    laserColors[idx] = player === players.red ? 1 : 0;
-                    laserColors[idx + 1] = 0;
-                    laserColors[idx + 2] = player === players.red ? 0 : 1;
-                    laserSizes[i] = 0.1;
-                    laserLifetimes[i] = 0.5;
-                } else if (laserLifetimes[i] > 0) {
-                    laserLifetimes[i] -= delta;
-                    laserSizes[i] *= 0.95;
-                    laserPositions[idx + 1] += 0.05;
-                    if (laserLifetimes[i] <= 0 || laserSizes[i] < 0.01) {
-                        laserPositions[idx] = 0;
-                        laserPositions[idx + 1] = 0;
-                        laserPositions[idx + 2] = 0;
-                        laserSizes[i] = 0;
-                        laserLifetimes[i] = 0;
-                    }
-                }
-            }
-            laserParticleGeometry.attributes.position.needsUpdate = true;
-            laserParticleGeometry.attributes.color.needsUpdate = true;
-            laserParticleGeometry.attributes.size.needsUpdate = true;
-        }
-
-        function movePlayer(player, targetIndex = null) {
+        function movePlayer(player, direction) {
             if (gameOver || player.moving || introActive) return;
             const neighbors = getNeighbors(player.hexIndex);
-            if (neighbors.length === 0) return;
+            if (neighbors.length === 0) {
+                if (player === players.red) showErrorMessage("No valid neighbors");
+                return;
+            }
+            const unvisitedNeighbors = neighbors.filter(i =>
+                hexagons[i].visits[player === players.red ? 'red' : 'blue'] === 0 &&
+                hexagons[i].owner !== (player === players.red ? 'blue' : 'red')
+            );
+            const validNeighbors = unvisitedNeighbors.length > 0 ? unvisitedNeighbors : neighbors.filter(i =>
+                hexagons[i].owner !== (player === players.red ? 'blue' : 'red')
+            );
+            if (validNeighbors.length === 0) {
+                if (player === players.red) showErrorMessage("Blocked by blue player");
+                return;
+            }
+
             let nextIndex;
-            if (player === players.red && targetIndex !== null) {
-                if (neighbors.includes(targetIndex)) {
-                    const valid = hexagons[targetIndex].visits.blue === 0 && hexagons[targetIndex].owner !== 'blue';
-                    if (valid) {
-                        nextIndex = targetIndex;
-                    } else {
-                        return;
+            if (player === players.red && direction) {
+                const playerPos = player.pos.clone();
+                const cam = cameras[currentCamera];
+                const cameraDir = cam.lookAt.clone().sub(cam.pos).normalize();
+                const up = new THREE.Vector3(0, 1, 0);
+                const right = new THREE.Vector3().crossVectors(cameraDir, up).normalize();
+                const forward = new THREE.Vector3().crossVectors(right, up).normalize();
+                const moveDir = new THREE.Vector3()
+                    .addScaledVector(right, direction.x)
+                    .addScaledVector(forward, -direction.y)
+                    .normalize();
+                let minAngle = Infinity;
+                let bestNeighbor = null;
+
+                validNeighbors.forEach(i => {
+                    const neighborDir = hexagons[i].position.clone().sub(playerPos).normalize();
+                    const angle = moveDir.angleTo(neighborDir);
+                    if (angle < minAngle) {
+                        minAngle = angle;
+                        bestNeighbor = i;
                     }
+                });
+
+                if (bestNeighbor !== null) {
+                    nextIndex = bestNeighbor;
                 } else {
+                    if (player === players.red) showErrorMessage("No valid direction");
                     return;
                 }
             } else {
-                const unvisitedNeighbors = neighbors.filter(i =>
-                    hexagons[i].visits[player === players.red ? 'red' : 'blue'] === 0 &&
-                    hexagons[i].owner !== (player === players.red ? 'blue' : 'red')
-                );
-                const validNeighbors = unvisitedNeighbors.length > 0 ? unvisitedNeighbors : neighbors.filter(i =>
-                    hexagons[i].owner !== (player === players.red ? 'blue' : 'red')
-                );
-                if (validNeighbors.length === 0) return;
                 nextIndex = validNeighbors[Math.floor(Math.random() * validNeighbors.length)];
             }
+
             player.moving = true;
             player.hexIndex = nextIndex;
             player.targetPos.copy(hexagons[nextIndex].position);
@@ -994,17 +1051,35 @@
             });
         }
 
+        function showGameOver(winner, coverage) {
+            const winnerColor = winner === 'Red' ? '#ff5050' : '#5050ff';
+            gameOverDisplay.innerHTML = `
+                <h1>Game Over</h1>
+                <p>Red: ${players.red.covered} hexes, ${players.red.points} pts</p>
+                <p>Blue: ${players.blue.covered} hexes, ${players.blue.points} pts</p>
+                <p style="color: ${winnerColor}">${winner} Wins!</p>
+                <p>Level: ${level}</p>
+                <button onclick="alert('Score submitted!')">Submit Score</button>
+                <button onclick="gameOverDisplay.style.display='none';window.location.reload()">Play Again</button>
+            `;
+            setTimeout(() => {
+                gameOverDisplay.style.display = 'block';
+            }, 3000); // 3-second delay
+        }
+
         function checkCollision() {
             if (players.red.hexIndex === players.blue.hexIndex) {
                 gameOver = true;
+                joystick.style.display = 'none';
+                cameraJoystick.style.display = 'none';
+                cameraButton.style.display = 'none';
+                currentCamera = 3; // Switch to Fly Around
                 const collisionPos = players.red.pos.clone();
                 const winner = players.red.points > players.blue.points ? 'Red' : 'Blue';
                 const coverage = ((players.red.covered + players.blue.covered) / hexagons.length * 100).toFixed(1);
-                gameOverStats.innerHTML = `${winner} Wins!<br><span style="color: #ff5050;">Red: ${players.red.covered} hexes, ${players.red.points} pts</span><br><span style="color: #5050ff;">Blue: ${players.blue.covered} hexes, ${players.blue.points} pts</span><br><span style="color: #e6e6fa;">Level: ${level}<br>Sphere Coverage: ${coverage}%</span>`;
-                gameOverDisplay.style.display = 'block';
-                ui.style.display = 'none';
                 triggerExplosion();
                 triggerMarkerExplosion(collisionPos);
+                showGameOver(winner, coverage);
             }
         }
 
@@ -1134,6 +1209,14 @@
             if (introTime <= 0) {
                 introActive = false;
                 introMessage.style.display = 'none';
+                ui.style.display = 'block';
+                cameraDisplay.style.display = 'block';
+                cameraButton.style.display = 'block';
+                progressBar.style.display = 'block';
+                joystick.style.display = 'block';
+                if (cameras[currentCamera].name === 'Red Player' || cameras[currentCamera].name === 'Center to Red') {
+                    cameraJoystick.style.display = 'block';
+                }
                 currentCamera = 0; // Set to Birds Eye after intro
             }
 
@@ -1143,74 +1226,6 @@
             const lookAtPos = new THREE.Vector3(0, 0, 0);
             camera.lookAt(lookAtPos);
             camera.rotateY(t * Math.PI * 0.5); // Rotate during zoom
-        }
-
-        function updateJoystickMovement(delta) {
-            if (!joystickActive || players.red.moving || gameOver || introActive) return;
-            const currentTime = performance.now() / 1000;
-            if (currentTime - lastMoveTime < moveCooldown) return;
-
-            const magnitude = joystickDirection.length();
-            const threshold = 0.5;
-            if (magnitude < threshold) return;
-
-            const neighbors = getNeighbors(players.red.hexIndex);
-            if (neighbors.length === 0) return;
-
-            // Get camera's yaw (rotation around y-axis)
-            const cameraMatrix = camera.matrixWorld;
-            const camRight = new THREE.Vector3();
-            const camUp = new THREE.Vector3();
-            camera.getWorldDirection(new THREE.Vector3()).negate();
-            camRight.crossVectors(camera.up, camera.getWorldDirection(new THREE.Vector3())).normalize();
-            camUp.crossVectors(camRight, camera.getWorldDirection(new THREE.Vector3())).normalize();
-
-            // Adjust joystick input based on camera
-            const isRedPlayerCamera = cameras[currentCamera].name === 'Red Player';
-            let inputX = joystickDirection.x;
-            let inputY = joystickDirection.y;
-
-            // For non-Red Player cameras, rotate input to align with camera's yaw
-            if (!isRedPlayerCamera) {
-                const yaw = Math.atan2(camRight.x, camRight.z);
-                const cosYaw = Math.cos(yaw);
-                const sinYaw = Math.sin(yaw);
-                const newX = inputX * cosYaw + inputY * sinYaw;
-                const newY = -inputX * sinYaw + inputY * cosYaw;
-                inputX = newX;
-                inputY = newY;
-            } else {
-                // Invert x-axis for Red Player camera
-                inputX = -inputX;
-            }
-
-            // Map joystick input to 3D direction relative to camera
-            const inputDir = new THREE.Vector3(
-                inputX * camRight.x + inputY * camUp.x,
-                inputX * camRight.y + inputY * camUp.y,
-                inputX * camRight.z + inputY * camUp.z
-            ).normalize();
-
-            // Find closest valid neighbor
-            let maxDot = -1;
-            let closestNeighbor = null;
-            const currentPos = players.red.pos.clone();
-            neighbors.forEach(i => {
-                if (hexagons[i].visits.blue === 0 && hexagons[i].owner !== 'blue') {
-                    const neighborPos = hexagons[i].position.clone();
-                    const direction = neighborPos.sub(currentPos).normalize();
-                    const dot = direction.dot(inputDir);
-                    if (dot > maxDot) {
-                        maxDot = dot;
-                        closestNeighbor = i;
-                    }
-                }
-            });
-
-            if (closestNeighbor !== null && maxDot > 0.5) {
-                movePlayer(players.red, closestNeighbor);
-                lastMoveTime = currentTime;
-            }
         }
 
         function update() {
@@ -1243,18 +1258,19 @@
 
                     if (timeLeft <= 0) {
                         gameOver = true;
+                        joystick.style.display = 'none';
+                        cameraJoystick.style.display = 'none';
+                        cameraButton.style.display = 'none';
+                        currentCamera = 3; // Switch to Fly Around
                         const coverage = ((players.red.covered + players.blue.covered) / hexagons.length * 100).toFixed(1);
                         const winner = players.red.points > players.blue.points ? 'Red' : 'Blue';
-                        gameOverStats.innerHTML = `${winner} Wins!<br><span style="color: #ff5050;">Red: ${players.red.covered} hexes, ${players.red.points} pts</span><br><span style="color: #5050ff;">Blue: ${players.blue.covered} hexes, ${players.blue.points} pts</span><br><span style="color: #e6e6fa;">Level: ${level}<br>Sphere Coverage: ${coverage}%</span>`;
-                        gameOverDisplay.style.display = 'block';
-                        ui.style.display = 'none';
                         triggerExplosion();
+                        showGameOver(winner, coverage);
                     } else {
-                        const coverage = ((players.red.covered + players.blue.covered) / hexagons.length * 100).toFixed(1);
                         ui.innerHTML = `<span id="neutralStats">Time: ${Math.ceil(timeLeft)}s</span><br>` +
                                        `<span id="redStats">Red: ${players.red.covered}, ${players.red.points} pts</span><br>` +
                                        `<span id="blueStats">Blue: ${players.blue.covered}, ${players.blue.points} pts</span><br>` +
-                                       `<span id="neutralStats">Level: ${level}<br>Coverage: ${coverage}%</span>`;
+                                       `<span id="neutralStats">Level: ${level}</span>`;
                         if (timeLeft <= 10) {
                             ui.classList.add('flashTimer');
                         } else {
@@ -1268,7 +1284,11 @@
                         players.red.speed = Math.min(players.red.speed * 1.2, 0.5);
                         players.blue.speed = Math.min(players.blue.speed * 1.2, 0.5);
                         levelDisplay.innerHTML = `Level ${level}`;
-                        setTimeout(() => levelDisplay.innerHTML = '', 2000);
+                        levelDisplay.style.display = 'block';
+                        setTimeout(() => {
+                            levelDisplay.innerHTML = '';
+                            levelDisplay.style.display = 'none';
+                        }, 2000);
                     }
 
                     // Smooth player movement
@@ -1281,8 +1301,30 @@
                         }
                     });
 
-                    updateJoystickMovement(delta);
+                    // Joystick movement for red player
+                    if (joystickDirection.length() > 0.5) {
+                        movePlayer(players.red, joystickDirection);
+                    }
+
+                    // Random movement for blue player
                     if (Math.random() < players.blue.speed * delta * 10) movePlayer(players.blue);
+
+                    // Update camera joystick visibility
+                    if (cameras[currentCamera].name === 'Red Player' || cameras[currentCamera].name === 'Center to Red') {
+                        cameraJoystick.style.display = 'block';
+                    } else {
+                        cameraJoystick.style.display = 'none';
+                        cameras[currentCamera].rotation.set(0, 0);
+                    }
+
+                    // Update camera rotation with joystick
+                    if (cameraJoystickDirection.length() > 0.1) {
+                        const cam = cameras[currentCamera];
+                        cam.rotation.x -= cameraJoystickDirection.y * delta * 2; // Pitch
+                        cam.rotation.y += cameraJoystickDirection.x * delta * 2; // Yaw
+                        cam.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cam.rotation.x)); // Clamp pitch
+                    }
+
                     checkCollision();
                 }
 
@@ -1418,6 +1460,13 @@
                 if (cam.name === 'Red Player') {
                     cam.pos.copy(players.red.pos).normalize().multiplyScalar(7);
                     cam.lookAt = players.red.pos;
+                    const offset = new THREE.Vector3().subVectors(cam.lookAt, cam.pos).normalize();
+                    const up = new THREE.Vector3(0, 1, 0);
+                    const right = new THREE.Vector3().crossVectors(offset, up).normalize();
+                    const forward = new THREE.Vector3().crossVectors(right, up).normalize();
+                    offset.applyAxisAngle(up, cam.rotation.y);
+                    offset.applyAxisAngle(right, cam.rotation.x);
+                    cam.pos.copy(cam.lookAt).sub(offset.multiplyScalar(7));
                 } else if (cam.name === 'Blue Player') {
                     cam.pos.copy(players.blue.pos).normalize().multiplyScalar(7);
                     cam.lookAt = players.blue.pos;
@@ -1427,6 +1476,13 @@
                     const targetPlayer = cam.name === 'Center to Red' ? players.red : players.blue;
                     cam.targetLookAt.copy(targetPlayer.pos);
                     cam.lookAt.lerp(cam.targetLookAt, 0.05);
+                    const offset = new THREE.Vector3().subVectors(cam.lookAt, cam.pos).normalize();
+                    const up = new THREE.Vector3(0, 1, 0);
+                    const right = new THREE.Vector3().crossVectors(offset, up).normalize();
+                    const forward = new THREE.Vector3().crossVectors(right, up).normalize();
+                    offset.applyAxisAngle(up, cam.rotation.y);
+                    offset.applyAxisAngle(right, cam.rotation.x);
+                    cam.pos.copy(cam.lookAt).sub(offset.multiplyScalar(7));
                 }
                 camera.position.lerp(cam.pos, 0.2);
                 camera.lookAt(cam.lookAt);
@@ -1437,6 +1493,63 @@
 
             renderer.render(scene, camera);
             requestAnimationFrame(update);
+        }
+
+        function updateLasers(delta) {
+            const center = new THREE.Vector3(0, 0, 0);
+            const redDist = center.distanceTo(players.red.pos);
+            const blueDist = center.distanceTo(players.blue.pos);
+
+            // Update red laser
+            redLaser.scale.set(1, redDist, 1);
+            redLaser.position.copy(center).lerp(players.red.pos, 0.5);
+            redLaser.lookAt(players.red.pos);
+            redLaser.rotateX(Math.PI / 2);
+            redLaserGlow.position.copy(redLaser.position);
+            redLaserGlow.intensity = 2 + Math.sin(Date.now() * 0.005) * 0.5;
+
+            // Update blue laser
+            blueLaser.scale.set(1, blueDist, 1);
+            blueLaser.position.copy(center).lerp(players.blue.pos, 0.5);
+            blueLaser.lookAt(players.blue.pos);
+            blueLaser.rotateX(Math.PI / 2);
+            blueLaserGlow.position.copy(blueLaser.position);
+            blueLaserGlow.intensity = 2 + Math.sin(Date.now() * 0.005) * 0.5;
+
+            // Update laser particles
+            const laserPositions = laserParticleGeometry.attributes.position.array;
+            const laserColors = laserParticleGeometry.attributes.color.array;
+            const laserSizes = laserParticleGeometry.attributes.size.array;
+            for (let i = 0; i < laserParticleCount; i++) {
+                const idx = i * 3;
+                if (laserLifetimes[i] <= 0 && Math.random() < 0.1) {
+                    const player = Math.random() < 0.5 ? players.red : players.blue;
+                    const t = Math.random();
+                    const pos = center.clone().lerp(player.pos, t);
+                    laserPositions[idx] = pos.x + (Math.random() - 0.5) * 0.1;
+                    laserPositions[idx + 1] = pos.y + (Math.random() - 0.5) * 0.1;
+                    laserPositions[idx + 2] = pos.z + (Math.random() - 0.5) * 0.1;
+                    laserColors[idx] = player === players.red ? 1 : 0;
+                    laserColors[idx + 1] = 0;
+                    laserColors[idx + 2] = player === players.red ? 0 : 1;
+                    laserSizes[i] = 0.1;
+                    laserLifetimes[i] = 0.5;
+                } else if (laserLifetimes[i] > 0) {
+                    laserLifetimes[i] -= delta;
+                    laserSizes[i] *= 0.95;
+                    laserPositions[idx + 1] += 0.05;
+                    if (laserLifetimes[i] <= 0 || laserSizes[i] < 0.01) {
+                        laserPositions[idx] = 0;
+                        laserPositions[idx + 1] = 0;
+                        laserPositions[idx + 2] = 0;
+                        laserSizes[i] = 0;
+                        laserLifetimes[i] = 0;
+                    }
+                }
+            }
+            laserParticleGeometry.attributes.position.needsUpdate = true;
+            laserParticleGeometry.attributes.color.needsUpdate = true;
+            laserParticleGeometry.attributes.size.needsUpdate = true;
         }
 
         update();
