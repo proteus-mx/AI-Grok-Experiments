@@ -1,58 +1,19 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hexagon Sphere Game</title>
+    <title>Sphere Tronic</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000000; }
         canvas { display: block; }
         #ui {
             position: absolute;
-            top: 20px;
+            top: 80px;
             left: 20px;
             color: #e6e6fa;
             font-family: 'Orbitron', sans-serif;
-            font-size: 22px;
+            font-size: 12px;
             text-shadow: 0 0 10px #00ffcc, 0 0 15px #00ffcc;
             background: rgba(0, 0, 0, 0.6);
             padding: 15px;
@@ -65,11 +26,11 @@
         #level {
             position: absolute;
             bottom: 80px;
-            left: 50%;
+            left: 45%;
             transform: translateX(-50%);
             color: #ffd700;
             font-family: 'Orbitron', sans-serif;
-            font-size: 36px;
+            font-size: 28px;
             text-shadow: 0 0 20px #ff4500, 0 0 25px #ff4500;
             background: rgba(0, 0, 0, 0.85);
             padding: 15px 30px;
@@ -83,17 +44,40 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            color: #ffd700;
+            width: 400px;
+            color: #e6e6fa;
             font-family: 'Orbitron', sans-serif;
-            font-size: 24px;
+            font-size: 16px;
             text-shadow: 0 0 10px #ff4500, 0 0 15px #ff4500;
             background: rgba(0, 0, 0, 0.9);
-            padding: 15px 30px;
+            padding: 20px;
             border-radius: 10px;
             border: 2px solid #00ffcc;
             text-align: center;
             display: none;
             z-index: 20;
+        }
+        #gameOver h1 {
+            color: #ffffff;
+            font-size: 32px;
+            margin: 0 0 15px 0;
+            text-shadow: 0 0 10px #ffd700;
+        }
+        #gameOver button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            color: #e6e6fa;
+            background: #00ffcc;
+            border: 2px solid #ffd700;
+            border-radius: 5px;
+            cursor: pointer;
+            text-shadow: 0 0 5px #000;
+        }
+        #gameOver button:hover {
+            background: #ffd700;
+            color: #000;
         }
         #pointsFlash {
             position: absolute;
@@ -110,11 +94,11 @@
         }
         #cameraDisplay {
             position: absolute;
-            top: 20px;
+            top: 80px;
             right: 20px;
             color: #ffd700;
             font-family: 'Orbitron', sans-serif;
-            font-size: 18px;
+            font-size: 12px;
             text-shadow: 0 0 10px #ff4500, 0 0 15px #ff4500;
             background: rgba(0, 0, 0, 0.6);
             padding: 10px;
@@ -130,12 +114,12 @@
             color: #00ffcc;
             font-family: 'Orbitron', sans-serif;
             text-align: center;
-            text-shadow: 0 0 15px #00ffcc, 0 0 20px #00ffcc;
+            text-shadow: 0 0 15px #00ffcc, 0 0 18px #00ffcc;
             z-index: 30;
             animation: introFlash 1s ease-in-out;
         }
         #introMessage h1 {
-            font-size: 48px;
+            font-size: 32px;
             margin: 0;
         }
         #introMessage p {
@@ -218,6 +202,27 @@
         .flashTimer {
             animation: flashTimer 0.5s infinite alternate;
         }
+        #joystick {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            border: 2px solid #ff5050;
+            z-index: 10;
+            touch-action: none;
+        }
+        #joystick-knob {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: #ff5050;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #ff5050;
+            transform: translate(-50%, -50%);
+        }
         @keyframes pulse {
             0% { transform: translateX(-50%) scale(1); }
             50% { transform: translateX(-50%) scale(1.08); }
@@ -242,7 +247,11 @@
 <body>
     <div id="ui"></div>
     <div id="level"></div>
-    <div id="gameOver"></div>
+    <div id="gameOver">
+        <h1>Game Over</h1>
+        <div id="gameOverStats"></div>
+        <button id="playAgain">Play Again</button>
+    </div>
     <div id="pointsFlash"></div>
     <div id="cameraDisplay"></div>
     <div id="introMessage">
@@ -254,6 +263,9 @@
         <div id="redProgress" data-percentage="0"></div>
         <div id="blueProgress" data-percentage="0"></div>
         <div id="remainingProgress" data-percentage="100"></div>
+    </div>
+    <div id="joystick">
+        <div id="joystick-knob"></div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
@@ -277,10 +289,10 @@
 
         // Central sphere
         const centralSphereGeometry = new THREE.SphereGeometry(0.5, 64, 64);
-        const centralSphereMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x000a0a, 
-            emissive: 0x000303, 
-            transparent: true, 
+        const centralSphereMaterial = new THREE.MeshStandardMaterial({
+            color: 0x000a0a,
+            emissive: 0x000303,
+            transparent: true,
             opacity: 0.18,
             metalness: 0.3,
             roughness: 0.2,
@@ -292,21 +304,21 @@
 
         // Laser lines from center to players
         const redLaserGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1, 32);
-        const redLaserMaterial = new THREE.MeshBasicMaterial({ 
-            color: 0xff5050, 
-            transparent: true, 
-            opacity: 0.8, 
-            blending: THREE.AdditiveBlending 
+        const redLaserMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff5050,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
         });
         const redLaser = new THREE.Mesh(redLaserGeometry, redLaserMaterial);
         scene.add(redLaser);
 
         const blueLaserGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1, 32);
-        const blueLaserMaterial = new THREE.MeshBasicMaterial({ 
-            color: 0x5050ff, 
-            transparent: true, 
-            opacity: 0.8, 
-            blending: THREE.AdditiveBlending 
+        const blueLaserMaterial = new THREE.MeshBasicMaterial({
+            color: 0x5050ff,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
         });
         const blueLaser = new THREE.Mesh(blueLaserGeometry, blueLaserMaterial);
         scene.add(blueLaser);
@@ -393,21 +405,21 @@
 
         // Permanent marks
         const markGeometry = new THREE.TetrahedronGeometry(0.15, 0);
-        const redMarkMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0xff5050, 
-            emissive: 0x660000, 
-            metalness: 0.5, 
-            roughness: 0.2, 
-            transparent: true, 
-            opacity: 0.8 
+        const redMarkMaterial = new THREE.MeshStandardMaterial({
+            color: 0xff5050,
+            emissive: 0x660000,
+            metalness: 0.5,
+            roughness: 0.2,
+            transparent: true,
+            opacity: 0.8
         });
-        const blueMarkMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x5050ff, 
-            emissive: 0x000066, 
-            metalness: 0.5, 
-            roughness: 0.2, 
-            transparent: true, 
-            opacity: 0.8 
+        const blueMarkMaterial = new THREE.MeshStandardMaterial({
+            color: 0x5050ff,
+            emissive: 0x000066,
+            metalness: 0.5,
+            roughness: 0.2,
+            transparent: true,
+            opacity: 0.8
         });
 
         // Players
@@ -441,21 +453,21 @@
 
         // Player meshes
         const playerGeometry = new THREE.SphereGeometry(0.2, 64, 64);
-        const redMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0xff5050, 
-            emissive: 0x990000, 
-            metalness: 0.4, 
-            roughness: 0.3, 
-            transparent: true, 
-            opacity: 0.9 
+        const redMaterial = new THREE.MeshStandardMaterial({
+            color: 0xff5050,
+            emissive: 0x990000,
+            metalness: 0.4,
+            roughness: 0.3,
+            transparent: true,
+            opacity: 0.9
         });
-        const blueMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x5050ff, 
-            emissive: 0x000099, 
-            metalness: 0.4, 
-            roughness: 0.3, 
-            transparent: true, 
-            opacity: 0.9 
+        const blueMaterial = new THREE.MeshStandardMaterial({
+            color: 0x5050ff,
+            emissive: 0x000099,
+            metalness: 0.4,
+            roughness: 0.3,
+            transparent: true,
+            opacity: 0.9
         });
         const redPlayer = new THREE.Mesh(playerGeometry, redMaterial);
         const bluePlayer = new THREE.Mesh(playerGeometry, blueMaterial);
@@ -578,10 +590,10 @@
         starGeometry.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
         starGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
         starGeometry.setAttribute('size', new THREE.BufferAttribute(starSizes, 1));
-        const starMaterial = new THREE.PointsMaterial({ 
-            vertexColors: true, 
-            size: 0.15, 
-            transparent: true, 
+        const starMaterial = new THREE.PointsMaterial({
+            vertexColors: true,
+            size: 0.15,
+            transparent: true,
             blending: THREE.AdditiveBlending,
             sizeAttenuation: true
         });
@@ -623,18 +635,105 @@
         const ui = document.getElementById('ui');
         const levelDisplay = document.getElementById('level');
         const gameOverDisplay = document.getElementById('gameOver');
+        const gameOverStats = document.getElementById('gameOverStats');
+        const playAgainButton = document.getElementById('playAgain');
         const pointsFlash = document.getElementById('pointsFlash');
         const cameraDisplay = document.getElementById('cameraDisplay');
         const redProgress = document.getElementById('redProgress');
         const blueProgress = document.getElementById('blueProgress');
         const remainingProgress = document.getElementById('remainingProgress');
 
+        // Joystick
+        const joystick = document.getElementById('joystick');
+        const joystickKnob = document.getElementById('joystick-knob');
+        let joystickActive = false;
+        let joystickCenterX, joystickCenterY;
+        let joystickDirection = new THREE.Vector2();
+        let lastMoveTime = 0;
+        const moveCooldown = 0.5;
+
+        function initJoystick() {
+            const rect = joystick.getBoundingClientRect();
+            joystickCenterX = rect.left + rect.width / 2;
+            joystickCenterY = rect.top + rect.height / 2;
+            joystickKnob.style.left = '50%';
+            joystickKnob.style.top = '50%';
+        }
+
+        initJoystick();
+
+        window.addEventListener('resize', initJoystick);
+
+        joystick.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            joystickActive = true;
+        });
+
+        joystick.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (joystickActive) {
+                const touch = e.touches[0];
+                let dx = touch.clientX - joystickCenterX;
+                let dy = touch.clientY - joystickCenterY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const maxRadius = 50;
+                if (dist > maxRadius) {
+                    dx = (dx / dist) * maxRadius;
+                    dy = (dy / dist) * maxRadius;
+                }
+                joystickKnob.style.left = `calc(50% + ${dx}px)`;
+                joystickKnob.style.top = `calc(50% + ${dy}px)`;
+                joystickDirection.set(dx / maxRadius, dy / maxRadius);
+            }
+        });
+
+        joystick.addEventListener('touchend', () => {
+            joystickActive = false;
+            joystickKnob.style.left = '50%';
+            joystickKnob.style.top = '50%';
+            joystickDirection.set(0, 0);
+        });
+
         // Marks animation data
         const marks = [];
 
         // Event listener for camera switch
-        document.addEventListener('click', () => {
-            if (!gameOver && !introActive) currentCamera = (currentCamera + 1) % cameras.length;
+        document.addEventListener('click', (e) => {
+            if (!gameOver && !introActive && !joystick.contains(e.target)) {
+                currentCamera = (currentCamera + 1) % cameras.length;
+            }
+        });
+
+        // Play Again button
+        playAgainButton.addEventListener('click', () => {
+            gameOver = false;
+            timeLeft = 120;
+            level = 1;
+            levelTimer = 10;
+            explosionTriggered = false;
+            markerExplosionTriggered = false;
+            players.red.covered = 0;
+            players.red.points = 0;
+            players.red.moving = false;
+            players.blue.covered = 0;
+            players.blue.points = 0;
+            players.blue.moving = false;
+            hexagons.forEach(hex => {
+                hex.visits.red = 0;
+                hex.visits.blue = 0;
+                hex.owner = null;
+                hex.edgeWidth = 4;
+                hex.position.copy(hex.position.clone().normalize().multiplyScalar(radius));
+                hex.velocity.set(0, 0, 0);
+            });
+            marks.forEach(mark => scene.remove(mark));
+            marks.length = 0;
+            setOppositePositions();
+            updateHexagonColors();
+            updateProgressBar();
+            updateCentralSphereColor();
+            gameOverDisplay.style.display = 'none';
+            ui.style.display = 'block';
         });
 
         function getNeighbors(index) {
@@ -809,19 +908,33 @@
             laserParticleGeometry.attributes.size.needsUpdate = true;
         }
 
-        function movePlayer(player) {
+        function movePlayer(player, targetIndex = null) {
             if (gameOver || player.moving || introActive) return;
             const neighbors = getNeighbors(player.hexIndex);
             if (neighbors.length === 0) return;
-            const unvisitedNeighbors = neighbors.filter(i => 
-                hexagons[i].visits[player === players.red ? 'red' : 'blue'] === 0 && 
-                hexagons[i].owner !== (player === players.red ? 'blue' : 'red')
-            );
-            const validNeighbors = unvisitedNeighbors.length > 0 ? unvisitedNeighbors : neighbors.filter(i => 
-                hexagons[i].owner !== (player === players.red ? 'blue' : 'red')
-            );
-            if (validNeighbors.length === 0) return;
-            const nextIndex = validNeighbors[Math.floor(Math.random() * validNeighbors.length)];
+            let nextIndex;
+            if (player === players.red && targetIndex !== null) {
+                if (neighbors.includes(targetIndex)) {
+                    const valid = hexagons[targetIndex].visits.blue === 0 && hexagons[targetIndex].owner !== 'blue';
+                    if (valid) {
+                        nextIndex = targetIndex;
+                    } else {
+                        return;
+                    }
+                } else {
+                    return;
+                }
+            } else {
+                const unvisitedNeighbors = neighbors.filter(i =>
+                    hexagons[i].visits[player === players.red ? 'red' : 'blue'] === 0 &&
+                    hexagons[i].owner !== (player === players.red ? 'blue' : 'red')
+                );
+                const validNeighbors = unvisitedNeighbors.length > 0 ? unvisitedNeighbors : neighbors.filter(i =>
+                    hexagons[i].owner !== (player === players.red ? 'blue' : 'red')
+                );
+                if (validNeighbors.length === 0) return;
+                nextIndex = validNeighbors[Math.floor(Math.random() * validNeighbors.length)];
+            }
             player.moving = true;
             player.hexIndex = nextIndex;
             player.targetPos.copy(hexagons[nextIndex].position);
@@ -867,11 +980,11 @@
                         const geometry = new THREE.BufferGeometry().setFromPoints([hex.position, hexagons[n.index].position]);
                         const color = hex.visits.red > 0 ? 0xff5050 : hex.visits.blue > 0 ? 0x5050ff : 0x00e6b8;
                         const opacity = 0.75 + Math.min((hex.visits.red + hex.visits.blue) * 0.25, 0.25);
-                        const material = new THREE.LineBasicMaterial({ 
-                            color, 
-                            transparent: true, 
-                            opacity, 
-                            linewidth: hex.edgeWidth 
+                        const material = new THREE.LineBasicMaterial({
+                            color,
+                            transparent: true,
+                            opacity,
+                            linewidth: hex.edgeWidth
                         });
                         const line = new THREE.Line(geometry, material);
                         line.userData = { hex1: index, hex2: n.index };
@@ -887,7 +1000,7 @@
                 const collisionPos = players.red.pos.clone();
                 const winner = players.red.points > players.blue.points ? 'Red' : 'Blue';
                 const coverage = ((players.red.covered + players.blue.covered) / hexagons.length * 100).toFixed(1);
-                gameOverDisplay.innerHTML = `Game Over!<br>${winner} Wins!<br><span style="color: #ff5050;">Red: ${players.red.covered} hexes, ${players.red.points} pts</span><br><span style="color: #5050ff;">Blue: ${players.blue.covered} hexes, ${players.blue.points} pts</span><br><span style="color: #e6e6fa;">Level: ${level}<br>Sphere Coverage: ${coverage}%</span>`;
+                gameOverStats.innerHTML = `${winner} Wins!<br><span style="color: #ff5050;">Red: ${players.red.covered} hexes, ${players.red.points} pts</span><br><span style="color: #5050ff;">Blue: ${players.blue.covered} hexes, ${players.blue.points} pts</span><br><span style="color: #e6e6fa;">Level: ${level}<br>Sphere Coverage: ${coverage}%</span>`;
                 gameOverDisplay.style.display = 'block';
                 ui.style.display = 'none';
                 triggerExplosion();
@@ -900,7 +1013,7 @@
             const minDist = 5;
             const maxDist = 20;
             const isPlayerCamera = cameras[currentCamera].name === 'Red Player' || cameras[currentCamera].name === 'Blue Player';
-            const brightnessFactor = isPlayerCamera ? 0.7 : 1.0; // Reduce brightness by 30% for player cameras
+            const brightnessFactor = isPlayerCamera ? 0.7 : 1.0;
 
             // Lines
             hexagonSphereGroup.children.forEach(child => {
@@ -1032,6 +1145,74 @@
             camera.rotateY(t * Math.PI * 0.5); // Rotate during zoom
         }
 
+        function updateJoystickMovement(delta) {
+            if (!joystickActive || players.red.moving || gameOver || introActive) return;
+            const currentTime = performance.now() / 1000;
+            if (currentTime - lastMoveTime < moveCooldown) return;
+
+            const magnitude = joystickDirection.length();
+            const threshold = 0.5;
+            if (magnitude < threshold) return;
+
+            const neighbors = getNeighbors(players.red.hexIndex);
+            if (neighbors.length === 0) return;
+
+            // Get camera's yaw (rotation around y-axis)
+            const cameraMatrix = camera.matrixWorld;
+            const camRight = new THREE.Vector3();
+            const camUp = new THREE.Vector3();
+            camera.getWorldDirection(new THREE.Vector3()).negate();
+            camRight.crossVectors(camera.up, camera.getWorldDirection(new THREE.Vector3())).normalize();
+            camUp.crossVectors(camRight, camera.getWorldDirection(new THREE.Vector3())).normalize();
+
+            // Adjust joystick input based on camera
+            const isRedPlayerCamera = cameras[currentCamera].name === 'Red Player';
+            let inputX = joystickDirection.x;
+            let inputY = joystickDirection.y;
+
+            // For non-Red Player cameras, rotate input to align with camera's yaw
+            if (!isRedPlayerCamera) {
+                const yaw = Math.atan2(camRight.x, camRight.z);
+                const cosYaw = Math.cos(yaw);
+                const sinYaw = Math.sin(yaw);
+                const newX = inputX * cosYaw + inputY * sinYaw;
+                const newY = -inputX * sinYaw + inputY * cosYaw;
+                inputX = newX;
+                inputY = newY;
+            } else {
+                // Invert x-axis for Red Player camera
+                inputX = -inputX;
+            }
+
+            // Map joystick input to 3D direction relative to camera
+            const inputDir = new THREE.Vector3(
+                inputX * camRight.x + inputY * camUp.x,
+                inputX * camRight.y + inputY * camUp.y,
+                inputX * camRight.z + inputY * camUp.z
+            ).normalize();
+
+            // Find closest valid neighbor
+            let maxDot = -1;
+            let closestNeighbor = null;
+            const currentPos = players.red.pos.clone();
+            neighbors.forEach(i => {
+                if (hexagons[i].visits.blue === 0 && hexagons[i].owner !== 'blue') {
+                    const neighborPos = hexagons[i].position.clone();
+                    const direction = neighborPos.sub(currentPos).normalize();
+                    const dot = direction.dot(inputDir);
+                    if (dot > maxDot) {
+                        maxDot = dot;
+                        closestNeighbor = i;
+                    }
+                }
+            });
+
+            if (closestNeighbor !== null && maxDot > 0.5) {
+                movePlayer(players.red, closestNeighbor);
+                lastMoveTime = currentTime;
+            }
+        }
+
         function update() {
             const now = performance.now();
             const delta = Math.min((now - lastTime) / 1000, 0.1);
@@ -1064,15 +1245,15 @@
                         gameOver = true;
                         const coverage = ((players.red.covered + players.blue.covered) / hexagons.length * 100).toFixed(1);
                         const winner = players.red.points > players.blue.points ? 'Red' : 'Blue';
-                        gameOverDisplay.innerHTML = `Time's Up!<br>${winner} Wins!<br><span style="color: #ff5050;">Red: ${players.red.covered} hexes, ${players.red.points} pts</span><br><span style="color: #5050ff;">Blue: ${players.blue.covered} hexes, ${players.blue.points} pts</span><br><span style="color: #e6e6fa;">Level: ${level}<br>Sphere Coverage: ${coverage}%</span>`;
+                        gameOverStats.innerHTML = `${winner} Wins!<br><span style="color: #ff5050;">Red: ${players.red.covered} hexes, ${players.red.points} pts</span><br><span style="color: #5050ff;">Blue: ${players.blue.covered} hexes, ${players.blue.points} pts</span><br><span style="color: #e6e6fa;">Level: ${level}<br>Sphere Coverage: ${coverage}%</span>`;
                         gameOverDisplay.style.display = 'block';
                         ui.style.display = 'none';
                         triggerExplosion();
                     } else {
                         const coverage = ((players.red.covered + players.blue.covered) / hexagons.length * 100).toFixed(1);
                         ui.innerHTML = `<span id="neutralStats">Time: ${Math.ceil(timeLeft)}s</span><br>` +
-                                       `<span id="redStats">Red: ${players.red.covered} hexes, ${players.red.points} pts</span><br>` +
-                                       `<span id="blueStats">Blue: ${players.blue.covered} hexes, ${players.blue.points} pts</span><br>` +
+                                       `<span id="redStats">Red: ${players.red.covered}, ${players.red.points} pts</span><br>` +
+                                       `<span id="blueStats">Blue: ${players.blue.covered}, ${players.blue.points} pts</span><br>` +
                                        `<span id="neutralStats">Level: ${level}<br>Coverage: ${coverage}%</span>`;
                         if (timeLeft <= 10) {
                             ui.classList.add('flashTimer');
@@ -1100,7 +1281,7 @@
                         }
                     });
 
-                    if (Math.random() < players.red.speed * delta * 10) movePlayer(players.red);
+                    updateJoystickMovement(delta);
                     if (Math.random() < players.blue.speed * delta * 10) movePlayer(players.blue);
                     checkCollision();
                 }
