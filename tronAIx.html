@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>tronAIx Game - V0.97</title>
+    <title>tronAIx Game - V0.98</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
         canvas { display: block; }
@@ -13,7 +14,7 @@
             width: 100%;
             display: flex;
             justify-content: space-between;
-            font-family: 'Arial', sans-serif;
+            font-family: 'Orbitron', sans-serif;
             padding: 0 10px;
             box-sizing: border-box;
         }
@@ -27,12 +28,14 @@
         #redStats div, #blueStats div { font-size: 12px; }
         #redStats div:first-child, #blueStats div:first-child { font-size: 16px; }
         #speedStats { color: #00ff00; }
+        #speedStats.flash { animation: flashYellow 0.5s infinite; }
+        #speedStats.flashRed { animation: flashRed 0.5s infinite; }
         #gameOver {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-family: 'Arial', sans-serif;
+            font-family: 'Orbitron', sans-serif;
             font-size: 18px;
             text-align: center;
             display: none;
@@ -74,7 +77,7 @@
             top: 110px;
             left: 50%;
             transform: translate(-50%, 0);
-            font-family: 'Arial', sans-serif;
+            font-family: 'Orbitron', sans-serif;
             font-size: 32px;
             color: #ffffff;
             text-align: center;
@@ -86,7 +89,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-family: 'Arial', sans-serif;
+            font-family: 'Orbitron', sans-serif;
             font-size: 144px;
             color: #00ff00;
             text-align: center;
@@ -118,7 +121,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            font-family: 'Arial', sans-serif;
+            font-family: 'Orbitron', sans-serif;
             color: #00ff00;
             text-align: center;
             z-index: 15;
@@ -158,6 +161,16 @@
                 text-shadow: 0 0 15px #00ff00, 0 0 30px #00b7eb;
             }
         }
+        @keyframes flashYellow {
+            0% { color: #00ff00; }
+            50% { color: #ffff00; }
+            100% { color: #00ff00; }
+        }
+        @keyframes flashRed {
+            0% { color: #00ff00; }
+            50% { color: #ff0000; }
+            100% { color: #00ff00; }
+        }
         #welcomeScreen p {
             font-size: 18px;
             max-width: 700px;
@@ -183,7 +196,7 @@
             opacity: 0;
             animation: fadeIn 1s ease-in 0.6s forwards;
         }
-        #start1Player {
+        #playButton {
             margin-top: 20px;
             animation: throb 0.5s ease-in-out infinite;
         }
@@ -191,6 +204,45 @@
             background: #00b7eb;
             box-shadow: 0 0 15px #00b7eb;
             transform: scale(1.05);
+        }
+        #settingsScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(0, 255, 0, 0.2));
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Orbitron', sans-serif;
+            color: #00ff00;
+            text-align: center;
+            z-index: 16;
+        }
+        #optionsPanel {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 17;
+            position: relative;
+        }
+        #closeSettingsButton {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 16px;
+            padding: 8px 16px;
+            background: #ff0000;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        #closeSettingsButton:hover {
+            background: #cc0000;
         }
         #gameModeLabel, #gridSizeLabel, #speedLabel, #gameTimeLabel {
             font-size: 20px;
@@ -203,7 +255,38 @@
         #gameModeLabel {
             margin-top: 20px;
         }
-        #gameModeButtons, #gridSizeButtons, #speedButtons, #gameTimeButtons {
+        #gameModeToggle {
+            display: flex;
+            gap: 10px;
+            z-index: 17;
+        }
+        #gameModeToggle input[type="checkbox"] {
+            display: none;
+        }
+        #gameModeToggle label {
+            font-size: 16px;
+            padding: 8px 16px;
+            background: #00ff00;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 0 8px #00ff00;
+            text-shadow: 0 0 5px #000;
+            transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+            opacity: 0;
+            animation: fadeIn 1s ease-in 1.2s forwards;
+        }
+        #gameModeToggle label:hover {
+            background: #00b7eb;
+            box-shadow: 0 0 12px #00b7eb;
+            transform: scale(1.05);
+        }
+        #gameModeToggle input:checked + label {
+            background: #00b7eb;
+            box-shadow: 0 0 12px #00b7eb;
+        }
+        #gridSizeButtons, #speedButtons, #gameTimeButtons {
             display: flex;
             gap: 10px;
             z-index: 17;
@@ -269,7 +352,7 @@
             top: 10px;
             left: 50%;
             transform: translateX(-50%);
-            font-family: 'Arial', sans-serif;
+            font-family: 'Orbitron', sans-serif;
             text-align: center;
             color: #00ff00;
         }
@@ -283,8 +366,8 @@
         }
         #buttonContainer {
             position: absolute;
-            top: 10px;
-            left: 10px;
+            bottom: 150px;
+            right: 10px;
             display: flex;
             flex-direction: column;
             gap: 5px;
@@ -299,6 +382,7 @@
             border-radius: 5px;
             cursor: pointer;
             transition: background 0.3s;
+            font-family: 'Orbitron', sans-serif;
         }
         #gameRestartButton {
             background: #ff0000;
@@ -325,7 +409,7 @@
             justify-content: center;
             align-items: center;
             color: #fff;
-            font-family: 'Arial', sans-serif;
+            font-family: 'Orbitron', sans-serif;
             font-size: 12px;
             text-align: center;
             z-index: 6;
@@ -406,7 +490,7 @@
             #gameModeLabel, #gridSizeLabel, #speedLabel, #gameTimeLabel {
                 font-size: 16px;
             }
-            #gameModeButtons button, #gridSizeButtons button, #speedButtons button, #gameTimeButtons button {
+            #gameModeToggle label, #gridSizeButtons button, #speedButtons button, #gameTimeButtons button {
                 font-size: 12px;
                 padding: 6px 12px;
             }
@@ -432,29 +516,36 @@
         </h1>
         <p>Navigate the neon grid, outmaneuver your opponent, and claim territory by creating walls. Survive longer and cover more ground to win!</p>
         <div id="miniGrid"></div>
-        <div id="gameModeLabel">Game Mode</div>
-        <div id="gameModeButtons">
-            <button id="start1Player">Human</button>
-            <button id="startAIMode">AI</button>
-        </div>
-        <div id="gridSizeLabel">Grid Size</div>
-        <div id="gridSizeButtons">
-            <button id="gridSmall">Small</button>
-            <button id="gridMedium" class="selected">Medium</button>
-            <button id="gridLarge">Large</button>
-            <button id="gridLudicrous">Ludicrous</button>
-        </div>
-        <div id="speedLabel">Game Speed</div>
-        <div id="speedButtons">
-            <button id="speedSlow" class="selected">Slow</button>
-            <button id="speedMedium">Medium</button>
-            <button id="speedFast">Fast</button>
-        </div>
-        <div id="gameTimeLabel">Game Time</div>
-        <div id="gameTimeButtons">
-            <button id="time60s">60s</button>
-            <button id="time120s">120s</button>
-            <button id="timeUnlimited" class="selected">Unlimited</button>
+        <button id="playButton">Play</button>
+        <button id="settingsButton">Settings</button>
+    </div>
+    <div id="settingsScreen">
+        <div id="optionsPanel">
+            <button id="closeSettingsButton">Close</button>
+            <div id="gameModeLabel">Game Mode</div>
+            <div id="gameModeToggle">
+                <input type="checkbox" id="gameModeSwitch">
+                <label for="gameModeSwitch">Human / AI</label>
+            </div>
+            <div id="gridSizeLabel">Grid Size</div>
+            <div id="gridSizeButtons">
+                <button id="gridSmall">Small</button>
+                <button id="gridMedium" class="selected">Medium</button>
+                <button id="gridLarge">Large</button>
+                <button id="gridLudicrous">Ludicrous</button>
+            </div>
+            <div id="speedLabel">Game Speed</div>
+            <div id="speedButtons">
+                <button id="speedSlow" class="selected">Slow</button>
+                <button id="speedMedium">Medium</button>
+                <button id="speedFast">Fast</button>
+            </div>
+            <div id="gameTimeLabel">Game Time</div>
+            <div id="gameTimeButtons">
+                <button id="time60s">60s</button>
+                <button id="time120s">120s</button>
+                <button id="timeUnlimited" class="selected">Unlimited</button>
+            </div>
         </div>
     </div>
     <div id="fadeOverlay"></div>
@@ -467,7 +558,7 @@
     </div>
     <div id="buttonContainer">
         <button id="gameRestartButton">Restart</button>
-        <button id="cameraButton">Cycle</button>
+        <button id="cameraButton">Camera</button>
         <button id="speedButton">Speed</button>
     </div>
     <div id="ui">
@@ -626,7 +717,7 @@
         }
 
         function animateMiniGrid() {
-            if (document.getElementById('welcomeScreen').style.display === 'none') return;
+            if (document.getElementById('welcomeScreen').style.display === 'none' && document.getElementById('settingsScreen').style.display === 'none') return;
             if (Math.random() < 0.3) {
                 miniPlayer1.direction = getMiniRandomDirection(miniPlayer1.direction);
             }
@@ -719,6 +810,13 @@
             });
         });
 
+        // Game mode toggle
+        let is1PlayerMode = true; // Default to Human mode
+        const gameModeSwitch = document.getElementById('gameModeSwitch');
+        gameModeSwitch.addEventListener('change', () => {
+            is1PlayerMode = !gameModeSwitch.checked;
+        });
+
         // Grid setup
         let grid = [];
         function setupGrid() {
@@ -801,7 +899,8 @@
             wallsMade: 0,
             score: 0,
             lastMoveTime: performance.now(),
-            isThrobbing: false
+            isThrobbing: false,
+            targetPos: new THREE.Vector3(initialPositions.player1.x - gridSize / 2, 0.1, initialPositions.player1.z - gridSize / 2)
         };
         const player2 = {
             x: initialPositions.player2.x,
@@ -814,7 +913,8 @@
             wallsMade: 0,
             score: 0,
             lastMoveTime: performance.now(),
-            isThrobbing: false
+            isThrobbing: false,
+            targetPos: new THREE.Vector3(initialPositions.player2.x - gridSize / 2, 0.1, initialPositions.player2.z - gridSize / 2)
         };
 
         const player1Geometry = new THREE.BoxGeometry(0.8, 0.2, 0.8);
@@ -828,7 +928,7 @@
             opacity: 0
         });
         const player1Mesh = new THREE.Mesh(player1Geometry, player1Material);
-        player1Mesh.position.set(player1.x - gridSize / 2, 0.1, player1.z - gridSize / 2);
+        player1Mesh.position.copy(player1.targetPos);
         scene.add(player1Mesh);
 
         const player1BorderGeometry = new THREE.EdgesGeometry(player1Geometry);
@@ -853,7 +953,7 @@
             opacity: 0
         });
         const player2Mesh = new THREE.Mesh(player2Geometry, player2Material);
-        player2Mesh.position.set(player2.x - gridSize / 2, 0.1, player2.z - gridSize / 2);
+        player2Mesh.position.copy(player2.targetPos);
         scene.add(player2Mesh);
 
         const player2BorderGeometry = new THREE.EdgesGeometry(player2Geometry);
@@ -910,9 +1010,6 @@
                 camera.lookAt(gridViewTarget);
             }
         }
-
-        // Game mode
-        let is1PlayerMode = false;
 
         // Joystick control setup
         let joystickActive = false;
@@ -973,18 +1070,31 @@
             const angle = Math.atan2(dy, dx);
             const angleDeg = (angle * 180 / Math.PI + 360) % 360;
 
-            if (angleDeg >= 315 || angleDeg < 45) {
+            // Define directions for eight-way movement
+            if (angleDeg >= 337.5 || angleDeg < 22.5) {
                 player1.direction = 'right';
                 controlBoxText.textContent = 'Right';
-            } else if (angleDeg >= 45 && angleDeg < 135) {
+            } else if (angleDeg >= 22.5 && angleDeg < 67.5) {
+                player1.direction = 'down-right';
+                controlBoxText.textContent = 'Down-Right';
+            } else if (angleDeg >= 67.5 && angleDeg < 112.5) {
                 player1.direction = 'down';
                 controlBoxText.textContent = 'Down';
-            } else if (angleDeg >= 135 && angleDeg < 225) {
+            } else if (angleDeg >= 112.5 && angleDeg < 157.5) {
+                player1.direction = 'down-left';
+                controlBoxText.textContent = 'Down-Left';
+            } else if (angleDeg >= 157.5 && angleDeg < 202.5) {
                 player1.direction = 'left';
                 controlBoxText.textContent = 'Left';
-            } else {
+            } else if (angleDeg >= 202.5 && angleDeg < 247.5) {
+                player1.direction = 'up-left';
+                controlBoxText.textContent = 'Up-Left';
+            } else if (angleDeg >= 247.5 && angleDeg < 292.5) {
                 player1.direction = 'up';
                 controlBoxText.textContent = 'Up';
+            } else {
+                player1.direction = 'up-right';
+                controlBoxText.textContent = 'Up-Right';
             }
         }
 
@@ -1042,6 +1152,13 @@
             updateInterval = baseUpdateInterval / speedMultiplier;
         });
 
+        // Settings screen close button
+        document.getElementById('closeSettingsButton').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('settingsScreen').style.display = 'none';
+            document.getElementById('welcomeScreen').style.display = 'flex';
+        });
+
         // Initial camera position
         updateCamera();
 
@@ -1059,7 +1176,11 @@
                 { dir: 'up', x: player.x, z: player.z - 1 },
                 { dir: 'down', x: player.x, z: player.z + 1 },
                 { dir: 'left', x: player.x - 1, z: player.z },
-                { dir: 'right', x: player.x + 1, z: player.z }
+                { dir: 'right', x: player.x + 1, z: player.z },
+                { dir: 'up-left', x: player.x - 1, z: player.z - 1 },
+                { dir: 'up-right', x: player.x + 1, z: player.z - 1 },
+                { dir: 'down-left', x: player.x - 1, z: player.z + 1 },
+                { dir: 'down-right', x: player.x + 1, z: player.z + 1 }
             ];
             return directions.every(({ x, z }) =>
                 x < 0 || x >= gridSize || z < 0 || z >= gridSize || grid[x][z].isWall
@@ -1072,7 +1193,11 @@
                 { x: x, z: z - 1 },
                 { x: x, z: z + 1 },
                 { x: x - 1, z: z },
-                { x: x + 1, z: z }
+                { x: x + 1, z: z },
+                { x: x - 1, z: z - 1 },
+                { x: x + 1, z: z - 1 },
+                { x: x - 1, z: z + 1 },
+                { x: x + 1, z: z + 1 }
             ];
             return neighbors.some(({ x, z }) =>
                 x >= 0 && x < gridSize && z >= 0 && z < gridSize && grid[x][z].isWall
@@ -1089,10 +1214,14 @@
                     const x = player.x + dx;
                     const z = player.z + dz;
                     let dir = 'right';
-                    if (dx < 0) dir = 'left';
-                    else if (dx > 0) dir = 'right';
-                    else if (dz < 0) dir = 'up';
-                    else if (dz > 0) dir = 'down';
+                    if (dx < 0 && dz === 0) dir = 'left';
+                    else if (dx > 0 && dz === 0) dir = 'right';
+                    else if (dz < 0 && dx === 0) dir = 'up';
+                    else if (dz > 0 && dx === 0) dir = 'down';
+                    else if (dx < 0 && dz < 0) dir = 'up-left';
+                    else if (dx > 0 && dz < 0) dir = 'up-right';
+                    else if (dx < 0 && dz > 0) dir = 'down-left';
+                    else if (dx > 0 && dz > 0) dir = 'down-right';
                     directions.push({ x, z, dir });
                 }
             }
@@ -1133,7 +1262,8 @@
             player1.score = 0;
             player1.lastMoveTime = performance.now();
             player1.isThrobbing = false;
-            player1Mesh.position.set(player1.x - gridSize / 2, 0.1, player1.z - gridSize / 2);
+            player1.targetPos.set(initialPositions.player1.x - gridSize / 2, 0.1, initialPositions.player1.z - gridSize / 2);
+            player1Mesh.position.copy(player1.targetPos);
             player1Mesh.className = '';
 
             player2.x = initialPositions.player2.x;
@@ -1146,7 +1276,8 @@
             player2.score = 0;
             player2.lastMoveTime = performance.now();
             player2.isThrobbing = false;
-            player2Mesh.position.set(player2.x - gridSize / 2, 0.1, player2.z - gridSize / 2);
+            player2.targetPos.set(initialPositions.player2.x - gridSize / 2, 0.1, initialPositions.player2.z - gridSize / 2);
+            player2Mesh.position.copy(player2.targetPos);
             player2Mesh.className = '';
 
             setupGrid();
@@ -1183,6 +1314,7 @@
 
             document.getElementById('gameOver').style.display = 'none';
             document.getElementById('welcomeScreen').style.display = 'flex';
+            document.getElementById('settingsScreen').style.display = 'none';
             document.getElementById('fadeOverlay').style.display = 'block';
             document.getElementById('fadeOverlay').style.opacity = '1';
         }
@@ -1244,10 +1376,21 @@
         let startTime = performance.now();
         function updateUI() {
             let elapsed;
+            const speedStats = document.getElementById('speedStats');
             if (gameTime === 'unlimited') {
                 elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+                speedStats.classList.remove('flash', 'flashRed');
             } else {
                 elapsed = Math.max(0, gameTimeDuration - ((performance.now() - startTime) / 1000)).toFixed(1);
+                if (elapsed <= 30 && elapsed > 10) {
+                    speedStats.classList.add('flash');
+                    speedStats.classList.remove('flashRed');
+                } else if (elapsed <= 10) {
+                    speedStats.classList.add('flashRed');
+                    speedStats.classList.remove('flash');
+                } else {
+                    speedStats.classList.remove('flash', 'flashRed');
+                }
                 if (elapsed <= 0 && !gameOver) {
                     const winner = player1.score >= player2.score ? player1 : player2;
                     const loser = winner === player1 ? player2 : player1;
@@ -1373,6 +1516,11 @@
 
             updateInterval = gridSize === 20 ? baseUpdateInterval / (speedMultiplier * 1.2) : baseUpdateInterval / speedMultiplier;
 
+            // Smooth movement interpolation
+            const lerpFactor = 0.2;
+            player1Mesh.position.lerp(player1.targetPos, lerpFactor);
+            player2Mesh.position.lerp(player2.targetPos, lerpFactor);
+
             if (now - lastUpdate >= updateInterval) {
                 if (!is1PlayerMode) {
                     if (Math.random() < 0.3) {
@@ -1388,10 +1536,15 @@
                     let newX = player.x;
                     let newZ = player.z;
 
+                    // Handle eight-way movement
                     if (player.direction === 'up') newZ--;
-                    if (player.direction === 'down') newZ++;
-                    if (player.direction === 'left') newX--;
-                    if (player.direction === 'right') newX++;
+                    else if (player.direction === 'down') newZ++;
+                    else if (player.direction === 'left') newX--;
+                    else if (player.direction === 'right') newX++;
+                    else if (player.direction === 'up-left') { newX--; newZ--; }
+                    else if (player.direction === 'up-right') { newX++; newZ--; }
+                    else if (player.direction === 'down-left') { newX--; newZ++; }
+                    else if (player.direction === 'down-right') { newX++; newZ++; }
 
                     if (newX === otherPlayer.x && newZ === otherPlayer.z) {
                         if (!is1PlayerMode || player !== player1) {
@@ -1399,7 +1552,11 @@
                                 { dir: 'up', x: player.x, z: player.z - 1 },
                                 { dir: 'down', x: player.x, z: player.z + 1 },
                                 { dir: 'left', x: player.x - 1, z: player.z },
-                                { dir: 'right', x: player.x + 1, z: player.z }
+                                { dir: 'right', x: player.x + 1, z: player.z },
+                                { dir: 'up-left', x: player.x - 1, z: player.z - 1 },
+                                { dir: 'up-right', x: player.x + 1, z: player.z - 1 },
+                                { dir: 'down-left', x: player.x - 1, z: player.z + 1 },
+                                { dir: 'down-right', x: player.x + 1, z: player.z + 1 }
                             ];
                             let validDirection = null;
                             for (const { dir, x, z } of directions) {
@@ -1416,6 +1573,7 @@
                     if (newX >= 0 && newX < gridSize && newZ >= 0 && newZ < gridSize && !grid[newX][newZ].isWall) {
                         player.x = newX;
                         player.z = newZ;
+                        player.targetPos.set(player.x - gridSize / 2, 0.1, player.z - gridSize / 2);
 
                         if (player.x !== player.lastPos.x || player.z !== player.lastPos.z) {
                             player.distance++;
@@ -1457,15 +1615,16 @@
                         cell.mesh.material.color.setHex(newColor);
                         cell.mesh.material.opacity = cell.isWall ? 0.9 : 0.5 + intensity * 0.4;
                         cell.color = newColor;
-
-                        const targetPos = new THREE.Vector3(player.x - gridSize / 2, 0.1, player.z - gridSize / 2);
-                        mesh.position.lerp(targetPos, 0.9);
                     } else if (!is1PlayerMode || player !== player1) {
                         const directions = [
                             { dir: 'up', x: player.x, z: player.z - 1 },
                             { dir: 'down', x: player.x, z: player.z + 1 },
                             { dir: 'left', x: player.x - 1, z: player.z },
-                            { dir: 'right', x: player.x + 1, z: player.z }
+                            { dir: 'right', x: player.x + 1, z: player.z },
+                            { dir: 'up-left', x: player.x - 1, z: player.z - 1 },
+                            { dir: 'up-right', x: player.x + 1, z: player.z - 1 },
+                            { dir: 'down-left', x: player.x - 1, z: player.z + 1 },
+                            { dir: 'down-right', x: player.x + 1, z: player.z + 1 }
                         ];
                         let validDirection = null;
                         for (const { dir, x, z } of directions) {
@@ -1488,8 +1647,7 @@
                                 player.lastMoveTime = now;
                                 player.isThrobbing = false;
                                 mesh.className = '';
-                                const targetPos = new THREE.Vector3(player.x - gridSize / 2, 0.1, player.z - gridSize / 2);
-                                mesh.position.lerp(targetPos, 0.9);
+                                player.targetPos.set(player.x - gridSize / 2, 0.1, player.z - gridSize / 2);
                             } else {
                                 player.direction = getRandomDirection(player.direction);
                             }
@@ -1513,7 +1671,7 @@
         }
 
         // Welcome screen button handlers
-        document.getElementById('start1Player').addEventListener('click', (e) => {
+        document.getElementById('playButton').addEventListener('click', (e) => {
             e.stopPropagation();
             document.getElementById('welcomeScreen').style.display = 'none';
             is1PlayerMode = true;
@@ -1523,14 +1681,10 @@
             startCountdown();
         });
 
-        document.getElementById('startAIMode').addEventListener('click', (e) => {
+        document.getElementById('settingsButton').addEventListener('click', (e) => {
             e.stopPropagation();
             document.getElementById('welcomeScreen').style.display = 'none';
-            is1PlayerMode = false;
-            setupGrid();
-            speedMultiplier = selectedSpeed;
-            updateInterval = baseUpdateInterval / speedMultiplier;
-            startCountdown();
+            document.getElementById('settingsScreen').style.display = 'flex';
         });
 
         // Handle window resize
