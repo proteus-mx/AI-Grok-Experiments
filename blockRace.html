@@ -214,6 +214,7 @@
         let currentMode = 'easy';
         let playerCount = 1;
         let currentPlayer = 1;
+        let isAnimating = false;
         let countdownInterval;
         function initBoard(mode, player) {
             let tiles = [];
@@ -494,53 +495,105 @@
             const board = targetBoard || (player === 1 ? board1 : board2);
             const emptyPos = player === 1 ? emptyPos1 : emptyPos2;
             if (!board || !emptyPos) return false;
+            if (update && !autoSolving && isAnimating) return false;
+            let emptyIndex, startIndex;
             if (dx !== 0) {
                 let row = board[ty];
-                let emptyIndex = row.indexOf(null);
+                emptyIndex = row.indexOf(null);
                 if (emptyIndex === -1) return false;
-                let startIndex = tx;
-                let endIndex = emptyIndex;
+                startIndex = tx;
                 if (dx > 0 && startIndex >= emptyIndex) return false;
                 if (dx < 0 && startIndex <= emptyIndex) return false;
-                if (dx > 0) {
-                    for (let x = emptyIndex; x > startIndex; x--) {
-                        row[x] = row[x - 1];
-                    }
-                } else {
-                    for (let x = emptyIndex; x < startIndex; x++) {
-                        row[x] = row[x + 1];
-                    }
-                }
-                row[startIndex] = null;
-                emptyPos.x = startIndex;
             } else {
                 let column = board.map(row => row[tx]);
-                let emptyIndex = column.indexOf(null);
+                emptyIndex = column.indexOf(null);
                 if (emptyIndex === -1) return false;
-                let startIndex = ty;
+                startIndex = ty;
                 if (dy > 0 && startIndex >= emptyIndex) return false;
                 if (dy < 0 && startIndex <= emptyIndex) return false;
-                if (dy > 0) {
-                    for (let y = emptyIndex; y > startIndex; y--) {
-                        board[y][tx] = board[y - 1][tx];
+            }
+            if (update && !autoSolving) {
+                isAnimating = true;
+                const tileSize = document.querySelector('.tile')?.offsetWidth || 40;
+                const dir = (dx || dy) > 0 ? tileSize : -tileSize;
+                const tiles = document.querySelectorAll(`#board${player} .tile`);
+                let min, max, isRow = dx !== 0;
+                if (isRow) {
+                    min = Math.min(tx, emptyPos.x);
+                    max = Math.max(tx, emptyPos.x);
+                    for (let pos = min + 1; pos <= max; pos++) {
+                        const idx = ty * 5 + pos;
+                        tiles[idx].style.transition = 'transform 0.2s';
+                        tiles[idx].style.transform = `translateX(${dir}px)`;
                     }
                 } else {
-                    for (let y = emptyIndex; y < startIndex; y++) {
-                        board[y][tx] = board[y + 1][tx];
+                    min = Math.min(ty, emptyPos.y);
+                    max = Math.max(ty, emptyPos.y);
+                    for (let pos = min + 1; pos <= max; pos++) {
+                        const idx = pos * 5 + tx;
+                        tiles[idx].style.transition = 'transform 0.2s';
+                        tiles[idx].style.transform = `translateY(${dir}px)`;
                     }
                 }
-                board[startIndex][tx] = null;
-                emptyPos.y = startIndex;
+                setTimeout(() => {
+                    if (dx !== 0) {
+                        let row = board[ty];
+                        if (dx > 0) {
+                            for (let x = emptyIndex; x > tx; x--) row[x] = row[x - 1];
+                        } else {
+                            for (let x = emptyIndex; x < tx; x++) row[x] = row[x + 1];
+                        }
+                        row[tx] = null;
+                        emptyPos.x = tx;
+                    } else {
+                        if (dy > 0) {
+                            for (let y = emptyIndex; y > ty; y--) board[y][tx] = board[y - 1][tx];
+                        } else {
+                            for (let y = emptyIndex; y < ty; y++) board[y][tx] = board[y + 1][tx];
+                        }
+                        board[ty][tx] = null;
+                        emptyPos.y = ty;
+                    }
+                    renderBoard(player);
+                    isAnimating = false;
+                    if (!gameWon) {
+                        if (player === 1) moveCount1++;
+                        else moveCount2++;
+                        updateMoves(player);
+                        checkWin(player);
+                        updateDifficulty(player);
+                    }
+                }, 200);
+                return true;
+            } else {
+                if (dx !== 0) {
+                    let row = board[ty];
+                    if (dx > 0) {
+                        for (let x = emptyIndex; x > tx; x--) row[x] = row[x - 1];
+                    } else {
+                        for (let x = emptyIndex; x < tx; x++) row[x] = row[x + 1];
+                    }
+                    row[tx] = null;
+                    emptyPos.x = tx;
+                } else {
+                    if (dy > 0) {
+                        for (let y = emptyIndex; y > ty; y--) board[y][tx] = board[y - 1][tx];
+                    } else {
+                        for (let y = emptyIndex; y < ty; y++) board[y][tx] = board[y + 1][tx];
+                    }
+                    board[ty][tx] = null;
+                    emptyPos.y = ty;
+                }
+                if (update && !gameWon) {
+                    if (player === 1) moveCount1++;
+                    else moveCount2++;
+                    updateMoves(player);
+                    renderBoard(player);
+                    if (checkWin(player)) return true;
+                    updateDifficulty(player);
+                }
+                return true;
             }
-            if (update && !gameWon) {
-                if (player === 1) moveCount1++;
-                else moveCount2++;
-                updateMoves(player);
-                renderBoard(player);
-                if (checkWin(player)) return true;
-                updateDifficulty(player);
-            }
-            return true;
         }
         function updateMoves(player) {
             const moveCount = player === 1 ? moveCount1 : moveCount2;
@@ -651,12 +704,6 @@
                 if (player2) player2.style.display = 'none';
                 if (controls2) controls2.style.display = 'none';
                 if (difficulty2) difficulty2.style.display = 'none';
-                const player1 = document.getElementById('player1');
-                const patternContainer = document.getElementById('pattern-container');
-                const stats1 = document.getElementById('stats1');
-                if (player1 && patternContainer && stats1) {
-                    player1.insertBefore(patternContainer, stats1.nextSibling);
-                }
             }
             renderPattern();
             startTime = Date.now();
