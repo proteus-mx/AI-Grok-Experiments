@@ -29,9 +29,9 @@
         #pattern-container { display: flex; flex-direction: column; align-items: center; }
         #pattern { display: grid; grid-template-columns: repeat(3, 20px); gap: 1px; border: 2px solid #333; background: #fff; padding: 3px; border-radius: 6px; margin-bottom: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         body.dark-mode #pattern { background: #444; border-color: #666; }
-        #board1, #board2 { display: grid; grid-template-columns: repeat(5, 40px); gap: 3px; border: 5px groove #666; background: linear-gradient(135deg, #eee, #ccc); padding: 8px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        #board1, #board2 { display: grid; grid-template-columns: repeat(5, 40px); gap: 3px; border: 5px groove #666; background: linear-gradient(135deg, #eee, #ccc); padding: 8px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); position: relative; }
         body.dark-mode #board1, body.dark-mode #board2 { background: linear-gradient(135deg, #333, #222); border-color: #888; }
-        .tile { width: 40px; height: 40px; border-radius: 10px; box-shadow: inset 0 2px 2px rgba(255,255,255,0.6), 0 3px 6px rgba(0,0,0,0.4); transition: transform 0.2s ease-in-out; user-select: none; border: 1px solid rgba(0,0,0,0.1); }
+        .tile { width: 40px; height: 40px; border-radius: 10px; box-shadow: inset 0 2px 2px rgba(255,255,255,0.6), 0 3px 6px rgba(0,0,0,0.4); transition: transform 0.2s ease-in-out; user-select: none; border: 1px solid rgba(0,0,0,0.1); will-change: transform; }
         #pattern .tile { width: 20px; height: 20px; border-radius: 5px; box-shadow: inset 0 1px 1px rgba(255,255,255,0.6), 0 1px 3px rgba(0,0,0,0.3); }
         .tile:active { transform: scale(0.92); box-shadow: inset 0 1px 1px rgba(255,255,255,0.4), 0 2px 4px rgba(0,0,0,0.5); }
         .empty { background: rgba(0,0,0,0.05); box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); border: none; }
@@ -214,7 +214,11 @@
         let currentMode = 'easy';
         let playerCount = 1;
         let currentPlayer = 1;
-        let isAnimating = false;
+        let draggedTile = null;
+        let dragStartX = 0, dragStartY = 0;
+        let dragDirection = null;
+        let movingTiles = [];
+        let dragDx = 0, dragDy = 0;
         let countdownInterval;
         function initBoard(mode, player) {
             let tiles = [];
@@ -454,8 +458,9 @@
                     tile.dataset.y = y;
                     tile.dataset.player = player;
                     if (!autoSolving) {
-                        tile.addEventListener('touchstart', handleTouchStart);
-                        tile.addEventListener('touchend', handleTouchEnd);
+                        tile.addEventListener('touchstart', handleTouchStart, {passive: false});
+                        tile.addEventListener('touchmove', handleTouchMove, {passive: false});
+                        tile.addEventListener('touchend', handleTouchEnd, {passive: false});
                     }
                     boardDiv.appendChild(tile);
                 }
@@ -475,125 +480,154 @@
         }
         let touchStartX, touchStartY;
         function handleTouchStart(e) {
+            if (e.target.classList.contains('empty')) return;
+            if (isAnimating) return;
+            draggedTile = e.target;
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
+            dragDirection = null;
+            movingTiles = [];
+            dragDx = 0;
+            dragDy = 0;
+        }
+        function handleTouchMove(e) {
+            if (!draggedTile) return;
+            e.preventDefault();
+            dragDx = e.touches[0].clientX - touchStartX;
+            dragDy = e.touches[0].clientY - touchStartY;
+            if (!dragDirection && (Math.abs(dragDx) > 20 || Math.abs(dragDy) > 20)) {
+                dragDirection = Math.abs(dragDx) > Math.abs(dragDy) ? 'horizontal' : 'vertical';
+                const x = parseInt(draggedTile.dataset.x);
+                const y = parseInt(draggedTile.dataset.y);
+                const player = parseInt(draggedTile.dataset.player);
+                const empty = player === 1 ? emptyPos1 : emptyPos2;
+                const sign = dragDirection === 'horizontal' ? (dragDx > 0 ? 1 : -1) : (dragDy > 0 ? 1 : -1);
+                if (dragDirection === 'horizontal') {
+                    if (y !== empty.y) {
+                        dragDirection = null;
+                        return;
+                    }
+                    if ((sign > 0 && x >= empty.x) || (sign < 0 && x <= empty.x)) {
+                        dragDirection = null;
+                        return;
+                    }
+                    const min = Math.min(x, empty.x);
+                    const max = Math.max(x, empty.x);
+                    const tiles = document.querySelectorAll(`#board${player} .tile`);
+                    for (let pos = min + 1; pos <= max; pos++) {
+                        movingTiles.push(tiles[y * 5 + pos]);
+                    }
+                } else {
+                    if (x !== empty.x) {
+                        dragDirection = null;
+                        return;
+                    }
+                    if ((sign > 0 && y >= empty.y) || (sign < 0 && y <= empty.y)) {
+                        dragDirection = null;
+                        return;
+                    }
+                    const min = Math.min(y, empty.y);
+                    const max = Math.max(y, empty.y);
+                    const tiles = document.querySelectorAll(`#board${player} .tile`);
+                    for (let pos = min + 1; pos <= max; pos++) {
+                        movingTiles.push(tiles[pos * 5 + x]);
+                    }
+                }
+            }
+            if (dragDirection) {
+                const tileSize = draggedTile.offsetWidth;
+                let delta = dragDirection === 'horizontal' ? dragDx : dragDy;
+                const maxDelta = tileSize * (delta > 0 ? 1 : -1);
+                delta = delta > 0 ? Math.min(delta, tileSize) : Math.max(delta, -tileSize);
+                movingTiles.forEach(tile => {
+                    tile.style.transition = 'none';
+                    tile.style.transform = dragDirection === 'horizontal' ? `translateX(${delta}px)` : `translateY(${delta}px)`;
+                });
+            }
         }
         function handleTouchEnd(e) {
-            const dx = e.changedTouches[0].clientX - touchStartX;
-            const dy = e.changedTouches[0].clientY - touchStartY;
-            const tile = e.target;
-            const x = parseInt(tile.dataset.x) || 0;
-            const y = parseInt(tile.dataset.y) || 0;
-            const player = parseInt(tile.dataset.player) || 1;
-            if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30) {
-                moveRowOrColumn(x, y, dx > 0 ? 1 : -1, 0, true, player);
-            } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 30) {
-                moveRowOrColumn(x, y, 0, dy > 0 ? 1 : -1, true, player);
+            if (!draggedTile || !dragDirection) {
+                draggedTile = null;
+                return;
             }
+            const tileSize = draggedTile.offsetWidth;
+            let delta = dragDirection === 'horizontal' ? dragDx : dragDy;
+            const half = tileSize / 2;
+            const complete = Math.abs(delta) > half;
+            const targetDelta = complete ? (delta > 0 ? tileSize : -tileSize) : 0;
+            movingTiles.forEach(tile => {
+                tile.style.transition = 'transform 0.2s';
+                tile.style.transform = dragDirection === 'horizontal' ? `translateX(${targetDelta}px)` : `translateY(${targetDelta}px)`;
+            });
+            setTimeout(() => {
+                movingTiles.forEach(tile => {
+                    tile.style.transition = '';
+                    tile.style.transform = '';
+                });
+                if (complete) {
+                    const x = parseInt(draggedTile.dataset.x);
+                    const y = parseInt(draggedTile.dataset.y);
+                    const player = parseInt(draggedTile.dataset.player);
+                    const dx = dragDirection === 'horizontal' ? (delta > 0 ? 1 : -1) : 0;
+                    const dy = dragDirection === 'vertical' ? (delta > 0 ? 1 : -1) : 0;
+                    moveRowOrColumn(x, y, dx, dy, true, player);
+                }
+                draggedTile = null;
+                dragDirection = null;
+                movingTiles = [];
+            }, 200);
         }
         function moveRowOrColumn(tx, ty, dx, dy, update = true, player = 1, targetBoard = null) {
             const board = targetBoard || (player === 1 ? board1 : board2);
             const emptyPos = player === 1 ? emptyPos1 : emptyPos2;
             if (!board || !emptyPos) return false;
-            if (update && !autoSolving && isAnimating) return false;
-            let emptyIndex, startIndex;
             if (dx !== 0) {
                 let row = board[ty];
-                emptyIndex = row.indexOf(null);
+                let emptyIndex = row.indexOf(null);
                 if (emptyIndex === -1) return false;
-                startIndex = tx;
+                let startIndex = tx;
+                let endIndex = emptyIndex;
                 if (dx > 0 && startIndex >= emptyIndex) return false;
                 if (dx < 0 && startIndex <= emptyIndex) return false;
+                if (dx > 0) {
+                    for (let x = emptyIndex; x > startIndex; x--) {
+                        row[x] = row[x - 1];
+                    }
+                } else {
+                    for (let x = emptyIndex; x < startIndex; x++) {
+                        row[x] = row[x + 1];
+                    }
+                }
+                row[startIndex] = null;
+                emptyPos.x = startIndex;
             } else {
                 let column = board.map(row => row[tx]);
-                emptyIndex = column.indexOf(null);
+                let emptyIndex = column.indexOf(null);
                 if (emptyIndex === -1) return false;
-                startIndex = ty;
+                let startIndex = ty;
                 if (dy > 0 && startIndex >= emptyIndex) return false;
                 if (dy < 0 && startIndex <= emptyIndex) return false;
-            }
-            if (update && !autoSolving) {
-                isAnimating = true;
-                const tileSize = document.querySelector('.tile')?.offsetWidth || 40;
-                const dir = (dx || dy) > 0 ? tileSize : -tileSize;
-                const tiles = document.querySelectorAll(`#board${player} .tile`);
-                let min, max, isRow = dx !== 0;
-                if (isRow) {
-                    min = Math.min(tx, emptyPos.x);
-                    max = Math.max(tx, emptyPos.x);
-                    for (let pos = min + 1; pos <= max; pos++) {
-                        const idx = ty * 5 + pos;
-                        tiles[idx].style.transition = 'transform 0.2s';
-                        tiles[idx].style.transform = `translateX(${dir}px)`;
+                if (dy > 0) {
+                    for (let y = emptyIndex; y > startIndex; y--) {
+                        board[y][tx] = board[y - 1][tx];
                     }
                 } else {
-                    min = Math.min(ty, emptyPos.y);
-                    max = Math.max(ty, emptyPos.y);
-                    for (let pos = min + 1; pos <= max; pos++) {
-                        const idx = pos * 5 + tx;
-                        tiles[idx].style.transition = 'transform 0.2s';
-                        tiles[idx].style.transform = `translateY(${dir}px)`;
+                    for (let y = emptyIndex; y < startIndex; y++) {
+                        board[y][tx] = board[y + 1][tx];
                     }
                 }
-                setTimeout(() => {
-                    if (dx !== 0) {
-                        let row = board[ty];
-                        if (dx > 0) {
-                            for (let x = emptyIndex; x > tx; x--) row[x] = row[x - 1];
-                        } else {
-                            for (let x = emptyIndex; x < tx; x++) row[x] = row[x + 1];
-                        }
-                        row[tx] = null;
-                        emptyPos.x = tx;
-                    } else {
-                        if (dy > 0) {
-                            for (let y = emptyIndex; y > ty; y--) board[y][tx] = board[y - 1][tx];
-                        } else {
-                            for (let y = emptyIndex; y < ty; y++) board[y][tx] = board[y + 1][tx];
-                        }
-                        board[ty][tx] = null;
-                        emptyPos.y = ty;
-                    }
-                    renderBoard(player);
-                    isAnimating = false;
-                    if (!gameWon) {
-                        if (player === 1) moveCount1++;
-                        else moveCount2++;
-                        updateMoves(player);
-                        checkWin(player);
-                        updateDifficulty(player);
-                    }
-                }, 200);
-                return true;
-            } else {
-                if (dx !== 0) {
-                    let row = board[ty];
-                    if (dx > 0) {
-                        for (let x = emptyIndex; x > tx; x--) row[x] = row[x - 1];
-                    } else {
-                        for (let x = emptyIndex; x < tx; x++) row[x] = row[x + 1];
-                    }
-                    row[tx] = null;
-                    emptyPos.x = tx;
-                } else {
-                    if (dy > 0) {
-                        for (let y = emptyIndex; y > ty; y--) board[y][tx] = board[y - 1][tx];
-                    } else {
-                        for (let y = emptyIndex; y < ty; y++) board[y][tx] = board[y + 1][tx];
-                    }
-                    board[ty][tx] = null;
-                    emptyPos.y = ty;
-                }
-                if (update && !gameWon) {
-                    if (player === 1) moveCount1++;
-                    else moveCount2++;
-                    updateMoves(player);
-                    renderBoard(player);
-                    if (checkWin(player)) return true;
-                    updateDifficulty(player);
-                }
-                return true;
+                board[startIndex][tx] = null;
+                emptyPos.y = startIndex;
             }
+            if (update && !gameWon) {
+                if (player === 1) moveCount1++;
+                else moveCount2++;
+                updateMoves(player);
+                renderBoard(player);
+                if (checkWin(player)) return true;
+                updateDifficulty(player);
+            }
+            return true;
         }
         function updateMoves(player) {
             const moveCount = player === 1 ? moveCount1 : moveCount2;
