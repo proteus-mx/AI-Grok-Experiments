@@ -3,10 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Block Race 2 Player</title>
+    <title>Block Race - V3.0</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
     <style>
-        body { display: flex; flex-direction: column; align-items: center; font-family: Arial, sans-serif; background: #f0f0f0; margin: 0; padding: 20px; overflow: hidden; }
-        #welcome-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #f0f0f0; }
+        body { display: flex; flex-direction: column; align-items: center; font-family: 'Orbitron', sans-serif; background: #f0f0f0; margin: 0; padding: 20px; overflow: hidden; }
+        #welcome-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: linear-gradient(to bottom, #f0f0f0, #d0d0d0); }
+        #welcome-screen h1 { font-size: 48px; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+        #welcome-screen p { font-size: 24px; margin-bottom: 20px; }
+        #welcome-screen button { padding: 15px 30px; font-size: 20px; margin: 15px 0; background: #0074D9; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transition: transform 0.2s; }
+        #welcome-screen button:hover { transform: scale(1.05); background: #0056b3; }
         #game-container { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 20px; display: none; }
         #pattern-container { display: flex; flex-direction: column; align-items: center; }
         #pattern { display: grid; grid-template-columns: repeat(3, 20px); gap: 1px; border: 2px solid #333; background: #fff; padding: 3px; border-radius: 6px; margin-bottom: 5px; }
@@ -26,19 +31,19 @@
         button { padding: 6px 12px; margin: 3px; background: #0074D9; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; }
         button:hover { background: #0056b3; }
         #randomize-pattern { padding: 5px 10px; font-size: 12px; }
-        #gameover { 
-            display: none; 
-            position: fixed; 
-            top: 50%; 
-            left: 50%; 
-            transform: translate(-50%, -50%); 
-            background: rgba(0, 0, 0, 0.7); 
-            color: #2ECC40; 
-            padding: 20px; 
-            border-radius: 10px; 
-            text-align: center; 
-            font-size: 24px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5); 
+        #gameover {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: #2ECC40;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 24px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
         #thinking {
             display: none;
@@ -52,23 +57,23 @@
             border-radius: 8px;
             font-size: 20px;
         }
-        #solution { 
-            margin-top: 20px; 
-            max-height: 150px; 
-            overflow-y: auto; 
-            width: 80%; 
-            max-width: 300px; 
-            background: #fff; 
-            padding: 10px; 
-            border-radius: 5px; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
-            display: none; 
+        #solution {
+            margin-top: 20px;
+            max-height: 150px;
+            overflow-y: auto;
+            width: 80%;
+            max-width: 300px;
+            background: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            display: none;
         }
         #solution p { margin: 5px 0; font-size: 14px; }
-        #difficulty1, #difficulty2 { 
-            width: 100%; 
-            max-width: 200px; 
-            text-align: left; 
+        #difficulty1, #difficulty2 {
+            width: 100%;
+            max-width: 200px;
+            text-align: left;
         }
         #difficulty-bar1, #difficulty-bar2 {
             height: 15px;
@@ -86,12 +91,17 @@
         .hint { animation: flash 0.5s infinite alternate; }
         @keyframes flash { from { box-shadow: 0 0 15px red; } to { box-shadow: 0 0 25px red; } }
         .player-label { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
-        #welcome-screen button { padding: 10px 20px; font-size: 16px; margin: 10px; }
+        .large-board #game-container { margin-top: 80px; }
+        .large-board #board1 { grid-template-columns: repeat(5, 60px); gap: 3px; border: 4px solid #333; padding: 7px; border-radius: 15px; }
+        .large-board .tile { width: 60px; height: 60px; border-radius: 12px; box-shadow: 0 3px 7px rgba(0,0,0,0.3); }
+        .large-board #pattern { grid-template-columns: repeat(3, 30px); gap: 2px; border: 3px solid #333; padding: 4px; border-radius: 9px; }
+        .large-board #pattern .tile { width: 30px; height: 30px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
     <div id="welcome-screen">
         <h1>Block Race</h1>
+        <p>Choose your game mode:</p>
         <button onclick="newGame('easy', 1)">1 Player - Easy</button>
         <button onclick="newGame('hard', 1)">1 Player - Hard</button>
         <button onclick="newGame('easy', 2)">2 Player - Easy</button>
@@ -100,12 +110,6 @@
     <div id="game-container">
         <div id="player1">
             <div class="player-label">Player 1</div>
-            <div id="board1"></div>
-            <div id="controls1">
-                <button onclick="hint(1)">Hint</button>
-                <button onclick="autoComplete(1)">Auto Solve</button>
-                <button onclick="showSolution(1)">Show Solution</button>
-            </div>
             <div id="stats1">
                 <div>
                     <span id="timer1">Time: 0s</span>
@@ -119,6 +123,12 @@
                     </div>
                 </div>
             </div>
+            <div id="board1"></div>
+            <div id="controls1">
+                <button onclick="hint(1)">Hint</button>
+                <button onclick="autoComplete(1)">Auto Solve</button>
+                <button onclick="showSolution(1)">Show Solution</button>
+            </div>
         </div>
         <div id="pattern-container">
             <div id="pattern"></div>
@@ -126,12 +136,6 @@
         </div>
         <div id="player2" style="display: none;">
             <div class="player-label">Player 2</div>
-            <div id="board2"></div>
-            <div id="controls2">
-                <button id="hint2" onclick="hint(2)">Hint</button>
-                <button id="auto2" onclick="autoComplete(2)">Auto Solve</button>
-                <button onclick="showSolution(2)">Show Solution</button>
-            </div>
             <div id="stats2">
                 <div>
                     <span id="timer2">Time: 0s</span>
@@ -144,6 +148,12 @@
                         <div id="difficulty-fill2"></div>
                     </div>
                 </div>
+            </div>
+            <div id="board2"></div>
+            <div id="controls2">
+                <button id="hint2" onclick="hint(2)">Hint</button>
+                <button id="auto2" onclick="autoComplete(2)">Auto Solve</button>
+                <button onclick="showSolution(2)">Show Solution</button>
             </div>
         </div>
     </div>
@@ -173,16 +183,14 @@
         let currentMode = 'easy';
         let playerCount = 1;
         let currentPlayer = 1;
-
         function initBoard(mode, player) {
             let tiles = [];
             colors.forEach(c => { for(let i=0; i<4; i++) tiles.push(c); });
             tiles.push(null);
-            
+           
             let board, moveCount;
             let attempts = 0;
             const maxAttempts = 10;
-
             if (mode === 'easy') {
                 do {
                     board = Array.from({length: 5}, () => Array(5).fill(null));
@@ -242,7 +250,6 @@
                     attempts++;
                 } while ((moveCount < 15 || moveCount >= 100) && attempts < maxAttempts);
             }
-
             if (attempts >= maxAttempts || moveCount === 0) {
                 board = Array.from({length: 5}, () => Array(5).fill(null));
                 for (let y = 0; y < 3; y++) {
@@ -288,7 +295,6 @@
             else initialMoveCount2 = moveCount || 0;
             return board;
         }
-
         function generatePattern() {
             let attempts = 0;
             const maxAttempts = 10;
@@ -304,7 +310,6 @@
                 let counts = {};
                 pattern.flat().forEach(c => counts[c] = (counts[c] || 0) + 1);
                 if (Object.values(counts).some(v => v > 4)) continue;
-
                 let tempBoard1 = initBoard(currentMode, 1);
                 moveCount1 = planSolutionSync(tempBoard1, emptyPos1).length;
                 if (playerCount === 2) {
@@ -317,7 +322,6 @@
             } while ((moveCount1 === 0 || (playerCount === 2 && moveCount2 === 0)) && attempts < maxAttempts);
             if (attempts >= maxAttempts) generatePattern();
         }
-
         function randomizePattern() {
             generatePattern();
             renderPattern();
@@ -346,14 +350,12 @@
             updateDifficulty(1);
             if (playerCount === 2) updateDifficulty(2);
         }
-
         function isSolvableWithin(maxMoves, board, emptyPos) {
             if (!board || !emptyPos) return false;
             const queue = [{board: board.map(row => [...row]), emptyPos: {...emptyPos}, moves: 0}];
             const seenStates = new Set([JSON.stringify(board)]);
             const maxStates = 10000;
             let statesExplored = 0;
-
             while (queue.length > 0 && statesExplored < maxStates && queue[0].moves < maxMoves) {
                 const {board: currentBoard, emptyPos: currentEmpty, moves} = queue.shift();
                 if (!currentBoard || !currentEmpty) continue;
@@ -403,7 +405,6 @@
             }
             return false;
         }
-
         function renderBoard(player) {
             const boardDiv = document.getElementById(`board${player}`);
             const board = player === 1 ? board1 : board2;
@@ -424,7 +425,6 @@
                 }
             }
         }
-
         function renderPattern() {
             const patDiv = document.getElementById('pattern');
             if (!patDiv) return;
@@ -437,13 +437,11 @@
                 }
             }
         }
-
         let touchStartX, touchStartY;
         function handleTouchStart(e) {
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
         }
-
         function handleTouchEnd(e) {
             const dx = e.changedTouches[0].clientX - touchStartX;
             const dy = e.changedTouches[0].clientY - touchStartY;
@@ -457,22 +455,18 @@
                 moveRowOrColumn(x, y, 0, dy > 0 ? 1 : -1, true, player);
             }
         }
-
         function moveRowOrColumn(tx, ty, dx, dy, update = true, player = 1, targetBoard = null) {
             const board = targetBoard || (player === 1 ? board1 : board2);
             const emptyPos = player === 1 ? emptyPos1 : emptyPos2;
             if (!board || !emptyPos) return false;
-
             if (dx !== 0) {
                 let row = board[ty];
                 let emptyIndex = row.indexOf(null);
                 if (emptyIndex === -1) return false;
-
                 let startIndex = tx;
                 let endIndex = emptyIndex;
                 if (dx > 0 && startIndex >= emptyIndex) return false;
                 if (dx < 0 && startIndex <= emptyIndex) return false;
-
                 if (dx > 0) {
                     for (let x = emptyIndex; x > startIndex; x--) {
                         row[x] = row[x - 1];
@@ -488,11 +482,9 @@
                 let column = board.map(row => row[tx]);
                 let emptyIndex = column.indexOf(null);
                 if (emptyIndex === -1) return false;
-
                 let startIndex = ty;
                 if (dy > 0 && startIndex >= emptyIndex) return false;
                 if (dy < 0 && startIndex <= emptyIndex) return false;
-
                 if (dy > 0) {
                     for (let y = emptyIndex; y > startIndex; y--) {
                         board[y][tx] = board[y - 1][tx];
@@ -505,7 +497,6 @@
                 board[startIndex][tx] = null;
                 emptyPos.y = startIndex;
             }
-
             if (update && !gameWon) {
                 if (player === 1) moveCount1++;
                 else moveCount2++;
@@ -516,7 +507,6 @@
             }
             return true;
         }
-
         function updateMoves(player) {
             const moveCount = player === 1 ? moveCount1 : moveCount2;
             const board = player === 1 ? board1 : board2;
@@ -528,7 +518,6 @@
             if (movesElement) movesElement.innerText = `Moves: ${moveCount} (${optimalMoves})`;
             if (pointsElement) pointsElement.innerText = `Points: ${points}`;
         }
-
         function checkWin(player) {
             if (gameWon) return false;
             const board = player === 1 ? board1 : board2;
@@ -580,19 +569,16 @@
             }
             return match;
         }
-
         function updateTimer(player) {
             const time = Math.floor((Date.now() - startTime) / 1000);
             const timerElement = document.getElementById(`timer${player}`);
             if (timerElement) timerElement.innerText = `Time: ${time}s`;
         }
-
         async function updateDifficulty(player) {
             const thinking = document.getElementById('thinking');
             if (thinking) thinking.style.display = 'block';
             const moveSequence = await planSolution(player);
             if (thinking) thinking.style.display = 'none';
-
             const moveCount = moveSequence.length;
             const moveCountElement = document.getElementById(`move-count${player}`);
             const bar = document.getElementById(`difficulty-fill${player}`);
@@ -606,7 +592,6 @@
             }
             if (difficultyElement) difficultyElement.style.display = 'block';
         }
-
         function newGame(mode = currentMode, players = playerCount) {
             currentMode = mode === 'easy' || mode === 'hard' ? mode : 'easy';
             playerCount = players === 1 || players === 2 ? players : 1;
@@ -668,17 +653,19 @@
             autoSolving = false;
             updateDifficulty(1);
             if (playerCount === 2) updateDifficulty(2);
+            if (playerCount === 1) {
+                document.body.classList.add('large-board');
+            } else {
+                document.body.classList.remove('large-board');
+            }
         }
-
         async function autoComplete(player) {
             autoSolving = true;
             const thinking = document.getElementById('thinking');
             if (thinking) thinking.style.display = 'block';
             renderBoard(player);
-
             let moveSequence = await planSolution(player);
             if (thinking) thinking.style.display = 'none';
-
             if (moveSequence.length > 0) {
                 for (const move of moveSequence) {
                     if (!move || gameWon) break;
@@ -689,7 +676,6 @@
                     if (gameWon) return;
                 }
             }
-
             const seenStates = new Set();
             while (!gameWon) {
                 const bestMove = getBestMove(player);
@@ -717,17 +703,14 @@
                     }
                 }
             }
-
             autoSolving = false;
             renderBoard(player);
         }
-
         async function showSolution(player) {
             const thinking = document.getElementById('thinking');
             if (thinking) thinking.style.display = 'block';
             const moveSequence = await planSolution(player);
             if (thinking) thinking.style.display = 'none';
-
             const solutionDiv = document.getElementById('solution');
             if (!solutionDiv) return;
             solutionDiv.innerHTML = '';
@@ -747,7 +730,6 @@
             }
             solutionDiv.style.display = 'block';
         }
-
         function planSolutionSync(board, player) {
             if (!board || !player) return [];
             const startTime = Date.now();
@@ -756,15 +738,12 @@
             const queue = [{board: board.map(row => [...row]), emptyPos, moves: []}];
             const seenStates = new Set([JSON.stringify(board)]);
             const maxStates = 10000;
-
             while (queue.length > 0 && (Date.now() - startTime) < maxTime) {
                 const {board: currentBoard, emptyPos: currentEmpty, moves} = queue.shift();
                 if (!currentBoard || !currentEmpty) continue;
-
                 if (isSolved(currentBoard)) {
                     return moves;
                 }
-
                 const possibleMoves = getPossibleMoves(currentEmpty, player);
                 for (const move of possibleMoves) {
                     const newBoard = currentBoard.map(row => [...row]);
@@ -773,12 +752,10 @@
                     const ty = move.y;
                     const dx = move.dx;
                     const dy = move.dy;
-
                     if (dx !== 0) {
                         let row = newBoard[ty];
                         let emptyIndex = row.indexOf(null);
                         if (emptyIndex === -1 || (dx > 0 && tx >= emptyIndex) || (dx < 0 && tx <= emptyIndex)) continue;
-
                         if (dx > 0) {
                             for (let x = emptyIndex; x > tx; x--) row[x] = row[x - 1];
                         } else {
@@ -790,7 +767,6 @@
                         let column = newBoard.map(row => row[tx]);
                         let emptyIndex = column.indexOf(null);
                         if (emptyIndex === -1 || (dy > 0 && ty >= emptyIndex) || (dy < 0 && ty <= emptyIndex)) continue;
-
                         if (dy > 0) {
                             for (let y = emptyIndex; y > ty; y--) newBoard[y][tx] = newBoard[y - 1][tx];
                         } else {
@@ -799,7 +775,6 @@
                         newBoard[ty][tx] = null;
                         newEmpty.y = ty;
                     }
-
                     const boardState = JSON.stringify(newBoard);
                     if (!seenStates.has(boardState)) {
                         seenStates.add(boardState);
@@ -810,25 +785,20 @@
                         });
                     }
                 }
-
                 if (seenStates.size >= maxStates) break;
-
                 queue.sort((a, b) => {
                     const scoreA = getCorrectTileCount(a.board) - a.moves.length / 100;
                     const scoreB = getCorrectTileCount(b.board) - b.moves.length / 100;
                     return scoreB - scoreA;
                 });
             }
-
             return [];
         }
-
         async function planSolution(player) {
             return new Promise(resolve => {
                 resolve(planSolutionSync(player === 1 ? board1 : board2, player));
             });
         }
-
         function getCorrectTileCount(tempBoard) {
             if (!tempBoard) return 0;
             let correct = 0;
@@ -839,7 +809,6 @@
             }
             return correct;
         }
-
         function getPossibleMoves(empty = emptyPos1, player = 1) {
             const moves = [];
             if (!empty) return moves;
@@ -857,7 +826,6 @@
             }
             return moves;
         }
-
         function isSolved(board) {
             if (!board) return false;
             for (let y = 0; y < 3; y++) {
@@ -867,7 +835,6 @@
             }
             return true;
         }
-
         function getBestMove(player) {
             const board = player === 1 ? board1 : board2;
             const empty = player === 1 ? emptyPos1 : emptyPos2;
@@ -875,19 +842,16 @@
             const moves = getPossibleMoves(empty, player);
             let bestMove = null;
             let bestScore = -Infinity;
-
             for (const move of moves) {
                 const tempBoard = board.map(row => [...row]);
                 const tx = move.x;
                 const ty = move.y;
                 const dx = move.dx;
                 const dy = move.dy;
-
                 if (dx !== 0) {
                     let row = tempBoard[ty];
                     let emptyIndex = row.indexOf(null);
                     if (emptyIndex === -1 || (dx > 0 && tx >= emptyIndex) || (dx < 0 && tx <= emptyIndex)) continue;
-
                     if (dx > 0) {
                         for (let x = emptyIndex; x > tx; x--) row[x] = row[x - 1];
                     } else {
@@ -898,7 +862,6 @@
                     let column = tempBoard.map(row => row[tx]);
                     let emptyIndex = column.indexOf(null);
                     if (emptyIndex === -1 || (dy > 0 && ty >= emptyIndex) || (dy < 0 && ty <= emptyIndex)) continue;
-
                     if (dy > 0) {
                         for (let y = emptyIndex; y > ty; y--) tempBoard[y][tx] = tempBoard[y - 1][tx];
                     } else {
@@ -906,27 +869,23 @@
                     }
                     tempBoard[ty][tx] = null;
                 }
-
                 const score = getCorrectTileCount(tempBoard);
                 if (score > bestScore) {
                     bestScore = score;
                     bestMove = move;
                 }
             }
-
             return bestMove;
         }
-
         function getAlternativeMove(player) {
             const empty = player === 1 ? emptyPos1 : emptyPos2;
             const moves = getPossibleMoves(empty, player);
             return moves[Math.floor(Math.random() * moves.length)] || null;
         }
-
         function hint(player) {
             const tiles = document.querySelectorAll(`#board${player} .tile`);
             tiles.forEach(t => t.classList.remove('hint'));
-            
+           
             const bestMove = getBestMove(player);
             if (bestMove) {
                 const idx = bestMove.y * 5 + bestMove.x;
@@ -934,7 +893,6 @@
                 setTimeout(() => tiles[idx].classList.remove('hint'), 2000);
             }
         }
-
         document.getElementById('board1')?.addEventListener('touchend', () => {
             if (!document.getElementById('gameover')?.style.display && !autoSolving) {
                 currentPlayer = 1;
