@@ -3,33 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Block Race - V3.0</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
+    <title>Block Race 2 Player</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body { display: flex; flex-direction: column; align-items: center; font-family: 'Orbitron', sans-serif; background: #f0f0f0; margin: 0; padding: 20px; overflow: hidden; }
-        #welcome-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: linear-gradient(to bottom, #f0f0f0, #d0d0d0); }
-        #welcome-screen h1 { font-size: 48px; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
-        #welcome-screen p { font-size: 24px; margin-bottom: 20px; }
-        #welcome-screen button { padding: 15px 30px; font-size: 20px; margin: 15px 0; background: #0074D9; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transition: transform 0.2s; }
-        #welcome-screen button:hover { transform: scale(1.05); background: #0056b3; }
+        body { display: flex; flex-direction: column; align-items: center; font-family: 'Orbitron', sans-serif; background: #f0f0f0; margin: 0; padding: 20px; overflow: hidden; transition: background 0.3s, color 0.3s; }
+        body.dark-mode { background: #121212; color: #f0f0f0; }
+        #welcome-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: linear-gradient(to bottom, #f0f0f0, #d0d0d0); transition: background 0.3s; }
+        body.dark-mode #welcome-screen { background: linear-gradient(to bottom, #333, #222); }
+        #welcome-screen h1 { font-size: 60px; margin-bottom: 20px; text-shadow: 0 0 10px #0074D9, 0 0 20px #0056b3; color: #0074D9; font-weight: 700; animation: glow 2s infinite alternate; }
+        body.dark-mode #welcome-screen h1 { color: #3399ff; text-shadow: 0 0 10px #3399ff, 0 0 20px #0066cc; }
+        @keyframes glow { from { text-shadow: 0 0 10px #0074D9, 0 0 20px #0056b3; } to { text-shadow: 0 0 20px #0074D9, 0 0 30px #0056b3; } }
+        #welcome-screen p { font-size: 24px; margin-bottom: 20px; color: #333; }
+        body.dark-mode #welcome-screen p { color: #ccc; }
+        #welcome-screen button { padding: 15px 30px; font-size: 20px; margin: 15px 0; background: linear-gradient(#0074D9, #0056b3); border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transition: transform 0.2s, background 0.3s; color: white; position: relative; overflow: hidden; }
+        body.dark-mode #welcome-screen button { background: linear-gradient(#3399ff, #0066cc); box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        #welcome-screen button:hover { transform: scale(1.05); background: linear-gradient(#0056b3, #003f8a); }
+        body.dark-mode #welcome-screen button:hover { background: linear-gradient(#0066cc, #003366); }
+        #welcome-screen button.highlight { background: linear-gradient(#FFDC00, #cc9900); color: #333; }
+        body.dark-mode #welcome-screen button.highlight { background: linear-gradient(#FFDC00, #cc9900); color: #333; }
+        #welcome-screen button.highlight .progressbar { position: absolute; top: 0; left: 0; height: 100%; background: rgba(0,0,0,0.2); transition: width 1s linear; }
+        #countdown { font-size: 48px; color: #FF4136; margin-top: 20px; }
+        body.dark-mode #countdown { color: #FF4136; }
+        #toggle-theme { padding: 10px 20px; font-size: 16px; margin-top: 10px; }
         #game-container { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 20px; display: none; }
         #pattern-container { display: flex; flex-direction: column; align-items: center; }
-        #pattern { display: grid; grid-template-columns: repeat(3, 20px); gap: 1px; border: 2px solid #333; background: #fff; padding: 3px; border-radius: 6px; margin-bottom: 5px; }
-        #board1, #board2 { display: grid; grid-template-columns: repeat(5, 40px); gap: 2px; border: 3px solid #333; background: #ddd; padding: 5px; border-radius: 10px; }
-        .tile { width: 40px; height: 40px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transition: transform 0.2s; user-select: none; }
-        #pattern .tile { width: 20px; height: 20px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-        .tile:active { transform: scale(0.95); }
-        .empty { background: transparent; box-shadow: none; }
-        .red { background: #FF4136; }
-        .green { background: #2ECC40; }
-        .blue { background: #0074D9; }
-        .yellow { background: #FFDC00; }
-        .white { background: #FFFFFF; border: 1px solid #ccc; }
-        .orange { background: #FF851B; }
+        #pattern { display: grid; grid-template-columns: repeat(3, 20px); gap: 1px; border: 2px solid #333; background: #fff; padding: 3px; border-radius: 6px; margin-bottom: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        body.dark-mode #pattern { background: #444; border-color: #666; }
+        #board1, #board2 { display: grid; grid-template-columns: repeat(5, 40px); gap: 3px; border: 5px groove #666; background: linear-gradient(135deg, #eee, #ccc); padding: 8px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        body.dark-mode #board1, body.dark-mode #board2 { background: linear-gradient(135deg, #333, #222); border-color: #888; }
+        .tile { width: 40px; height: 40px; border-radius: 10px; box-shadow: inset 0 2px 2px rgba(255,255,255,0.6), 0 3px 6px rgba(0,0,0,0.4); transition: transform 0.2s ease-in-out; user-select: none; border: 1px solid rgba(0,0,0,0.1); }
+        #pattern .tile { width: 20px; height: 20px; border-radius: 5px; box-shadow: inset 0 1px 1px rgba(255,255,255,0.6), 0 1px 3px rgba(0,0,0,0.3); }
+        .tile:active { transform: scale(0.92); box-shadow: inset 0 1px 1px rgba(255,255,255,0.4), 0 2px 4px rgba(0,0,0,0.5); }
+        .empty { background: rgba(0,0,0,0.05); box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); border: none; }
+        body.dark-mode .empty { background: rgba(255,255,255,0.05); box-shadow: inset 0 2px 4px rgba(255,255,255,0.1); }
+        .red { background: linear-gradient(145deg, #ff5a50, #cc0000); }
+        .green { background: linear-gradient(145deg, #3fff3f, #009900); }
+        .blue { background: linear-gradient(145deg, #3399ff, #003399); }
+        .yellow { background: linear-gradient(145deg, #ffff66, #cc9900); }
+        .white { background: linear-gradient(145deg, #ffffff, #dddddd); border: 1px solid #bbb; }
+        body.dark-mode .white { background: linear-gradient(145deg, #dddddd, #bbbbbb); border-color: #999; }
+        .orange { background: linear-gradient(145deg, #ffaa55, #cc5200); }
         #stats1, #stats2 { font-size: 16px; margin: 10px 0; display: flex; flex-direction: column; gap: 5px; align-items: center; }
         #controls1, #controls2 { margin: 5px 0; display: flex; gap: 5px; }
-        button { padding: 6px 12px; margin: 3px; background: #0074D9; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; }
-        button:hover { background: #0056b3; }
+        button { padding: 6px 12px; margin: 3px; background: linear-gradient(#0074D9, #0056b3); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: background 0.3s; }
+        body.dark-mode button { background: linear-gradient(#3399ff, #0066cc); }
+        button:hover { background: linear-gradient(#0056b3, #003f8a); }
+        body.dark-mode button:hover { background: linear-gradient(#0066cc, #003366); }
         #randomize-pattern { padding: 5px 10px; font-size: 12px; }
         #gameover {
             display: none;
@@ -45,6 +64,7 @@
             font-size: 24px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
+        body.dark-mode #gameover { background: rgba(255, 255, 255, 0.1); color: #3fff3f; }
         #thinking {
             display: none;
             position: fixed;
@@ -57,6 +77,9 @@
             border-radius: 8px;
             font-size: 20px;
         }
+        body.dark-mode #thinking { background: rgba(255, 255, 255, 0.1); }
+        #randomizing { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.7); color: white; padding: 15px; border-radius: 8px; font-size: 20px; }
+        body.dark-mode #randomizing { background: rgba(255, 255, 255, 0.1); }
         #solution {
             margin-top: 20px;
             max-height: 150px;
@@ -69,6 +92,7 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             display: none;
         }
+        body.dark-mode #solution { background: #333; color: #f0f0f0; }
         #solution p { margin: 5px 0; font-size: 14px; }
         #difficulty1, #difficulty2 {
             width: 100%;
@@ -81,6 +105,7 @@
             background: #ccc;
             overflow: hidden;
         }
+        body.dark-mode #difficulty-bar1, body.dark-mode #difficulty-bar2 { background: #555; }
         #difficulty-fill1, #difficulty-fill2 {
             height: 100%;
             transition: width 0.3s;
@@ -90,22 +115,27 @@
         .hard { background: #FF4136; }
         .hint { animation: flash 0.5s infinite alternate; }
         @keyframes flash { from { box-shadow: 0 0 15px red; } to { box-shadow: 0 0 25px red; } }
-        .player-label { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+        .player-label { font-size: 20px; font-weight: 700; margin-bottom: 5px; color: #0074D9; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
+        body.dark-mode .player-label { color: #3399ff; text-shadow: 1px 1px 2px rgba(0,0,0,0.4); }
         .large-board #game-container { margin-top: 80px; }
-        .large-board #board1 { grid-template-columns: repeat(5, 60px); gap: 3px; border: 4px solid #333; padding: 7px; border-radius: 15px; }
-        .large-board .tile { width: 60px; height: 60px; border-radius: 12px; box-shadow: 0 3px 7px rgba(0,0,0,0.3); }
-        .large-board #pattern { grid-template-columns: repeat(3, 30px); gap: 2px; border: 3px solid #333; padding: 4px; border-radius: 9px; }
-        .large-board #pattern .tile { width: 30px; height: 30px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .large-board #board1 { grid-template-columns: repeat(5, 60px); gap: 4px; border: 6px groove #666; padding: 10px; border-radius: 20px; }
+        body.dark-mode .large-board #board1 { border-color: #888; }
+        .large-board .tile { width: 60px; height: 60px; border-radius: 15px; box-shadow: inset 0 3px 3px rgba(255,255,255,0.6), 0 4px 8px rgba(0,0,0,0.4); }
+        .large-board #pattern { grid-template-columns: repeat(3, 30px); gap: 2px; border: 3px solid #333; padding: 4px; border-radius: 9px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        body.dark-mode .large-board #pattern { border-color: #666; background: #444; }
+        .large-board #pattern .tile { width: 30px; height: 30px; border-radius: 7px; box-shadow: inset 0 1px 1px rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.3); }
     </style>
 </head>
-<body>
+<body class="dark-mode">
     <div id="welcome-screen">
         <h1>Block Race</h1>
         <p>Choose your game mode:</p>
-        <button onclick="newGame('easy', 1)">1 Player - Easy</button>
-        <button onclick="newGame('hard', 1)">1 Player - Hard</button>
-        <button onclick="newGame('easy', 2)">2 Player - Easy</button>
-        <button onclick="newGame('hard', 2)">2 Player - Hard</button>
+        <button class="highlight" onclick="startGame('easy', 1)">1 Player - Easy<div class="progressbar" style="width: 100%;"></div></button>
+        <button onclick="startGame('hard', 1)">1 Player - Hard</button>
+        <button onclick="startGame('easy', 2)">2 Player - Easy</button>
+        <button onclick="startGame('hard', 2)">2 Player - Hard</button>
+        <button id="toggle-theme">Toggle Theme</button>
+        <div id="countdown"></div>
     </div>
     <div id="game-container">
         <div id="player1">
@@ -166,6 +196,7 @@
         <button onclick="newGame(currentMode, playerCount)">Play Again</button>
     </div>
     <div id="thinking">Thinking...</div>
+    <div id="randomizing">Randomizing...</div>
     <script>
         const colors = ['red', 'green', 'blue', 'yellow', 'white', 'orange'];
         let board1 = [], board2 = [];
@@ -183,6 +214,7 @@
         let currentMode = 'easy';
         let playerCount = 1;
         let currentPlayer = 1;
+        let countdownInterval;
         function initBoard(mode, player) {
             let tiles = [];
             colors.forEach(c => { for(let i=0; i<4; i++) tiles.push(c); });
@@ -322,7 +354,9 @@
             } while ((moveCount1 === 0 || (playerCount === 2 && moveCount2 === 0)) && attempts < maxAttempts);
             if (attempts >= maxAttempts) generatePattern();
         }
-        function randomizePattern() {
+        async function randomizePattern() {
+            const randomizing = document.getElementById('randomizing');
+            if (randomizing) randomizing.style.display = 'block';
             generatePattern();
             renderPattern();
             const solution = document.getElementById('solution');
@@ -347,8 +381,9 @@
             if (playerCount === 2) updateMoves(2);
             updateTimer(1);
             if (playerCount === 2) updateTimer(2);
-            updateDifficulty(1);
-            if (playerCount === 2) updateDifficulty(2);
+            await updateDifficulty(1);
+            if (playerCount === 2) await updateDifficulty(2);
+            if (randomizing) randomizing.style.display = 'none';
         }
         function isSolvableWithin(maxMoves, board, emptyPos) {
             if (!board || !emptyPos) return false;
@@ -616,6 +651,12 @@
                 if (player2) player2.style.display = 'none';
                 if (controls2) controls2.style.display = 'none';
                 if (difficulty2) difficulty2.style.display = 'none';
+                const player1 = document.getElementById('player1');
+                const patternContainer = document.getElementById('pattern-container');
+                const stats1 = document.getElementById('stats1');
+                if (player1 && patternContainer && stats1) {
+                    player1.insertBefore(patternContainer, stats1.nextSibling);
+                }
             }
             renderPattern();
             startTime = Date.now();
@@ -906,6 +947,27 @@
                 hint(2);
                 updateDifficulty(2);
             }
+        });
+        function startGame(mode, players) {
+            clearInterval(countdownInterval);
+            newGame(mode, players);
+        }
+        window.addEventListener('load', () => {
+            let count = 5;
+            const countdownElement = document.getElementById('countdown');
+            const progressBar = document.querySelector('.highlight .progressbar');
+            countdownInterval = setInterval(() => {
+                countdownElement.innerText = count;
+                progressBar.style.width = `${(count / 5) * 100}%`;
+                count--;
+                if (count < 0) {
+                    clearInterval(countdownInterval);
+                    startGame('easy', 1);
+                }
+            }, 1000);
+        });
+        document.getElementById('toggle-theme').addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
         });
     </script>
 </body>
