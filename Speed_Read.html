@@ -69,6 +69,15 @@
         #display.font-tahoma, #text.font-tahoma { font-family: Tahoma, sans-serif; }
         #display.font-trebuchet, #text.font-trebuchet { font-family: 'Trebuchet MS', sans-serif; }
         #display.font-lucida, #text.font-lucida { font-family: 'Lucida Sans Unicode', sans-serif; }
+        .summary-table { width: 100%; text-align: left; border-collapse: collapse; }
+        .summary-table td { padding: 5px; border: 1px solid #ccc; }
+        .dark .summary-table td { border: 1px solid #555; }
+        .summary-table .label { font-weight: bold; }
+        #wpm-progress-container { position: relative; margin: 20px 0; }
+        #wpm-progress-bar { height: 20px; background: linear-gradient(to right, red, darkgreen, green, lightgreen, blue); border-radius: 5px; }
+        #wpm-progress-labels { display: flex; justify-content: space-between; font-size: 12px; margin-top: 5px; }
+        #wpm-progress-line { position: absolute; top: 0; height: 20px; border-left: 2px solid black; }
+        #wpm-progress-score { position: absolute; top: -25px; transform: translateX(-50%); font-weight: bold; }
     </style>
 </head>
 <body class="dark">
@@ -168,12 +177,21 @@
         <div id="summary-modal" class="settings-modal">
             <div class="settings-content">
                 <h3>Summary</h3>
-                <p id="summary-chunking"></p>
-                <p id="summary-word-count"></p>
-                <p id="summary-sentences"></p>
-                <p id="summary-sentence-units"></p>
-                <p id="summary-display-speed"></p>
-                <p id="summary-wpm"></p>
+                <table class="summary-table">
+                    <tr><td class="label">Chunking Type:</td><td id="summary-chunking"></td></tr>
+                    <tr><td class="label">Unit Count:</td><td id="summary-word-count"></td></tr>
+                    <tr><td class="label">Number of Words:</td><td id="summary-total-words"></td></tr>
+                    <tr><td class="label">Number of Sentences:</td><td id="summary-sentences"></td></tr>
+                    <tr><td class="label">Sentence Units:</td><td id="summary-sentence-units"></td></tr>
+                    <tr><td class="label">Display Speed:</td><td id="summary-display-speed"></td></tr>
+                    <tr><td class="label">Average WPM:</td><td id="summary-wpm"></td></tr>
+                </table>
+                <div id="wpm-progress-container">
+                    <div id="wpm-progress-bar"></div>
+                    <div id="wpm-progress-labels"><span>0</span><span>800</span></div>
+                    <div id="wpm-progress-line"></div>
+                    <span id="wpm-progress-score"></span>
+                </div>
                 <button id="close-summary">Close</button>
             </div>
         </div>
@@ -209,6 +227,7 @@
         const summaryModal = document.getElementById('summary-modal');
         const summaryChunking = document.getElementById('summary-chunking');
         const summaryWordCount = document.getElementById('summary-word-count');
+        const summaryTotalWords = document.getElementById('summary-total-words');
         const summarySentences = document.getElementById('summary-sentences');
         const summarySentenceUnits = document.getElementById('summary-sentence-units');
         const summaryDisplaySpeed = document.getElementById('summary-display-speed');
@@ -472,20 +491,26 @@ However, this bottle was not marked “poison,” so Alice ventured to taste it,
         function showSummary() {
             const chunkingType = chunkingSelect.options[chunkingSelect.selectedIndex].text;
             const unitCount = processedUnitsGlobal.length;
+            const totalWords = originalText.split(/\s+/).filter(w => w).length;
             const numSentences = countSentences(originalText);
             const displaySpeed = speedBottom.value;
             const wpm = Math.round(60000 / displaySpeed);
-            summaryChunking.textContent = `Chunking Type: ${chunkingType}`;
-            summaryWordCount.textContent = `Unit Count: ${unitCount}`;
-            summarySentences.textContent = `Number of Sentences: ${numSentences}`;
+            summaryChunking.textContent = chunkingType;
+            summaryWordCount.textContent = unitCount;
+            summaryTotalWords.textContent = totalWords;
+            summarySentences.textContent = numSentences;
             const chunkingVal = chunkingSelect.value;
             if (chunkingVal === 'sentence' || chunkingVal === 'sentence_parts') {
-                summarySentenceUnits.textContent = `Sentence Units: ${unitCount}`;
+                summarySentenceUnits.textContent = unitCount;
             } else {
                 summarySentenceUnits.textContent = '';
             }
-            summaryDisplaySpeed.textContent = `Display Speed: ${displaySpeed} ms/unit`;
-            summaryWpm.textContent = `Average WPM: ${wpm}`;
+            summaryDisplaySpeed.textContent = `${displaySpeed} ms/unit`;
+            summaryWpm.textContent = wpm;
+            const percentage = Math.min((wpm / 800) * 100, 100);
+            document.getElementById('wpm-progress-line').style.left = `${percentage}%`;
+            document.getElementById('wpm-progress-score').textContent = `${wpm} WPM`;
+            document.getElementById('wpm-progress-score').style.left = `${percentage}%`;
             summaryModal.style.display = 'flex';
         }
 
