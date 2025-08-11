@@ -61,6 +61,14 @@
         #summary-modal .settings-content { text-align: center; }
         #summary-modal p { margin: 10px 0; }
         body.dimmed h1, body.dimmed #settings-btn, body.dimmed #toggle-text, body.dimmed #speedControl, body.dimmed #progressBar, body.dimmed #wordCount { opacity: 0.5; }
+        #display.font-arial, #text.font-arial { font-family: Arial, sans-serif; }
+        #display.font-times, #text.font-times { font-family: 'Times New Roman', serif; }
+        #display.font-courier, #text.font-courier { font-family: 'Courier New', monospace; }
+        #display.font-verdana, #text.font-verdana { font-family: Verdana, sans-serif; }
+        #display.font-georgia, #text.font-georgia { font-family: Georgia, serif; }
+        #display.font-tahoma, #text.font-tahoma { font-family: Tahoma, sans-serif; }
+        #display.font-trebuchet, #text.font-trebuchet { font-family: 'Trebuchet MS', sans-serif; }
+        #display.font-lucida, #text.font-lucida { font-family: 'Lucida Sans Unicode', sans-serif; }
     </style>
 </head>
 <body class="dark">
@@ -92,6 +100,19 @@
                 <div class="setting">
                     <label for="size">Text Size</label>
                     <div class="input-group"><input type="range" id="size" min="12" max="52" value="36"> <span id="sizeVal">36 px</span></div>
+                </div>
+                <div class="setting">
+                    <label for="font">Font</label>
+                    <select id="font">
+                        <option value="arial" selected>Arial</option>
+                        <option value="times">Times New Roman</option>
+                        <option value="courier">Courier New</option>
+                        <option value="verdana">Verdana</option>
+                        <option value="georgia">Georgia</option>
+                        <option value="tahoma">Tahoma</option>
+                        <option value="trebuchet">Trebuchet MS</option>
+                        <option value="lucida">Lucida Sans</option>
+                    </select>
                 </div>
                 <div class="setting">
                     <label for="theme">Dark Theme</label>
@@ -197,6 +218,7 @@
         const pausePuncCheck = document.getElementById('pausePunc');
         const extraPauseSlider = document.getElementById('extraPause');
         const extraPauseVal = document.getElementById('extraPauseVal');
+        const fontSelect = document.getElementById('font');
 
         const sampleTexts = {
             pride: `Chapter 1: “It is a truth universally acknowledged, that a single man in possession of a good fortune must be in want of a wife. However little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is so well fixed in the minds of the surrounding families that he is considered as the rightful property of some one or other of their daughters.”`,
@@ -258,6 +280,13 @@ However, this bottle was not marked “poison,” so Alice ventured to taste it,
                 }
                 timeout = setTimeout(flashNext, delay);
             }
+        };
+        fontSelect.onchange = () => {
+            const selectedFont = fontSelect.value;
+            display.classList.remove('font-arial', 'font-times', 'font-courier', 'font-verdana', 'font-georgia', 'font-tahoma', 'font-trebuchet', 'font-lucida');
+            textDiv.classList.remove('font-arial', 'font-times', 'font-courier', 'font-verdana', 'font-georgia', 'font-tahoma', 'font-trebuchet', 'font-lucida');
+            display.classList.add(`font-${selectedFont}`);
+            textDiv.classList.add(`font-${selectedFont}`);
         };
 
         sampleBookSelect.onchange = () => {
