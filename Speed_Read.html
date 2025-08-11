@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Speed Reader</title>
+    <title>Speed Read</title>
     <style>
         body { font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100vh; margin: 0; padding: 20px; transition: background-color 0.3s, color 0.3s; box-sizing: border-box; position: relative; margin-top: 80px; }
         #display { font-size: 50px; margin: 30px 0 0 0; min-height: 60px; font-weight: bold; border: 1px solid; padding: 20px; border-radius: 10px; display: flex; flex-direction: row; align-items: center; justify-content: center; width: 100%; box-sizing: border-box; }
@@ -21,9 +21,13 @@
         .light #text { border: 1px solid #ccc; background: white; color: black; }
         .dark #text { border: 1px solid #555; background: #1e1e1e; color: white; }
         .settings-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
-        .settings-content { background: white; padding: 20px; border-radius: 10px; width: 90%; max-width: 300px; }
+        .settings-content { background: white; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; }
         .dark .settings-content { background: #1e1e1e; color: white; }
-        .setting { display: flex; align-items: center; margin: 8px 0; font-size: 16px; }
+        .setting { display: flex; justify-content: space-between; align-items: center; margin: 8px 0; font-size: 16px; }
+        .setting label { flex: 1; margin-right: 10px; }
+        .setting .input-group { display: flex; align-items: center; }
+        .settings-content h4 { margin: 15px 0 5px 0; font-size: 18px; }
+        .settings-content button { width: 100%; }
         .highlight { background-color: yellow; color: black; font-weight: bold; }
         .dark .highlight { background-color: #ffff00; color: black; }
         h1 { margin-bottom: 30px; font-size: 28px; }
@@ -46,7 +50,8 @@
         .small-btn { padding: 5px 10px; font-size: 14px; margin: 5px; }
         #welcome { display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); flex-direction: column; align-items: center; justify-content: center; z-index: 1001; color: white; }
         #welcome h2 { margin-bottom: 20px; }
-        #welcome-display { font-size: 50px; margin: 80px; text-align: center; font-weight: bold; border: 1px solid; padding: 20px; border-radius: 10px; background: #1e1e1e; width: 80%; box-sizing: border-box; }
+        #welcome-display { font-size: 42px; margin: 20px; text-align: center; font-weight: bold; border: 1px solid; padding: 20px; border-radius: 10px; background: #1e1e1e; width: 80%; box-sizing: border-box; }
+        #welcome-text { font-size: 18px; margin: 20px; text-align: center; width: 80%; color: white; white-space: pre-wrap; }
         #continue { position: relative; background: #0d6efd; }
         #continue.active { animation: throb 1s infinite; }
         @keyframes throb { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
@@ -60,8 +65,9 @@
 </head>
 <body class="dark">
     <div id="welcome">
-        <h2>Welcome to Speed Reader</h2>
+        <h2>Welcome to Speed Read</h2>
         <div id="welcome-display"></div>
+        <div id="welcome-text"></div>
         <button id="continue">Continue<div id="countdown"></div></button>
     </div>
     <div id="main-content">
@@ -81,25 +87,58 @@
         <button id="settings-btn">Settings</button>
         <div id="settings-modal" class="settings-modal">
             <div class="settings-content">
+                <h3>Settings</h3>
+                <h4>Appearance</h4>
                 <div class="setting">
-                    Text Size: <input type="range" id="size" min="12" max="52" value="36"> <span id="sizeVal">36 px</span>
+                    <label for="size">Text Size</label>
+                    <div class="input-group"><input type="range" id="size" min="12" max="52" value="36"> <span id="sizeVal">36 px</span></div>
                 </div>
                 <div class="setting">
-                    Remove Vowels: <input type="checkbox" id="vowels">
+                    <label for="theme">Dark Theme</label>
+                    <input type="checkbox" id="theme" checked>
+                </div>
+                <h4>Reading Options</h4>
+                <div class="setting">
+                    <label for="vowels">Remove Vowels</label>
+                    <input type="checkbox" id="vowels">
                 </div>
                 <div class="setting">
-                    Dark Theme: <input type="checkbox" id="theme" checked>
+                    <label for="context">Show Context</label>
+                    <input type="checkbox" id="context">
                 </div>
                 <div class="setting">
-                    Show Context: <input type="checkbox" id="context">
+                    <label for="chunking">Chunking</label>
+                    <select id="chunking">
+                        <option value="one_word" selected>1 word</option>
+                        <option value="current_next">Current &amp; next</option>
+                        <option value="prev_next">Previous &amp; next</option>
+                        <option value="prev_current_next">Previous, Current and Next</option>
+                        <option value="sentence">Sentence</option>
+                        <option value="sentence_parts">Sentence parts</option>
+                    </select>
                 </div>
                 <div class="setting">
-                    Show Progress: <input type="checkbox" id="progressCheck" checked>
+                    <label for="progressCheck">Show Progress</label>
+                    <input type="checkbox" id="progressCheck" checked>
                 </div>
                 <div class="setting">
-                    Sample Book: <select id="sampleBook">
+                    <label for="countdownCheck">Enable Countdown</label>
+                    <input type="checkbox" id="countdownCheck">
+                </div>
+                <div class="setting">
+                    <label for="pausePunc">Pause on Punctuation</label>
+                    <input type="checkbox" id="pausePunc" checked>
+                </div>
+                <div class="setting">
+                    <label for="extraPause">Extra Pause</label>
+                    <div class="input-group"><input type="range" id="extraPause" min="0" max="1000" value="200"> <span id="extraPauseVal">200 ms</span></div>
+                </div>
+                <h4>Sample Text</h4>
+                <div class="setting">
+                    <label for="sampleBook">Sample Book</label>
+                    <select id="sampleBook">
                         <option value="pride">Pride and Prejudice</option>
-                        <option value="alice" selected>Alice’s Adventures in Wonderland</option>
+                        <option value="alice" selected>Alice in Wonderland</option>
                     </select>
                 </div>
                 <button id="close-settings">Close</button>
@@ -108,7 +147,10 @@
         <div id="summary-modal" class="settings-modal">
             <div class="settings-content">
                 <h3>Summary</h3>
+                <p id="summary-chunking"></p>
                 <p id="summary-word-count"></p>
+                <p id="summary-sentences"></p>
+                <p id="summary-sentence-units"></p>
                 <p id="summary-display-speed"></p>
                 <p id="summary-wpm"></p>
                 <button id="close-summary">Close</button>
@@ -123,7 +165,9 @@
         const vowelsCheck = document.getElementById('vowels');
         const themeCheck = document.getElementById('theme');
         const contextCheck = document.getElementById('context');
+        const chunkingSelect = document.getElementById('chunking');
         const progressCheck = document.getElementById('progressCheck');
+        const countdownCheck = document.getElementById('countdownCheck');
         const progressBar = document.getElementById('progressBar');
         const wordCountDiv = document.getElementById('wordCount');
         const speedBottom = document.getElementById('speedBottom');
@@ -137,15 +181,22 @@
         const refreshBtn = document.getElementById('refresh');
         const welcome = document.getElementById('welcome');
         const welcomeDisplay = document.getElementById('welcome-display');
+        const welcomeText = document.getElementById('welcome-text');
         const continueBtn = document.getElementById('continue');
         const countdown = document.getElementById('countdown');
         const mainContent = document.getElementById('main-content');
         const summaryModal = document.getElementById('summary-modal');
+        const summaryChunking = document.getElementById('summary-chunking');
         const summaryWordCount = document.getElementById('summary-word-count');
+        const summarySentences = document.getElementById('summary-sentences');
+        const summarySentenceUnits = document.getElementById('summary-sentence-units');
         const summaryDisplaySpeed = document.getElementById('summary-display-speed');
         const summaryWpm = document.getElementById('summary-wpm');
         const closeSummary = document.getElementById('close-summary');
         const sampleBookSelect = document.getElementById('sampleBook');
+        const pausePuncCheck = document.getElementById('pausePunc');
+        const extraPauseSlider = document.getElementById('extraPause');
+        const extraPauseVal = document.getElementById('extraPauseVal');
 
         const sampleTexts = {
             pride: `Chapter 1: “It is a truth universally acknowledged, that a single man in possession of a good fortune must be in want of a wife. However little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is so well fixed in the minds of the surrounding families that he is considered as the rightful property of some one or other of their daughters.”`,
@@ -189,15 +240,23 @@ However, this bottle was not marked “poison,” so Alice ventured to taste it,
         };
 
         const defaultText = sampleTexts.alice;
-        const description = "This is a speed reading tool. It flashes words one by one to help you read faster. You can remove vowels or adjust settings. Enjoy!";
+        const description = "This is a speed reading tool. It flashes words one by one to help you read faster. You can remove vowels or adjust settings. The goal of speed reading is not to rush through words, but to arrive more swiftly at understanding. Enjoy!";
 
         sizeSlider.oninput = () => { sizeVal.textContent = `${sizeSlider.value} px`; display.style.fontSize = `${sizeSlider.value}px`; };
         themeCheck.onchange = () => document.body.className = themeCheck.checked ? 'dark' : 'light';
+        extraPauseSlider.oninput = () => { extraPauseVal.textContent = `${extraPauseSlider.value} ms`; };
         speedBottom.oninput = () => { 
             speedBottomVal.textContent = `${speedBottom.value} ms`; 
-            if (interval && !isPaused) {
-                clearInterval(interval);
-                interval = setInterval(flashNext, speedBottom.value);
+            if (timeout && !isPaused) {
+                clearTimeout(timeout);
+                let delay = parseInt(speedBottom.value);
+                if (currentIndex > 0) {
+                    const currentUnit = processedUnitsGlobal[currentIndex - 1];
+                    if (pausePuncCheck.checked && /[.,!?;:]/.test(currentUnit)) {
+                        delay += parseInt(extraPauseSlider.value);
+                    }
+                }
+                timeout = setTimeout(flashNext, delay);
             }
         };
 
@@ -230,49 +289,74 @@ However, this bottle was not marked “poison,” so Alice ventured to taste it,
             return word.replace(/[aeiou]/gi, '');
         }
 
-        function getWords() {
-            let text = textDiv.innerText;
-            let words = text.split(/\s+/).filter(w => w);
-            return words;
+        function removeVowelsInUnit(unit) {
+            return unit.split(/\s+/).map(removeVowels).join(' ');
         }
 
-        function processWords(words) {
-            if (vowelsCheck.checked) {
-                return words.map(removeVowels);
+        function getUnits(text) {
+            const type = chunkingSelect.value;
+            if (type === "sentence") {
+                return (text.match(/[^.!?]+[.!?]\s*/g) || [text]).map(s => s.trim()).filter(s => s);
+            } else if (type === "sentence_parts") {
+                const sentences = (text.match(/[^.!?]+[.!?]\s*/g) || [text]);
+                let parts = [];
+                sentences.forEach(sent => {
+                    const sentWords = sent.split(/\s+/).filter(w => w);
+                    for (let i = 0; i < sentWords.length; i += 3) {
+                        parts.push(sentWords.slice(i, i + 3).join(' '));
+                    }
+                });
+                return parts;
+            } else {
+                return text.split(/\s+/).filter(w => w);
             }
-            return words;
         }
 
-        let interval;
-        let originalText;
-        let wordPositions = [];
-        let isPaused = false;
-        let currentIndex = 0;
-        let processedWordsGlobal;
-
-        function calculateWordPositions(text) {
+        function calculateUnitPositions(text, units) {
             const positions = [];
             let currentPos = 0;
-            text.split(/\s+/).forEach(word => {
-                if (word) {
-                    const start = text.indexOf(word, currentPos);
-                    positions.push({ start, end: start + word.length });
-                    currentPos = start + word.length;
+            units.forEach(unit => {
+                const start = text.indexOf(unit, currentPos);
+                if (start !== -1) {
+                    positions.push({ start, end: start + unit.length });
+                    currentPos = start + unit.length;
                 }
             });
             return positions;
+        }
+
+        function countSentences(text) {
+            return (text.match(/[\w|\)][.!?](?=\s|$)/g) || []).length;
         }
 
         function escapeHTML(str) {
             return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
         }
 
+        let timeout = null;
+        let readyInterval;
+        let originalText;
+        let unitPositions = [];
+        let isPaused = false;
+        let currentIndex = 0;
+        let processedUnitsGlobal;
+
+        function startReadyFlash() {
+            display.innerHTML = '_';
+            display.style.text = 1;
+            readyInterval = setInterval(() => {
+                display.innerHTML = display.innerHTML === '_' ? '&nbsp;' : '_';
+
+            }, 1000);
+        }
+
         function startFlashing() {
+            clearInterval(readyInterval);
             document.body.classList.add('dimmed');
             originalText = textDiv.innerText;
-            const words = getWords();
-            processedWordsGlobal = processWords(words);
-            wordPositions = calculateWordPositions(originalText);
+            const units = getUnits(originalText);
+            processedUnitsGlobal = units.map(u => vowelsCheck.checked ? removeVowelsInUnit(u) : u);
+            unitPositions = calculateUnitPositions(originalText, units);
             display.innerHTML = '';
             textDiv.innerHTML = escapeHTML(originalText);
             textDiv.style.display = 'none';
@@ -290,41 +374,59 @@ However, this bottle was not marked “poison,” so Alice ventured to taste it,
         }
 
         function flashNext() {
-            if (currentIndex < wordPositions.length) {
-                const current = processedWordsGlobal[currentIndex];
-                let prev = '';
-                let next = '';
-                if (contextCheck.checked) {
-                    prev = currentIndex > 0 ? processedWordsGlobal[currentIndex - 1] : '';
-                    next = currentIndex < processedWordsGlobal.length - 1 ? processedWordsGlobal[currentIndex + 1] : '';
-                }
-                display.innerHTML = `<span class="prev-next">${prev}</span><span class="current">${current}</span><span class="prev-next">${next}</span>`;
-                const pos = wordPositions[currentIndex];
-                const before = originalText.substring(0, pos.start);
-                const word = originalText.substring(pos.start, pos.end);
-                const after = originalText.substring(pos.end);
-                textDiv.innerHTML = escapeHTML(before) + '<span class="highlight">' + escapeHTML(word) + '</span>' + escapeHTML(after);
-                const highlightSpan = textDiv.querySelector('.highlight');
-                if (highlightSpan) {
-                    highlightSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-                if (progressCheck.checked) {
-                    progressBar.value = (currentIndex / processedWordsGlobal.length) * 100;
-                    updateWordCount();
-                }
-                currentIndex++;
-            } else {
+            if (currentIndex >= processedUnitsGlobal.length) {
                 stopFlashing();
+                return;
             }
+            let currentUnit = processedUnitsGlobal[currentIndex];
+            let delay = parseInt(speedBottom.value);
+            if (pausePuncCheck.checked && /[.,!?;:]/.test(currentUnit)) {
+                delay += parseInt(extraPauseSlider.value);
+            }
+            let prevText = '';
+            let currentText = currentUnit;
+            let nextText = '';
+            const type = chunkingSelect.value;
+            if (type !== "sentence" && type !== "sentence_parts") {
+                switch (type) {
+                    case "current_next":
+                        nextText = (currentIndex < processedUnitsGlobal.length - 1) ? processedUnitsGlobal[currentIndex + 1] : '';
+                        break;
+                    case "prev_next":
+                        prevText = (currentIndex > 0) ? processedUnitsGlobal[currentIndex - 1] : '';
+                        break;
+                    case "prev_current_next":
+                        prevText = (currentIndex > 0) ? processedUnitsGlobal[currentIndex - 1] : '';
+                        nextText = (currentIndex < processedUnitsGlobal.length - 1) ? processedUnitsGlobal[currentIndex + 1] : '';
+                        break;
+                    // one_word: default empty prev/next
+                }
+            }
+            display.innerHTML = `<span class="prev-next">${prevText}</span><span class="current">${currentText}</span><span class="prev-next">${nextText}</span>`;
+            const pos = unitPositions[currentIndex];
+            const before = originalText.substring(0, pos.start);
+            const unit = originalText.substring(pos.start, pos.end);
+            const after = originalText.substring(pos.end);
+            textDiv.innerHTML = escapeHTML(before) + '<span class="highlight">' + escapeHTML(unit) + '</span>' + escapeHTML(after);
+            const highlightSpan = textDiv.querySelector('.highlight');
+            if (highlightSpan) {
+                highlightSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            if (progressCheck.checked) {
+                progressBar.value = (currentIndex / processedUnitsGlobal.length) * 100;
+                updateWordCount();
+            }
+            currentIndex++;
+            timeout = setTimeout(flashNext, delay);
         }
 
         function updateWordCount() {
-            wordCountDiv.textContent = `Word ${currentIndex + 1} / ${processedWordsGlobal.length}`;
+            wordCountDiv.textContent = `Unit ${currentIndex + 1} / ${processedUnitsGlobal.length}`;
         }
 
         function stopFlashing() {
-            clearInterval(interval);
-            interval = null;
+            clearTimeout(timeout);
+            timeout = null;
             textDiv.innerHTML = escapeHTML(originalText);
             textDiv.style.display = 'block';
             clearBtn.style.display = 'inline-block';
@@ -335,14 +437,25 @@ However, this bottle was not marked “poison,” so Alice ventured to taste it,
             speedControl.style.display = 'none';
             document.body.classList.remove('dimmed');
             showSummary();
+            startReadyFlash();
         }
 
         function showSummary() {
-            const wordCount = processedWordsGlobal.length;
+            const chunkingType = chunkingSelect.options[chunkingSelect.selectedIndex].text;
+            const unitCount = processedUnitsGlobal.length;
+            const numSentences = countSentences(originalText);
             const displaySpeed = speedBottom.value;
             const wpm = Math.round(60000 / displaySpeed);
-            summaryWordCount.textContent = `Word Count: ${wordCount}`;
-            summaryDisplaySpeed.textContent = `Display Speed: ${displaySpeed} ms/word`;
+            summaryChunking.textContent = `Chunking Type: ${chunkingType}`;
+            summaryWordCount.textContent = `Unit Count: ${unitCount}`;
+            summarySentences.textContent = `Number of Sentences: ${numSentences}`;
+            const chunkingVal = chunkingSelect.value;
+            if (chunkingVal === 'sentence' || chunkingVal === 'sentence_parts') {
+                summarySentenceUnits.textContent = `Sentence Units: ${unitCount}`;
+            } else {
+                summarySentenceUnits.textContent = '';
+            }
+            summaryDisplaySpeed.textContent = `Display Speed: ${displaySpeed} ms/unit`;
             summaryWpm.textContent = `Average WPM: ${wpm}`;
             summaryModal.style.display = 'flex';
         }
@@ -357,36 +470,66 @@ However, this bottle was not marked “poison,” so Alice ventured to taste it,
                 } else {
                     clearInterval(countdownInterval);
                     flashNext();
-                    interval = setInterval(flashNext, speedBottom.value);
                 }
             }, 1000);
+        }
+
+        function calculateWordPositions(text) {
+            const positions = [];
+            let currentPos = 0;
+            text.split(/\s+/).forEach(word => {
+                if (word) {
+                    const start = text.indexOf(word, currentPos);
+                    positions.push({ start, end: start + word.length });
+                    currentPos = start + word.length;
+                }
+            });
+            return positions;
         }
 
         closeSummary.onclick = () => summaryModal.style.display = 'none';
 
         startBtn.onclick = () => {
-            if (interval) {
+            if (timeout) {
                 if (isPaused) {
                     isPaused = false;
                     startBtn.textContent = 'Pause';
-                    interval = setInterval(flashNext, speedBottom.value);
+                    let delay = parseInt(speedBottom.value);
+                    if (currentIndex > 0) {
+                        const currentUnit = processedUnitsGlobal[currentIndex - 1];
+                        if (pausePuncCheck.checked && /[.,!?;:]/.test(currentUnit)) {
+                            delay += parseInt(extraPauseSlider.value);
+                        }
+                    }
+                    timeout = setTimeout(flashNext, delay);
                 } else {
                     isPaused = true;
                     startBtn.textContent = 'Resume';
-                    clearInterval(interval);
+                    clearTimeout(timeout);
                 }
             } else {
                 startFlashing();
-                startCountdown();
+                if (countdownCheck.checked) {
+                    startCountdown();
+                } else {
+                    flashNext();
+                }
             }
         };
 
         // Welcome screen
         const descWords = description.split(/\s+/);
+        const descPositions = calculateWordPositions(description);
+        welcomeText.innerHTML = escapeHTML(description);
         let descIndex = 0;
         const descInterval = setInterval(() => {
             if (descIndex < descWords.length) {
                 welcomeDisplay.textContent = descWords[descIndex];
+                const pos = descPositions[descIndex];
+                const before = description.substring(0, pos.start);
+                const word = description.substring(pos.start, pos.end);
+                const after = description.substring(pos.end);
+                welcomeText.innerHTML = escapeHTML(before) + '<span class="highlight">' + escapeHTML(word) + '</span>' + escapeHTML(after);
                 descIndex++;
             } else {
                 clearInterval(descInterval);
@@ -396,6 +539,7 @@ However, this bottle was not marked “poison,” so Alice ventured to taste it,
                 autoStartTimer = setTimeout(() => {
                     welcome.style.display = 'none';
                     mainContent.style.display = 'block';
+                    startReadyFlash();
                 }, 5000);
             }
         }, 200);
@@ -406,6 +550,7 @@ However, this bottle was not marked “poison,” so Alice ventured to taste it,
             clearTimeout(autoStartTimer);
             welcome.style.display = 'none';
             mainContent.style.display = 'block';
+            startReadyFlash();
         };
     </script>
 </body>
