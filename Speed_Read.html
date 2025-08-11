@@ -74,13 +74,15 @@
         .dark .summary-table td { border: 1px solid #555; }
         .summary-table .label { font-weight: bold; }
         #wpm-progress-container { position: relative; margin: 20px 0; }
-        #wpm-progress-bar { height: 20px; background: linear-gradient(to right, red, darkgreen, green, lightgreen, blue); border-radius: 5px; }
+        #wpm-progress-bar { height: 20px; background: linear-gradient(to right, red, orange, yellow, green, blue); border-radius: 5px; }
         #wpm-progress-labels { display: flex; justify-content: space-between; font-size: 12px; margin-top: 5px; }
         #wpm-progress-line { position: absolute; top: 0; height: 20px; border-left: 2px solid black; }
         #wpm-progress-score { position: absolute; top: -25px; transform: translateX(-50%); font-weight: bold; }
+        #starfield-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; display: none; pointer-events: none; }
     </style>
 </head>
 <body class="dark">
+    <canvas id="starfield-canvas"></canvas>
     <div id="welcome">
         <h2>Welcome to Speed Read</h2>
         <div id="welcome-display"></div>
@@ -126,6 +128,10 @@
                 <div class="setting">
                     <label for="theme">Dark Theme</label>
                     <input type="checkbox" id="theme" checked>
+                </div>
+                <div class="setting">
+                    <label for="starfield">Starfield Background</label>
+                    <input type="checkbox" id="starfield">
                 </div>
                 <h4>Reading Options</h4>
                 <div class="setting">
@@ -238,6 +244,7 @@
         const extraPauseSlider = document.getElementById('extraPause');
         const extraPauseVal = document.getElementById('extraPauseVal');
         const fontSelect = document.getElementById('font');
+        const starfieldCheck = document.getElementById('starfield');
 
         const sampleTexts = {
             pride: `Chapter 1: “It is a truth universally acknowledged, that a single man in possession of a good fortune must be in want of a wife. However little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is so well fixed in the minds of the surrounding families that he is considered as the rightful property of some one or other of their daughters.”`,
@@ -306,6 +313,13 @@ However, this bottle was not marked “poison,” so Alice ventured to taste it,
             textDiv.classList.remove('font-arial', 'font-times', 'font-courier', 'font-verdana', 'font-georgia', 'font-tahoma', 'font-trebuchet', 'font-lucida');
             display.classList.add(`font-${selectedFont}`);
             textDiv.classList.add(`font-${selectedFont}`);
+        };
+        starfieldCheck.onchange = () => {
+            if (starfieldCheck.checked) {
+                initStarfield();
+            } else {
+                clearStarfield();
+            }
         };
 
         sampleBookSelect.onchange = () => {
@@ -606,6 +620,52 @@ However, this bottle was not marked “poison,” so Alice ventured to taste it,
             mainContent.style.display = 'block';
             startReadyFlash();
         };
+
+        let stars = [];
+        let raf;
+        function initStarfield() {
+            const canvas = document.getElementById('starfield-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            canvas.style.display = 'block';
+            stars = [];
+            for (let i = 0; i < 200; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 1 + 0.5,
+                    speed: Math.random() * 1 + 0.5
+                });
+            }
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                stars.forEach(star => {
+                    ctx.beginPath();
+                    ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    star.y += star.speed;
+                    if (star.y > canvas.height) {
+                        star.y = 0;
+                        star.x = Math.random() * canvas.width;
+                    }
+                });
+                raf = requestAnimationFrame(draw);
+            }
+            draw();
+            window.addEventListener('resize', resizeCanvas);
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+        }
+        function clearStarfield() {
+            const canvas = document.getElementById('starfield-canvas');
+            canvas.style.display = 'none';
+            cancelAnimationFrame(raf);
+            window.removeEventListener('resize', resizeCanvas);
+        }
     </script>
 </body>
 </html>
