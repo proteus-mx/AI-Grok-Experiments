@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Block Challenge</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; font-family: 'Orbitron', sans-serif; background: #000; }
+        canvas { display: block; margin-top: 80px; }
+        #ui { position: absolute; top: 80px; left: 10px; color: white; }
+        #addCube { position: absolute; bottom: 10px; right: 10px; padding: 10px; font-size: 16px; font-family: 'Orbitron', sans-serif; background: #333; color: white; border: 2px solid #00ff00; border-radius: 5px; }
+        #addCube:disabled { background: #555; border-color: #666; color: #888; cursor: not-allowed; }
+        #doneButton { position: absolute; bottom: 50px; right: 10px; padding: 10px; font-size: 16px; font-family: 'Orbitron', sans-serif; background: #333; color: white; border: 2px solid #00ff00; border-radius: 5px; }
+        #settingsButton { position: absolute; bottom: 10px; left: 50px; padding: 10px; font-size: 16px; font-family: 'Orbitron', sans-serif; background: #333; color: white; border: 2px solid #00ff00; border-radius: 5px; }
+        #shapesButton { position: absolute; bottom: 10px; left: 10px; padding: 10px; font-size: 16px; font-family: 'Orbitron', sans-serif; background: #333; color: white; border: 2px solid #00ff00; border-radius: 5px; }
+        #levelInfo { font-size: 24px; }
+        #levelInfo.flash-amber { animation: flash 1s infinite; color: #ffbf00; }
+        #levelInfo.flash-red { animation: flash 0.5s infinite; color: #ff0000; }
+        @keyframes flash {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        #levelNum { position: absolute; top: 80px; right: 10px; color: white; font-size: 28px; margin: 0; }
+        #miniTarget { position: absolute; top: 0px; right: 0px; width: 200px; height: 200px; }
+        #welcomeScreen, #summary, #gameOver, #shapesGallery {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9); padding: 30px; border-radius: 15px;
+            color: white; text-align: center; display: none; font-family: 'Orbitron', sans-serif;
+            border: 3px solid #00ff00; box-shadow: 0 0 20px #00ff00;
+        }
+        #welcomeScreen h2, #summary h2, #shapesGallery h2 { font-size: 36px; margin: 0 0 20px; text-shadow: 0 0 10px #00ff00; }
+        #welcomeScreen button {
+            padding: 12px 24px; font-size: 18px; margin: 10px; font-family: 'Orbitron', sans-serif;
+            background: #00ff00; color: black; border: none; border-radius: 5px; cursor: pointer;
+            position: relative;
+        }
+        #welcomeScreen button#easyButton.throb {
+            animation: throb 1s infinite;
+        }
+        @keyframes throb {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        #summary table, #shapesGallery table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        #summary table td, #shapesGallery table td { padding: 8px; font-size: 18px; }
+        #summary button, #gameOver button, #shapesGallery button { padding: 12px 24px; font-size: 18px; margin-top: 20px; position: relative; font-family: 'Orbitron', sans-serif; background: #00ff00; color: black; border: none; border-radius: 5px; cursor: pointer; }
+        #progressBar { position: absolute; top: 0; left: 0; width: 100%; height: 5px; background: #333; }
+        #progressBar div, #welcomeProgressBar div { height: 100%; background: #00ff00; }
+        #welcomeProgressBar { position: absolute; top: 0; left: 0; width: 100%; height: 5px; background: #333; }
+        #shapeProgress, #timeProgress {
+            position: absolute; left: 10px; width: 150px; height: 10px; background: #333;
+        }
+        #shapeProgress { top: 140px; height: 2px;  }
+        #timeProgress { top: 108px; height: 2px;  }
+        #shapeProgress div { height: 2px; background: #00ff00; }
+        #timeProgress div { height: 2px; background: #00ff00; }
+        #timeProgress.amber div { background: #ffbf00; }
+        #timeProgress.red div { background: #ff0000; }
+        #settingsPanel {
+            position: absolute; bottom: 50px; left: 10px;
+            background: rgba(0, 0, 0, 0.8); padding: 10px; border-radius: 5px;
+            color: white; display: none; font-family: 'Orbitron', sans-serif;
+        }
+        #message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: red; font-size: 24px; display: none; }
+        #transparencySlider, #autoPlaySpeed, #aiSmartness { width: 100px; margin-top: 10px; }
+        #galleryCanvasContainer { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+        #galleryCanvas { width: 100px; height: 100px; margin: 10px; }
+        #shapesGallery { max-height: 50vh; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <div id="welcomeScreen">
+        <h2>Block Challenge!</h2>
+        <button id="easyButton">Easy<div id="welcomeProgressBar"><div id="welcomeProgressBarInner"></div></div></button>
+        <button id="hardButton">Hard</button>
+        <button id="ludicrousButton">Ludicrous</button>
+    </div>
+    <div id="ui">
+        <div id="levelInfo"></div>
+    </div>
+    <div id="levelNum"></div>
+    <div id="timeProgress"><div id="timeProgressBar"></div></div>
+    <div id="shapeProgress"><div id="shapeProgressBar"></div></div>
+    <button id="addCube">Add Cube</button>
+    <button id="doneButton">Done</button>
+    <button id="settingsButton">⚙️</button>
+    <button id="shapesButton">📚</button>
+    <div id="settingsPanel">
+        <label><input type="checkbox" id="autoDetect"> Auto-detect completion</label><br>
+        <button id="autoPlay">Auto-Play</button><br>
+        <label>Transparency: <input type="range" id="transparencySlider" min="0" max="1" step="0.1" value="1"></label><br>
+        <label>Auto-Play Speed: <input type="range" id="autoPlaySpeed" min="100" max="2000" step="100" value="1000"></label><br>
+        <label>AI Smartness: <input type="range" id="aiSmartness" min="0" max="1" step="0.1" value="0.5"></label>
+    </div>
+    <div id="summary">
+        <h2>Level Complete!</h2>
+        <table id="summaryTable"></table>
+        <button id="nextLevel">Next Level<div id="progressBar"><div id="progressBarInner"></div></div></button>
+    </div>
+    <div id="gameOver">
+        <h2>Game Over!</h2>
+        <p>Time's up!</p>
+        <button id="restart">Restart Game</button>
+    </div>
+    <div id="shapesGallery">
+        <h2>Shapes Collected</h2>
+        <div id="galleryCanvasContainer"></div>
+        <table id="galleryTable"></table>
+        <button id="closeGallery">Close</button>
+    </div>
+    <div id="message">Incomplete</div>
+    <canvas id="miniTarget"></canvas>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/controls/DragControls.js"></script>
+    <script>
+        let audioCtx = null;
+        initAudio();
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / (window.innerHeight - 80), 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight - 80);
+        document.body.appendChild(renderer.domElement);
+
+        const miniScene = new THREE.Scene();
+        const miniCamera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+        const miniRenderer = new THREE.WebGLRenderer({ canvas: document.getElementById('miniTarget'), antialias: true, alpha: true });
+        miniRenderer.setClearColor(0x000000, 0); // Transparent background
+        miniRenderer.setSize(150, 150);
+        miniCamera.position.set(4, 4, 4);
+        miniCamera.lookAt(0, 0, 0);
+
+        const miniGroup = new THREE.Group();
+        miniScene.add(miniGroup);
+
+        const starGeometry = new THREE.BufferGeometry();
+        const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1 });
+        const starVertices = [];
+        for (let i = 0; i < 10000; i++) {
+            const x = (Math.random() - 0.5) * 2000;
+            const y = (Math.random() - 0.5) * 2000;
+            const z = (Math.random() - 0.5) * 2000;
+            starVertices.push(x, y, z);
+        }
+        starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+        miniScene.add(ambientLight.clone());
+        miniScene.add(directionalLight.clone());
+
+        const correctSound = document.getElementById('correctSound');
+
+        camera.position.set(5, 5, 5);
+        camera.lookAt(0, 0, 0);
+
+        const orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
+        orbitControls.enablePan = false;
+
+        const levels = [
+            [
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(1, 0, 0),
+                new THREE.Vector3(0, 1, 0)
+            ],
+            [
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(1, 0, 0),
+                new THREE.Vector3(0, 1, 0),
+                new THREE.Vector3(0, 0, 1)
+            ],
+            [
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(1, 0, 0),
+                new THREE.Vector3(0, 1, 0),
+                new THREE.Vector3(0, 0, 1),
+                new THREE.Vector3(1, 1, 0)
+            ]
+        ];
+
+        function generateRandomShape(numCubes) {
+            let positions = [new THREE.Vector3(0, 0, 0)];
+            while (positions.length < numCubes) {
+                let idx = Math.floor(Math.random() * positions.length);
+                let pos = positions[idx];
+                let dirs = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+                let dir = dirs[Math.floor(Math.random() * 6)];
+                let newPos = pos.clone().add(new THREE.Vector3(...dir));
+                if (!positions.some(p => p.equals(newPos))) {
+                    positions.push(newPos);
+                }
+            }
+            return positions;
+        }
+
+        let currentLevel = 0;
+        let targetPositions = levels[currentLevel];
+        let userCubes = [];
+        let cubeVelocities = [];
+        let targetWireframes = [];
+        let startTime = Date.now();
+        let totalScore = 0;
+        let autoDetect = true;
+        let autoPlayActive = false;
+        let countdownStart;
+        let cameraAnimationStart;
+        let isCameraAnimating = false;
+        let isExploding = false;
+        let explodeStart;
+        let summaryDelayStart;
+        let isSummaryDelayed = false;
+        let isPaused = false;
+        let welcomeStart;
+        let isWelcomeScreen = true;
+        let isLevelStartAnimation = false;
+        let levelStartAnimationStart;
+        let isGameOverAnimation = false;
+        let gameOverAnimationStart;
+        let cubeTransparency = 1;
+        let autoPlaySpeed = 1000;
+        let aiSmartness = 0.5;
+        let cubeCount = 0;
+        const LEVEL_TIME = 60;
+        const colors = [0x00ff00, 0x0000ff, 0xffff00, 0xff00ff];
+        let completedShapes = [];
+        let lastTapTime = 0;
+        let lastTappedCube = null;
+
+        const dragControls = new THREE.DragControls(userCubes, camera, renderer.domElement);
+        dragControls.addEventListener('dragstart', (event) => {
+            orbitControls.enabled = false;
+            const cube = event.object;
+            cube.material.emissive.setHex(cube.material.color.getHex());
+            cube.material.emissiveIntensity = 0.3;
+            cube.material.opacity = 0.7;
+            
+        });
+        dragControls.addEventListener('dragend', (event) => {
+            orbitControls.enabled = true;
+            const cube = event.object;
+            cube.material.emissive.setHex(0x000000);
+            cube.material.emissiveIntensity = 0;
+            cube.material.opacity = cubeTransparency;
+
+            const pos = cube.position.clone();
+            const closestTarget = targetPositions.reduce((closest, target) => {
+                const dist = pos.distanceTo(target);
+                return dist < closest.dist ? { pos: target, dist } : closest;
+            }, { pos: null, dist: Infinity });
+
+            if (closestTarget.dist < 0.2) {
+                playSound(440, 0.2, 'sine');
+            }
+            if (closestTarget.dist < 0.4) {
+                playSound(340, 0.2, 'sine');
+            }
+            if (autoDetect) checkCompletion();
+        });
+
+        // Double-tap to destroy cube
+        renderer.domElement.addEventListener('touchend', (event) => {
+            if (event.changedTouches.length === 1) {
+                const touch = event.changedTouches[0];
+                const mouse = new THREE.Vector2(
+                    (touch.clientX / window.innerWidth) * 2 - 1,
+                    -((touch.clientY - 80) / (window.innerHeight - 80)) * 2 + 1
+                );
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(userCubes);
+
+                if (intersects.length > 0) {
+                    const cube = intersects[0].object;
+                    const currentTime = Date.now();
+                    if (lastTappedCube === cube && currentTime - lastTapTime < 300) {
+                        const index = userCubes.indexOf(cube);
+                        scene.remove(cube);
+                        userCubes.splice(index, 1);
+                        cubeVelocities.splice(index, 1);
+                        cubeCount--;
+                        document.getElementById('addCube').disabled = cubeCount >= targetPositions.length;
+                        lastTappedCube = null;
+                        lastTapTime = 0;
+                    } else {
+                        lastTappedCube = cube;
+                        lastTapTime = currentTime;
+                    }
+                }
+            }
+        });
+
+        function checkCubeOverlap(pos) {
+            return userCubes.some(cube => cube.position.distanceTo(pos) < 0.9);
+        }
+
+        function initAudio() {
+            if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        function playSound(frequency, duration, type = 'sine') {
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.type = type;
+            oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + duration);
+        }
+
+        function createCube(position, color, isWireframe = false) {
+            const geometry = new THREE.BoxGeometry(1, 1, 1);
+            let cube;
+            if (isWireframe) {
+                const edges = new THREE.EdgesGeometry(geometry);
+                const material = new THREE.LineBasicMaterial({ color });
+                cube = new THREE.LineSegments(edges, material);
+            } else {
+                const material = new THREE.MeshStandardMaterial({
+                    color,
+                    metalness: 0.7,
+                    roughness: 0.3,
+                    transparent: true,
+                    opacity: cubeTransparency,
+                    /*
+                    envMap: new THREE.CubeTextureLoader().load([
+                        'https://threejs.org/examples/textures/cube/Bridge2/posx.jpg',
+                        'https://threejs.org/examples/textures/cube/Bridge2/negx.jpg',
+                        'https://threejs.org/examples/textures/cube/Bridge2/posy.jpg',
+                        'https://threejs.org/examples/textures/cube/Bridge2/negy.jpg',
+                        'https://threejs.org/examples/textures/cube/Bridge2/posz.jpg',
+                        'https://threejs.org/examples/textures/cube/Bridge2/negz.jpg'
+                    ]),
+                     */
+                    envMapIntensity: 1.5
+                });
+                cube = new THREE.Mesh(geometry, material);
+            }
+            cube.position.copy(position);
+            return cube;
+        }
+
+        function updateCubeTransparency() {
+            userCubes.forEach(cube => {
+                cube.material.opacity = cubeTransparency;
+            });
+            miniScene.children.forEach(child => {
+                if (child.type === 'Mesh') {
+                    child.material.opacity = cubeTransparency;
+                }
+            });
+        }
+
+        function setupLevel() {
+            scene.children = scene.children.filter(child => child.type.includes('Light') || child === stars);
+            miniScene.children = miniScene.children.filter(child => child.type.includes('Light'));
+            miniGroup.children.length = 0;
+            miniScene.add(miniGroup);
+            targetPositions = currentLevel < levels.length ? levels[currentLevel] : generateRandomShape(currentLevel + 3);
+            userCubes.length = 0;
+            cubeVelocities.length = 0;
+            targetWireframes.length = 0;
+            cubeCount = 0;
+
+            targetPositions.forEach((pos, i) => {
+                const color = currentLevel < 3 ? 0xff0000 : colors[i % colors.length];
+                const wireframe = createCube(pos, color, true);
+                scene.add(wireframe);
+                targetWireframes.push(wireframe);
+
+                const miniCube = createCube(pos, color);
+                miniGroup.add(miniCube);
+            });
+
+            startTime = Date.now();
+            isCameraAnimating = false;
+            isExploding = false;
+            isSummaryDelayed = false;
+            isPaused = false;
+            isGameOverAnimation = false;
+            isLevelStartAnimation = true;
+            levelStartAnimationStart = Date.now();
+            camera.position.set(5, 5, 5);
+            camera.lookAt(0, 0, 0);
+            document.getElementById('addCube').disabled = false;
+            updateLevelInfo();
+            if (autoPlayActive) autoPlay();
+        }
+
+        function setupGallery() {
+            const container = document.getElementById('galleryCanvasContainer');
+            container.innerHTML = '';
+            const table = document.getElementById('galleryTable');
+            table.innerHTML = '<tr><th>Level</th><th>Score</th><th>Accuracy</th></tr>';
+
+            completedShapes.forEach((shape, index) => {
+                const canvas = document.createElement('canvas');
+                canvas.id = `galleryShape${index}`;
+                canvas.width = 100;
+                canvas.height = 100;
+                container.appendChild(canvas);
+
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+                const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+                renderer.setClearColor(0x000000, 0);
+                renderer.setSize(100, 100);
+                camera.position.set(4, 4, 4);
+                camera.lookAt(0, 0, 0);
+
+                scene.add(ambientLight.clone());
+                scene.add(directionalLight.clone());
+
+                const group = new THREE.Group();
+                shape.positions.forEach((pos, i) => {
+                    const color = shape.level < 3 ? 0xff0000 : colors[i % colors.length];
+                    const cube = createCube(pos, color);
+                    group.add(cube);
+                });
+                scene.add(group);
+
+                shape.renderer = renderer;
+                shape.scene = scene;
+                shape.camera = camera;
+                shape.group = group;
+
+                table.innerHTML += `<tr><td>${shape.level + 1}</td><td>${shape.score}</td><td>${shape.accuracy}%</td></tr>`;
+            });
+        }
+
+        document.getElementById('addCube').addEventListener('touchstart', () => {
+            if (cubeCount < targetPositions.length) {
+                let pos;
+                do {
+                    pos = new THREE.Vector3(Math.random() * 4 - 2, Math.random() * 4 - 2, Math.random() * 4 - 2);
+                } while (checkCubeOverlap(pos));
+                const color = currentLevel < 3 ? 0x00ff00 : colors[cubeCount % colors.length];
+                const cube = createCube(pos, color);
+                scene.add(cube);
+                userCubes.push(cube);
+                cubeVelocities.push(new THREE.Vector3(0, 0, 0));
+                cubeCount++;
+                document.getElementById('addCube').disabled = cubeCount >= targetPositions.length;
+            }
+        });
+
+        document.getElementById('doneButton').addEventListener('touchstart', () => {
+            checkCompletion(true);
+        });
+
+        document.getElementById('settingsButton').addEventListener('touchstart', () => {
+            const panel = document.getElementById('settingsPanel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        });
+
+        document.getElementById('shapesButton').addEventListener('touchstart', () => {
+            isPaused = true;
+            document.getElementById('shapesGallery').style.display = 'block';
+            setupGallery();
+        });
+
+        document.getElementById('closeGallery').addEventListener('touchstart', () => {
+            isPaused = false;
+            document.getElementById('shapesGallery').style.display = 'none';
+        });
+
+        document.getElementById('autoDetect').addEventListener('change', (e) => {
+            autoDetect = e.target.checked;
+            document.getElementById('doneButton').style.display = autoDetect ? 'none' : 'block';
+        });
+
+        document.getElementById('autoPlay').addEventListener('touchstart', () => {
+            autoPlayActive = !autoPlayActive;
+            document.getElementById('autoPlay').innerText = autoPlayActive ? 'Stop Auto-Play' : 'Auto-Play';
+            if (autoPlayActive) autoPlay();
+        });
+
+        document.getElementById('transparencySlider').addEventListener('input', (e) => {
+            cubeTransparency = parseFloat(e.target.value);
+            updateCubeTransparency();
+        });
+
+        document.getElementById('autoPlaySpeed').addEventListener('input', (e) => {
+            autoPlaySpeed = parseInt(e.target.value);
+        });
+
+        document.getElementById('aiSmartness').addEventListener('input', (e) => {
+            aiSmartness = parseFloat(e.target.value);
+        });
+
+        document.getElementById('easyButton').addEventListener('touchstart', () => {
+            welcomeStart = Date.now() + 5000;
+            currentLevel = 0;
+            isWelcomeScreen = false;
+            document.getElementById('welcomeScreen').style.display = 'none';
+            document.getElementById('ui').style.display = 'block';
+            document.getElementById('levelNum').style.display = 'block';
+            document.getElementById('addCube').style.display = 'block';
+            document.getElementById('doneButton').style.display = autoDetect ? 'none' : 'block';
+            document.getElementById('settingsButton').style.display = 'block';
+            document.getElementById('shapesButton').style.display = 'block';
+            document.getElementById('miniTarget').style.display = 'block';
+            setupLevel();
+        });
+
+        document.getElementById('hardButton').addEventListener('touchstart', () => {
+            welcomeStart = Date.now() + 5000;
+            currentLevel = 6;
+            isWelcomeScreen = false;
+            document.getElementById('welcomeScreen').style.display = 'none';
+            document.getElementById('ui').style.display = 'block';
+            document.getElementById('levelNum').style.display = 'block';
+            document.getElementById('addCube').style.display = 'block';
+            document.getElementById('doneButton').style.display = autoDetect ? 'none' : 'block';
+            document.getElementById('settingsButton').style.display = 'block';
+            document.getElementById('shapesButton').style.display = 'block';
+            document.getElementById('miniTarget').style.display = 'block';
+            setupLevel();
+        });
+
+        document.getElementById('ludicrousButton').addEventListener('touchstart', () => {
+            welcomeStart = Date.now() + 5000;
+            currentLevel = 10;
+            isWelcomeScreen = false;
+            document.getElementById('welcomeScreen').style.display = 'none';
+            document.getElementById('ui').style.display = 'block';
+            document.getElementById('levelNum').style.display = 'block';
+            document.getElementById('addCube').style.display = 'block';
+            document.getElementById('doneButton').style.display = autoDetect ? 'none' : 'block';
+            document.getElementById('settingsButton').style.display = 'block';
+            document.getElementById('shapesButton').style.display = 'block';
+            document.getElementById('miniTarget').style.display = 'block';
+            setupLevel();
+        });
+
+        function autoPlay() {
+            userCubes.forEach(cube => scene.remove(cube));
+            userCubes.length = 0;
+            cubeVelocities.length = 0;
+            cubeCount = 0;
+            let i = 0;
+            const addInterval = setInterval(() => {
+                if (i >= targetPositions.length || !autoPlayActive) {
+                    clearInterval(addInterval);
+                    if (i === targetPositions.length && autoDetect) checkCompletion(true);
+                    return;
+                }
+                let target;
+                do {
+                    const offset = aiSmartness * 0.5;
+                    target = targetPositions[i].clone().add(new THREE.Vector3(
+                        (Math.random() - 0.5) * offset,
+                        (Math.random() - 0.5) * offset,
+                        (Math.random() - 0.5) * offset
+                    ));
+                } while (checkCubeOverlap(target));
+                const color = currentLevel < 3 ? 0x00ff00 : colors[i % colors.length];
+                const cube = createCube(new THREE.Vector3(Math.random() * 4 - 2, Math.random() * 4 - 2, Math.random() * 4 - 2), color);
+                scene.add(cube);
+                userCubes.push(cube);
+                cubeVelocities.push(new THREE.Vector3(0, 0, 0));
+                cubeCount++;
+                document.getElementById('addCube').disabled = cubeCount >= targetPositions.length;
+
+                const animStart = Date.now();
+                const animDuration = 1000;
+                const animLoop = () => {
+                    const t = (Date.now() - animStart) / animDuration;
+                    if (t < 1 && autoPlayActive) {
+                        cube.position.lerpVectors(cube.position, target, t);
+                        requestAnimationFrame(animLoop);
+                    } else {
+                        cube.position.copy(target);
+                        const pos = cube.position.clone();
+                        const closestTarget = targetPositions.reduce((closest, target) => {
+                            const dist = pos.distanceTo(target);
+                            return dist < closest.dist ? { pos: target, dist } : closest;
+                        }, { pos: null, dist: Infinity });
+
+                        if (closestTarget.dist < 0.2) {
+                            playSound(440, 0.2, 'sine');
+                        }
+
+                        if (i === targetPositions.length - 1 && autoDetect && autoPlayActive) {
+                            checkCompletion(true);
+                        }
+                    }
+                };
+                animLoop();
+
+                i++;
+            }, autoPlaySpeed);
+        }
+
+        function checkCompletion(showMessage = false) {
+            const timeTaken = (Date.now() - startTime) / 1000;
+            const timeLeft = LEVEL_TIME - timeTaken;
+            if (timeLeft <= 0) return;
+
+            if (userCubes.length !== targetPositions.length) {
+                if (showMessage) showIncompleteMessage();
+                return;
+            }
+
+            const userPositions = userCubes.map(cube => cube.position.clone().round());
+            const sortedUser = userPositions.sort((a, b) => a.x - b.x || a.y - b.y || a.z - b.z);
+            const sortedTarget = [...targetPositions].sort((a, b) => a.x - b.x || a.y - b.y || a.z - b.z);
+
+            const matches = sortedUser.every((pos, i) => pos.equals(sortedTarget[i]));
+            if (matches) {
+                let sumDist = 0;
+                userCubes.forEach(cube => {
+                    const rounded = cube.position.clone().round();
+                    sumDist += cube.position.distanceTo(rounded);
+                });
+                const averageDist = sumDist / userCubes.length;
+                const accuracyScore = Math.round(100 * Math.max(0, 1 - averageDist / 0.5));
+                const timeBonus = Math.round(timeLeft / LEVEL_TIME * 100);
+                const levelScore = accuracyScore + timeBonus;
+                totalScore += levelScore;
+
+                completedShapes.push({
+                    level: currentLevel,
+                    positions: [...targetPositions],
+                    score: levelScore,
+                    accuracy: accuracyScore
+                });
+                playSound(540, 0.2, 'sine');
+
+
+                document.getElementById('summaryTable').innerHTML = `
+                    <tr><td>Level</td><td>${currentLevel + 1}</td></tr>
+                    <tr><td>Accuracy</td><td>${accuracyScore}%</td></tr>
+                    <tr><td>Speed</td><td>${timeBonus} points</td></tr>
+                    <tr><td>Level Score</td><td>${levelScore}</td></tr>
+                    <tr><td>Total Score</td><td>${totalScore}</td></tr>
+                `;
+                targetWireframes.forEach(wireframe => wireframe.visible = false);
+                summaryDelayStart = Date.now();
+                isSummaryDelayed = true;
+                cameraAnimationStart = Date.now();
+                isCameraAnimating = true;
+            } else if (showMessage) {
+                showIncompleteMessage();
+            }
+        }
+
+        function showIncompleteMessage() {
+            const message = document.getElementById('message');
+            message.style.display = 'block';
+            playSound(200, 0.2, 'square');
+            setTimeout(() => message.style.display = 'none', 1000);
+        }
+
+        function explodeCubes() {
+            if (!isExploding) {
+                isExploding = true;
+                explodeStart = Date.now();
+                userCubes.forEach((cube, i) => {
+                    const dir = new THREE.Vector3(
+                        Math.random() - 0.5,
+                        Math.random(),
+                        Math.random() - 0.5
+                    ).normalize();
+                    cubeVelocities[i] = dir.multiplyScalar(0.1);
+                });
+            }
+        }
+
+        function goToNextLevel() {
+            document.getElementById('summary').style.display = 'none';
+            currentLevel++;
+            setupLevel();
+        }
+
+        function updateCubeFlashing() {
+            userCubes.forEach(cube => {
+                const pos = cube.position.clone();
+                const closestTarget = targetPositions.reduce((closest, target) => {
+                    const dist = pos.distanceTo(target);
+                    return dist < closest.dist ? { pos: target, dist } : closest;
+                }, { pos: null, dist: Infinity });
+
+                if (closestTarget.dist < 0.2) {
+                    const t = (Date.now() % 500) / 500;
+                    const flashSpeed = 1 - closestTarget.dist / 0.2;
+                    const intensity = 0.8 + 0.2 * Math.sin(t * Math.PI * 2 * (1 + flashSpeed));
+                    cube.material.emissive.setHex(cube.material.color.getHex());
+                    cube.material.emissiveIntensity = intensity * 0.2;
+                } else {
+                    cube.material.emissive.setHex(0x000000);
+                    cube.material.emissiveIntensity = 0;
+                }
+            });
+        }
+
+        function updateProgressBars() {
+            const timeTaken = (Date.now() - startTime) / 1000;
+            const timeLeft = Math.max(0, LEVEL_TIME - timeTaken);
+            const timeProgress = document.getElementById('timeProgress');
+            const levelInfo = document.getElementById('levelInfo');
+            document.getElementById('timeProgressBar').style.width = (timeLeft / LEVEL_TIME * 100) + '%';
+
+            if (timeLeft < 25 && timeLeft >= 15) {
+                timeProgress.classList.add('amber');
+                timeProgress.classList.remove('red');
+                levelInfo.classList.add('flash-amber');
+                levelInfo.classList.remove('flash-red');
+            } else if (timeLeft < 15) {
+                timeProgress.classList.add('red');
+                timeProgress.classList.remove('amber');
+                levelInfo.classList.add('flash-red');
+                levelInfo.classList.remove('flash-amber');
+            } else {
+                timeProgress.classList.remove('amber', 'red');
+                levelInfo.classList.remove('flash-amber', 'flash-red');
+            }
+
+            let sumDist = 0;
+            userCubes.forEach(cube => {
+                const closestTarget = targetPositions.reduce((closest, target) => {
+                    const dist = cube.position.distanceTo(target);
+                    return dist < closest.dist ? { pos: target, dist } : closest;
+                }, { pos: null, dist: Infinity });
+                sumDist += Math.min(closestTarget.dist, 0.5);
+            });
+            const completeness = userCubes.length === targetPositions.length ?
+                Math.max(0, 1 - sumDist / (0.5 * targetPositions.length)) :
+                userCubes.length / targetPositions.length;
+            document.getElementById('shapeProgressBar').style.width = (completeness * 100) + '%';
+        }
+
+        document.getElementById('nextLevel').addEventListener('touchstart', () => {
+            countdownStart = Date.now() + 5000; // Cancel countdown
+            goToNextLevel();
+        });
+
+        document.getElementById('restart').addEventListener('touchstart', () => {
+            document.getElementById('gameOver').style.display = 'none';
+            currentLevel = 0;
+            totalScore = 0;
+            completedShapes = [];
+            setupLevel();
+        });
+
+        function updateLevelInfo() {
+            const elapsed = (Date.now() - startTime) / 1000;
+            const timeLeft = Math.max(0, LEVEL_TIME - elapsed);
+            document.getElementById('levelInfo').innerText =
+                `Time: ${timeLeft.toFixed(0)}s\nScore: ${totalScore}`;
+            document.getElementById('levelNum').innerText = `Level: ${currentLevel + 1}`;
+            updateProgressBars();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (isWelcomeScreen) {
+                const elapsed = (Date.now() - welcomeStart) / 1000;
+                if (elapsed >= 5) {
+                    document.getElementById('easyButton').touch();
+                } else {
+                    document.getElementById('welcomeProgressBarInner').style.width = ((5 - elapsed) / 5 * 100) + '%';
+                }
+                document.getElementById('easyButton').classList.add('throb');
+                renderer.render(scene, camera);
+                return;
+            }
+
+            if (isPaused) {
+                completedShapes.forEach(shape => {
+                    shape.group.rotation.y += 0.01;
+                    shape.renderer.render(shape.scene, shape.camera);
+                });
+                return;
+            }
+
+            if (isLevelStartAnimation) {
+                const t = (Date.now() - levelStartAnimationStart) / 3000;
+                if (t < 1) {
+                    const radius = 5;
+                    camera.position.x = radius * Math.cos(t * Math.PI * 2);
+                    camera.position.z = radius * Math.sin(t * Math.PI * 2);
+                    camera.position.y = 5 + Math.sin(t * Math.PI * 2) * 2;
+                    camera.lookAt(0, 0, 0);
+                } else {
+                    isLevelStartAnimation = false;
+                    camera.position.set(5, 5, 5);
+                    camera.lookAt(0, 0, 0);
+                }
+            }
+
+            updateLevelInfo();
+            updateCubeFlashing();
+
+            const elapsed = (Date.now() - startTime) / 1000;
+            const timeLeft = LEVEL_TIME - elapsed;
+            const summaryDisplay = document.getElementById('summary').style.display;
+            const gameOverDisplay = document.getElementById('gameOver').style.display;
+
+            if (timeLeft <= 0 && summaryDisplay !== 'block' && gameOverDisplay !== 'block' && !isGameOverAnimation) {
+                isGameOverAnimation = true;
+                gameOverAnimationStart = Date.now();
+                explodeCubes();
+            }
+
+            if (isGameOverAnimation) {
+                const t = (Date.now() - gameOverAnimationStart) / 3000;
+                if (t < 1) {
+                    const radius = 5;
+                    camera.position.x = radius * Math.cos(t * Math.PI * 2);
+                    camera.position.z = radius * Math.sin(t * Math.PI * 2);
+                    camera.position.y = 5 + Math.sin(t * Math.PI * 2) * 2;
+                    camera.lookAt(0, 0, 0);
+                } else {
+                    isGameOverAnimation = false;
+                    document.getElementById('gameOver').style.display = 'block';
+                    playSound(200, 0.2, 'square');
+                }
+            }
+
+            if (isSummaryDelayed) {
+                const delayElapsed = (Date.now() - summaryDelayStart) / 1000;
+                if (delayElapsed >= 3) {
+                    document.getElementById('summary').style.display = 'block';
+                    document.getElementById('progressBarInner').style.width = '100%';
+                    countdownStart = Date.now();
+                    isSummaryDelayed = false;
+                }
+            }
+
+            if (summaryDisplay === 'block') {
+                const elapsedCd = (Date.now() - countdownStart) / 1000;
+                if (elapsedCd >= 5) {
+                    goToNextLevel();
+                } else {
+                    document.getElementById('progressBarInner').style.width = ((5 - elapsedCd) / 5 * 100) + '%';
+                }
+            }
+
+            if (isCameraAnimating) {
+                const t = (Date.now() - cameraAnimationStart) / 3000;
+                if (t < 2/3) {
+                    const radius = 5;
+                    camera.position.x = radius * Math.cos(t * Math.PI * 2);
+                    camera.position.z = radius * Math.sin(t * Math.PI * 2);
+                    camera.position.y = 5 + Math.sin(t * Math.PI * 2) * 2;
+                    camera.lookAt(0, 0, 0);
+                } else if (!isExploding) {
+                    explodeCubes();
+                }
+            }
+
+            if (isExploding) {
+                const explodeTime = (Date.now() - explodeStart) / 1000;
+                userCubes.forEach((cube, i) => {
+                    cube.position.add(cubeVelocities[i]);
+                    cube.material.opacity = cubeTransparency * Math.max(0, 1 - explodeTime);
+                    cube.rotation.x += 0.05;
+                    cube.rotation.y += 0.05;
+                });
+            }
+
+            miniGroup.rotation.y += 0.01;
+
+            renderer.render(scene, camera);
+            miniRenderer.render(miniScene, miniCamera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / (window.innerHeight - 80);
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight - 80);
+        });
+
+        // Initialize welcome screen
+        document.getElementById('welcomeScreen').style.display = 'block';
+        document.getElementById('ui').style.display = 'none';
+        document.getElementById('levelNum').style.display = 'none';
+        document.getElementById('addCube').style.display = 'none';
+        document.getElementById('doneButton').style.display = 'none';
+        document.getElementById('settingsButton').style.display = 'none';
+        document.getElementById('shapesButton').style.display = 'none';
+        document.getElementById('miniTarget').style.display = 'none';
+        welcomeStart = Date.now();
+    </script>
+</body>
+</html>
