@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fun Habit Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; text-align: center; color: #333; transition: background 0.3s, color 0.3s; }
+        body.light { background: linear-gradient(to bottom, #f0f8ff, #add8e6); }
+        body.dark { background: linear-gradient(to bottom, #1a2634, #2c3e50); color: #e0e0e0; }
+        .screen { display: none; max-width: 800px; margin: auto; padding: 20px; border-radius: 20px; box-shadow: 0 6px 12px rgba(0,0,0,0.2); transition: all 0.3s; }
+        .screen.light { background: white; }
+        .screen.dark { background: #263544; border: 1px solid #4a627a; }
+        .screen:hover { box-shadow: 0 8px 16px rgba(0,0,0,0.3); }
+        #welcome { display: block; animation: fadeIn 1s; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .button-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+        button { background: #4caf50; color: white; border: none; padding: 12px 24px; margin: 5px; border-radius: 8px; cursor: pointer; transition: transform 0.2s, background 0.3s, box-shadow 0.2s; font-weight: bold; flex: 1 1 150px; max-width: 200px; }
+        button:hover { transform: scale(1.05); background: #45a049; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        button.dark { background: #1e88e5; }
+        button.dark:hover { background: #1976d2; }
+        button.emoji { font-size: 28px; background: #2196f3; border-radius: 50%; padding: 10px; position: relative; transition: transform 0.2s; }
+        button.emoji:hover { background: #1e88e5; }
+        button.emoji:active { transform: scale(1.1); }
+        .pulse { position: absolute; top: 50%; left: 50%; width: 40px; height: 40px; background: radial-gradient(circle, rgba(33,150,243,0.5), transparent); border-radius: 50%; transform: translate(-50%, -50%) scale(0); animation: pulse 0.8s ease-out; pointer-events: none; }
+        @keyframes pulse { 0% { transform: translate(-50%, -50%) scale(0); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(2); opacity: 0; } }
+        ul { list-style: none; padding: 0; }
+        li { margin: 10px 0; padding: 12px; border-radius: 12px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; transition: background 0.3s, transform 0.2s; }
+        li.dark { background: #34495e; }
+        li:hover { transform: translateY(-2px); }
+        li.light:hover { background: #b2ebf2; }
+        li.dark:hover { background: #3b5998; }
+        .streak { color: #ff4500; font-weight: bold; font-size: 1.1em; }
+        .confetti { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000; }
+        .firework { position: absolute; width: 8px; height: 8px; background: radial-gradient(circle, yellow, transparent); border-radius: 50%; animation: firework 1.5s ease-out; }
+        @keyframes firework { 
+            0% { transform: translate(0, 0) scale(0); opacity: 1; } 
+            50% { transform: translate(calc(-50vw + 50%), -30vh) scale(1.5); opacity: 1; } 
+            100% { transform: translate(calc(-50vw + 50%), -60vh) scale(0); opacity: 0; } 
+        }
+        .star { position: absolute; width: 10px; height: 10px; background: radial-gradient(circle, white, transparent); clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); animation: starShower 1.8s ease-out; }
+        @keyframes starShower { 
+            0% { transform: translate(0, 0) rotate(0); opacity: 1; } 
+            100% { transform: translate(calc(-50vw + 50%), 80vh) rotate(360deg); opacity: 0; } 
+        }
+        .badge { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 48px; z-index: 1001; animation: badgePop 2s ease-out forwards; }
+        @keyframes badgePop { 
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; } 
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } 
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0; } 
+        }
+        #calendarGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 15px; }
+        #calendarGrid div { padding: 12px; border-radius: 8px; transition: background 0.3s; }
+        #calendarGrid div.light { background: #f5f5f5; }
+        #calendarGrid div.dark { background: #2c3e50; }
+        #calendarGrid div.completed { background: lightgreen !important; }
+        #calendarGrid div.completed.dark { background: #2e7d32 !important; }
+        #calendarGrid div.today { border: 2px solid #ff4500; }
+        canvas { margin: 25px 0; border: 1px solid #ddd; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 100%; max-width: 600px; }
+        .category { margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        .category.dark { border-bottom-color: #4a627a; }
+        .category h2 { cursor: pointer; transition: color 0.3s; display: flex; justify-content: space-between; align
+
+-items: center; }
+        .category h2:hover { filter: brightness(1.2); }
+        .category h2.dark { color: #64b5f6; }
+        .category h2.dark:hover { color: #4a90e2; }
+        .category ul { display: none; }
+        .category.open ul { display: block; }
+        input, select { padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin: 10px; width: calc(100% - 40px); background: white; color: #333; }
+        input.dark, select.dark { background: #2c3e50; color: #e0e0e0; border-color: #4a627a; }
+        #summary { margin: 20px 0; }
+        .progress-container { margin: 10px 0; text-align: left; cursor: pointer; }
+        .progress-container:hover .progress-bar { filter: brightness(1.1); }
+        .progress-bar { height: 20px; background: #f0f0f0; border-radius: 10px; overflow: hidden; }
+        .progress-bar.dark { background: #34495e; }
+        .progress-fill { height: 100%; transition: width 0.3s; }
+        .progress-fill.dark { background: #1e88e5; }
+        #homeChart { margin: 20px auto; width: 300px; height: 300px; }
+        #reports .chart-container { margin: 20px 0; text-align: left; }
+        #reports h3 { margin-bottom: 10px; color: #333; }
+        #reports h3.dark { color: #e0e0e0; }
+        #settings .settings-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center; margin-bottom: 20px; }
+        #settings .settings-options label { text-align: left; }
+        #settings .settings-options input[type="color"] { width: 40px; height: 40px; padding: 0; border: none; }
+        #settings .category { padding: 10px; border-radius: 10px; }
+        .slider-container { width: 100%; display: flex; align-items: center; gap: 10px; margin-top: 5px; }
+        input[type="range"] { flex: 1; }
+        .notes-input { width: calc(100% - 20px); margin: 5px 0; font-size: 0.9em; }
+        #reports .filter-container { margin-bottom: 20px; display: flex; gap: 10px; justify-content: center; }
+        #startTracking { background: #2196f3; padding: 15px 30px; max-width: 300px; font-size: 1.2em; animation: throb 1.5s infinite; }
+        #startTracking:hover { background: #1e88e5; }
+        #startTracking.dark { background: #1976d2; }
+        #startTracking.dark:hover { background: #1565c0; }
+        @keyframes throb { 
+            0% { transform: scale(1); } 
+            50% { transform: scale(1.1); } 
+            100% { transform: scale(1); } 
+        }
+        #tipButton { position: absolute; top: 10px; right: 10px; background: #ff9800; }
+        #tipButton:hover { background: #fb8c00; }
+        #tipButton.dark { background: #ef6c00; }
+        #tipButton.dark:hover { background: #e65100; }
+        #tipWindow { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 10px; max-width: 500px; z-index: 1002; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        #tipWindow h3 { margin-top: 0; }
+        #tipWindow ul { text-align: left; }
+        #tipWindow li { background: none; margin: 10px 0; }
+        .typewriter { overflow: hidden; white-space: nowrap; animation: typing 2s steps(40, end); }
+        @keyframes typing { from { width: 0; } to { width: 100%; } }
+    </style>
+</head>
+<body class="light">
+    <button id="tipButton" onclick="showTipWindow()" class="light">💡 Tips</button>
+    <div id="tipWindow">
+        <h3>Top 3 Tips for Your Habits</h3>
+        <ul id="tipList"></ul>
+        <button onclick="hideTipWindow()" class="light">Close</button>
+    </div>
+    <div id="welcome" class="screen light">
+        <h1>🌟 Welcome to Fun Habit Tracker! 🌟</h1>
+        <p>Build habits with joy! 🎉 Track categories and habits easily.</p>
+        <canvas id="homeChart" width="300" height="300"></canvas>
+        <button id="startTracking" onclick="showScreen('main')" class="light">📅 Start Tracking</button>
+        <div id="summary"></div>
+        <div class="button-container">
+            <button onclick="showScreen('instructions')" class="light">📖 How to Use</button>
+            <button onclick="showScreen('calendar')" class="light">🗓️ Calendar</button>
+            <button onclick="showScreen('reports')" class="light">📊 Reports</button>
+            <button onclick="showScreen('settings')" class="light">⚙️ Settings</button>
+        </div>
+    </div>
+    
+    <div id="instructions" class="screen light">
+        <h1>📖 Instructions</h1>
+        <p>Add categories and habits in settings. Use sliders to track partial completion and add notes. View progress in calendar and reports. 🔥</p>
+        <p>Streaks reset if missed. Toggle categories to collapse/expand. 😊</p>
+        <div class="button-container">
+            <button onclick="showScreen('welcome')" class="light">🔙 Back</button>
+        </div>
+    </div>
+    
+    <div id="main" class="screen light">
+        <h1>📅 Today's Habits</h1>
+        <div id="categoryList"></div>
+        <div class="button-container">
+            <button onclick="showScreen('settings')" class="light">➕ Add/Edit</button>
+            <button onclick="showScreen('welcome')" class="light">🏠 Home</button>
+        </div>
+    </div>
+    
+    <div id="calendar" class="screen light">
+        <h1>🗓️ Calendar View</h1>
+        <select id="categorySelect" onchange="populateHabitSelect(); renderCalendar()"></select>
+        <select id="habitSelect" onchange="renderCalendar()"></select>
+        <div>
+            <button onclick="prevMonth()" class="light">◀️</button>
+            <span id="monthYear"></span>
+            <button onclick="nextMonth()" class="light">▶️</button>
+        </div>
+        <div id="calendarGrid"></div>
+        <div class="button-container">
+            <button onclick="showScreen('welcome')" class="light">🏠 Home</button>
+        </div>
+    </div>
+    
+    <div id="reports" class="screen light">
+        <h1>📊 Reports</h1>
+        <div class="filter-container">
+            <select id="reportCategoryFilter" onchange="renderCharts()">
+                <option value="all">All Categories</option>
+            </select>
+            <select id="reportTimeRange" onchange="renderCharts()">
+                <option value="30">Last 30 Days</option>
+                <option value="7">Last 7 Days</option>
+                <option value="90">Last 90 Days</option>
+            </select>
+            <button onclick="exportToCSV()" class="light">Export CSV</button>
+            <button onclick="exportToPDF()" class="light">Export PDF</button>
+        </div>
+        <div class="chart-container">
+            <h3 class="light">Current Streaks</h3>
+            <canvas id="streakChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <h3 class="light">Completion Rate</h3>
+            <canvas id="completionChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <h3 class="light">Overall Completion</h3>
+            <canvas id="overallPie"></canvas>
+        </div>
+        <div class="chart-container">
+            <h3 class="light">Progress Over Time</h3>
+            <canvas id="progressLine"></canvas>
+        </div>
+        <div class="chart-container">
+            <h3 class="light">Longest Streaks</h3>
+            <canvas id="longestStreakChart"></canvas>
+        </div>
+        <div class="button-container">
+            <button onclick="showScreen('welcome')" class="light">🏠 Home</button>
+        </div>
+    </div>
+    
+    <div id="settings" class="screen light">
+        <h1>⚙️ Settings</h1>
+        <div class="settings-options">
+            <label>Theme: <button onclick="toggleTheme()" class="light">🌙 Toggle Theme</button></label>
+            <label>Sound Effects: <input type="checkbox" id="soundToggle" checked></label>
+            <label>New Category: <input type="text" id="newCategory" class="light" placeholder="New category name 📂"></label>
+            <label><button onclick="addCategory()" class="light">➕ Add Category</button></label>
+        </div>
+        <div id="settingsCategories"></div>
+        <div class="button-container">
+            <button onclick="showScreen('welcome')" class="light">🔙 Back</button>
+        </div>
+    </div>
+    
+    <div id="confetti" class="confetti"></div>
+
+    <script>
+        let categories = JSON.parse(localStorage.getItem('categories')) || initializeCategories();
+        const today = new Date().toDateString();
+        let currentMonth = new Date().getMonth();
+        let currentYear = new Date().getFullYear();
+        let theme = localStorage.getItem('theme') || 'light';
+        let soundEnabled = JSON.parse(localStorage.getItem('soundEnabled')) !== false;
+        let charts = {};
+        let openCategories = JSON.parse(localStorage.getItem('openCategories')) || [];
+        let currentChartIndex = 0;
+        const chartTypes = ['completion', 'streak', 'pie', 'line', 'longest'];
+        document.body.className = theme;
+        document.querySelectorAll('.screen, input, select').forEach(el => el.className = el.className.replace(/(light|dark)/, theme));
+        document.querySelectorAll('button:not(.emoji)').forEach(el => el.className = el.className.replace(/(light|dark)/, theme));
+        document.querySelectorAll('h3').forEach(el => el.className = el.className.replace(/(light|dark)/, theme));
+
+        function initializeCategories() {
+            return [
+                { name: 'Health', color: '#4caf50', habits: [
+                    { name: 'Exercise 🏃', history: [], progress: 0, goal: 60, notes: '' },
+                    { name: 'Drink water 💧', history: [], progress: 0, goal: 8, notes: '' },
+                    { name: 'Eat healthy 🥗', history: [], progress: 0, goal: 3, notes: '' },
+                    { name: 'Sleep 8h 😴', history: [], progress: 0, goal: 8, notes: '' },
+                    { name: 'Meditate 🧘', history: [], progress: 0, goal: 10, notes: '' }
+                ] },
+                { name: 'Productivity', color: '#2196f3', habits: [
+                    { name: 'Work on project 💼', history: [], progress: 0, goal: 120, notes: '' },
+                    { name: 'Plan day 📝', history: [], progress: 0, goal: 1, notes: '' },
+                    { name: 'No procrastination 🚫', history: [], progress: 0, goal: 1, notes: '' },
+                    { name: 'Email zero 📧', history: [], progress: 0, goal: 1, notes: '' },
+                    { name: 'Review tasks ✅', history: [], progress: 0, goal: 1, notes: '' }
+                ] },
+                { name: 'Learning', color: '#ff9800', habits: [
+                    { name: 'Read book 📖', history: [], progress: 0, goal: 30, notes: '' },
+                    { name: 'Learn language 🗣️', history: [], progress: 0, goal: 15, notes: '' },
+                    { name: 'Practice skill 🎸', history: [], progress: 0, goal: 20, notes: '' },
+                    { name: 'Watch tutorial 🎥', history: [], progress: 0, goal: 30, notes: '' },
+                    { name: 'Review notes 📚', history: [], progress: 0, goal: 10, notes: '' }
+                ] },
+                { name: 'Social', color: '#e91e63', habits: [
+                    { name: 'Call family 📞', history: [], progress: 0, goal: 1, notes: '' },
+                    { name: 'Meet friends 👥', history: [], progress: 0, goal: 1, notes: '' },
+                    { name: 'Network 🤝', history: [], progress: 0, goal: 1, notes: '' },
+                    { name: 'Compliment someone 😊', history: [], progress: 0, goal: 1, notes: '' },
+                    { name: 'Help others ❤️', history: [], progress: 0, goal: 1, notes: '' }
+                ] },
+                { name: 'Personal', color: '#9c27b0', habits: [
+                    { name: 'Journal ✍️', history: [], progress: 0, goal: 15, notes: '' },
+                    { name: 'Gratitude 🙏', history: [], progress: 0, goal: 1, notes: '' },
+                    { name: 'Hobby 🎨', history: [], progress: 0, goal: 30, notes: '' },
+                    { name: 'Clean room 🧹', history: [], progress: 0, goal: 1, notes: '' },
+                    { name: 'Budget 💰', history: [], progress: 0, goal: 1, notes: '' }
+                ] }
+            ];
+        }
+
+        function toggleTheme() {
+            theme = theme === 'light' ? 'dark' : 'light';
+            document.body.className = theme;
+            document.querySelectorAll('.screen').forEach(el => el.className = el.className.replace(/(light|dark)/, theme));
+            document.querySelectorAll('li').forEach(el => el.className = el.className.replace(/(light|dark)/, theme));
+            document.querySelectorAll('#calendarGrid div').forEach(el => {
+                if (el.classList.contains('completed')) {
+                    el.className = el.className.replace(/(light|dark)/, '') + ' completed ' + theme;
+                } else {
+                    el.className = el.className.replace(/(light|dark)/, theme);
+                }
+            });
+            document.querySelectorAll('input, select').forEach(el => el.className = el.className.replace(/(light|dark)/, theme));
+            document.querySelectorAll('button:not(.emoji)').forEach(el => el.className = el.className.replace(/(light|dark)/, theme));
+            document.querySelectorAll('h3').forEach(el => el.className = el.className.replace(/(light|dark)/, theme));
+            document.querySelectorAll('.progress-bar').forEach(el => el.className = el.className.replace(/(light|dark)/, theme));
+            document.querySelectorAll('.progress-fill').forEach(el => el.className = el.className.replace(/(light|dark)/, theme));
+            localStorage.setItem('theme', theme);
+            renderMain();
+            renderSettings();
+            if (document.getElementById('welcome').style.display === 'block') renderHomeChart();
+            if (document.getElementById('reports').style.display === 'block') renderCharts();
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            localStorage.setItem('soundEnabled', JSON.stringify(soundEnabled));
+            document.getElementById('soundToggle').checked = soundEnabled;
+        }
+
+        function showScreen(id, catIndex = null) {
+            document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+            document.getElementById(id).style.display = 'block';
+            if (id === 'welcome') { renderSummary(); renderHomeChart(); }
+            if (id === 'main') {
+                renderMain();
+                if (catIndex !== null) {
+                    const categoryDiv = document.getElementById(`habitList_${catIndex}`).parentElement;
+                    categoryDiv.classList.add('open');
+                    categoryDiv.querySelector('h2 span').textContent = categoryDiv.querySelector('h2 span').textContent.replace(/[▼▲]/, '▲');
+                }
+            }
+            if (id === 'settings') renderSettings();
+            if (id === 'calendar') { populateCategorySelect(); populateHabitSelect(); renderCalendar(); }
+            if (id === 'reports') { populateReportCategoryFilter(); renderCharts(); }
+        }
+
+        function showTipWindow() {
+            const tipWindow = document.getElementById('tipWindow');
+            const tipList = document.getElementById('tipList');
+            tipList.innerHTML = '';
+            const tips = generateTips();
+            tips.forEach((tip, index) => {
+                const li = document.createElement('li');
+                li.textContent = '';
+                li.className = 'typewriter';
+                tipList.appendChild(li);
+                typeWriterEffect(li, tip, index * 1000);
+            });
+            tipWindow.style.display = 'block';
+        }
+
+        function hideTipWindow() {
+            document.getElementById('tipWindow').style.display = 'none';
+        }
+
+        function typeWriterEffect(element, text, delay) {
+            let i = 0;
+            setTimeout(() => {
+                const interval = setInterval(() => {
+                    if (i < text.length) {
+                        element.textContent += text.charAt(i);
+                        i++;
+                    } else {
+                        clearInterval(interval);
+                    }
+                }, 50);
+            }, delay);
+        }
+
+        function generateTips() {
+            const allHabits = categories.flatMap(cat => cat.habits.map(h => ({ ...h, category: cat.name })));
+            const completedToday = allHabits.filter(h => h.progress >= h.goal && h.history.includes(today));
+            const incompleteHabits = allHabits.filter(h => h.progress < h.goal || !h.history.includes(today));
+            const streaks = allHabits.map(h => ({ name: h.name, streak: computeStreak(h.history) }));
+            const topStreaks = streaks.sort((a, b) => b.streak - a.streak).slice(0, 3);
+
+            let tips = [];
+            if (completedToday.length > 0) {
+                tips.push(`Great job completing ${completedToday.length} habits today! Keep up the momentum with ${completedToday[0].name}!`);
+            } else {
+                tips.push("No habits completed yet today? Start with a small one like 'Gratitude 🙏' to build momentum!");
+            }
+            if (incompleteHabits.length > 0) {
+                tips.push(`Try focusing on ${incompleteHabits[0].name} today. Small steps lead to big results!`);
+            } else {
+                tips.push("You're crushing it! All habits are on track. Add a new challenge to keep growing!");
+            }
+            if (topStreaks.length > 0 && topStreaks[0].streak > 0) {
+                tips.push(`Amazing ${topStreaks[0].streak}-day streak on ${topStreaks[0].name}! Consistency is key—keep it going!`);
+            } else {
+                tips.push("Start building a streak with a simple habit like 'Drink water 💧' to see progress!");
+            }
+            return tips.slice(0, 3);
+        }
+
+        function renderHomeChart() {
+            const ctx = document.getElementById('homeChart').getContext('2d');
+            if (charts.home) charts.home.destroy();
+            const allHabits = categories.flatMap(cat => cat.habits);
+            const bgColors = theme === 'light' ? ['#4caf50', '#ff4500'] : ['#2e7d32', '#d32f2f'];
+            const textColor = theme === 'light' ? '#333' : '#e0e0e0';
+            let data, labels, title;
+
+            switch (chartTypes[currentChartIndex]) {
+                case 'completion':
+                    const last30 = [];
+                    for (let i = 29; i >= 0; i--) {
+                        last30.push(new Date(Date.now() - i * 86400000).toDateString());
+                    }
+                    data = last30.map(date => allHabits.filter(h => h.history.includes(date)).length / allHabits.length * 100);
+                    labels = last30.map(d => new Date(d).toLocaleDateString());
+                    title = 'Daily Completion (Last 30 Days)';
+                    charts.home = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels,
+                            datasets: [{ label: title, data, borderColor: bgColors[0], fill: false }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false }, tooltip: { enabled: true } },
+                            scales: { x: { ticks: { color: textColor }, grid: { color: 'rgba(0,0,0,0.1)' } }, y: { beginAtZero: true, max: 100, ticks: { color: textColor }, grid: { color: 'rgba(0,0,0,0.1)' } } }
+                        }
+                    });
+                    break;
+                case 'streak':
+                    data = allHabits.map(h => computeStreak(h.history));
+                    labels = allHabits.map(h => h.name.match(/[\p{Emoji}]/u)?.[0] || '📌');
+                    title = 'Current Streaks';
+                    charts.home = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels,
+                            datasets: [{ label: title, data, backgroundColor: bgColors[0] }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false }, tooltip: { enabled: true } },
+                            scales: { x: { ticks: { color: textColor }, grid: { color: 'rgba(0,0,0,0.1)' } }, y: { beginAtZero: true, ticks: { color: textColor }, grid: { color: 'rgba(0,0,0,0.1)' } } }
+                        }
+                    });
+                    break;
+                case 'pie':
+                    const completed = allHabits.filter(h => h.progress >= h.goal && h.history.includes(today)).length;
+                    const total = allHabits.length;
+                    data = [completed, total - completed];
+                    labels = ['Completed Today', 'Remaining'];
+                    title = 'Today\'s Completion';
+                    charts.home = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels,
+                            datasets: [{ data, backgroundColor: bgColors }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false }, tooltip: { enabled: true } },
+                            cutout: '70%',
+                            elements: { arc: { borderWidth: 0 } }
+                        }
+                    });
+                    break;
+                case 'line':
+                    const last7 = [];
+                    for (let i = 6; i >= 0; i--) {
+                        last7.push(new Date(Date.now() - i * 86400000).toDateString());
+                    }
+                    data = last7.map(date => allHabits.filter(h => h.history.includes(date)).length / allHabits.length * 100);
+                    labels = last7.map(d => new Date(d).toLocaleDateString());
+                    title = 'Daily Completion (Last 7 Days)';
+                    charts.home = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels,
+                            datasets: [{ label: title, data, borderColor: bgColors[0], fill: false }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false }, tooltip: { enabled: true } },
+                            scales: { x: { ticks: { color: textColor }, grid: { color: 'rgba(0,0,0,0.1)' } }, y: { beginAtZero: true, max: 100, ticks: { color: textColor }, grid: { color: 'rgba(0,0,0,0.1)' } } }
+                        }
+                    });
+                    break;
+                case 'longest':
+                    data = allHabits.map(h => computeLongestStreak(h.history));
+                    labels = allHabits.map(h => h.name.match(/[\p{Emoji}]/u)?.[0] || '📌');
+                    title = 'Longest Streaks';
+                    charts.home = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels,
+                            datasets: [{ label: title, data, backgroundColor: bgColors[0] }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false }, tooltip: { enabled: true } },
+                            scales: { x: { ticks: { color: textColor }, grid: { color: 'rgba(0,0,0,0.1)' } }, y: { beginAtZero: true, ticks: { color: textColor }, grid: { color: 'rgba(0,0,0,0.1)' } } }
+                        }
+                    });
+                    break;
+            }
+            document.getElementById('homeChart').parentElement.querySelector('h3')?.remove();
+            const titleEl = document.createElement('h3');
+            titleEl.className = theme;
+            titleEl.textContent = title;
+            document.getElementById('homeChart').parentElement.insertBefore(titleEl, document.getElementById('homeChart'));
+        }
+
+        function cycleCharts() {
+            currentChartIndex = (currentChartIndex + 1) % chartTypes.length;
+            if (document.getElementById('welcome').style.display === 'block') {
+                renderHomeChart();
+            }
+        }
+
+        setInterval(cycleCharts, 5000);
+
+        function renderSummary() {
+            const summary = document.getElementById('summary');
+            summary.innerHTML = '<h2>Habit Summary</h2>';
+            categories.forEach((cat, catI) => {
+                const completed = cat.habits.filter(h => h.progress >= h.goal && h.history.includes(today)).length;
+                const total = cat.habits.length;
+                const percentage = total ? (completed / total * 100).toFixed(0) : 0;
+                const div = document.createElement('div');
+                div.className = 'progress-container';
+                div.onclick = () => showScreen('main', catI);
+                div.innerHTML = `<span style="color: ${cat.color}">${cat.name}: ${completed}/${total}</span>
+                    <div class="progress-bar ${theme}"><div class="progress-fill ${theme}" style="width: ${percentage}%; background: ${cat.color}"></div></div>`;
+                summary.appendChild(div);
+            });
+        }
+
+        function addCategory() {
+            const name = document.getElementById('newCategory').value.trim();
+            if (name) {
+                const colors = ['#4caf50', '#2196f3', '#ff9800', '#e91e63', '#9c27b0', '#ff5722', '#673ab7', '#009688'];
+                categories.push({ name, color: colors[categories.length % colors.length], habits: [] });
+                saveCategories();
+                renderSettings();
+                document.getElementById('newCategory').value = '';
+            }
+        }
+
+        function addHabit(catIndex) {
+            const input = document.getElementById(`newHabit_${catIndex}`);
+            const name = input.value.trim();
+            if (name) {
+                categories[catIndex].habits.push({ name, history: [], progress: 0, goal: 1, notes: '' });
+                saveCategories();
+                renderSettings();
+                input.value = '';
+            }
+        }
+
+        function changeCategoryColor(catIndex) {
+            const input = document.getElementById(`color_${catIndex}`);
+            const newColor = input.value;
+            categories[catIndex].color = newColor;
+            saveCategories();
+            renderSettings();
+            renderMain();
+            renderSummary();
+        }
+
+        function updateHabitProgress(catIndex, habitIndex, value, button) {
+            const h = categories[catIndex].habits[habitIndex];
+            h.progress = parseInt(value);
+            if (h.progress >= h.goal && !h.history.includes(today)) {
+                h.history.push(today);
+                showPulseEffect(button);
+                showMilestoneEffect(computeStreak(h.history));
+                if (soundEnabled) {
+                    const audio = new Audio('https://freesound.org/data/previews/171/171671_2437358-lq.mp3');
+                    audio.play();
+                }
+            }
+            if (!openCategories.includes(catIndex)) {
+                openCategories.push(catIndex);
+                localStorage.setItem('openCategories', JSON.stringify(openCategories));
+            }
+            saveCategories();
+            renderMain();
+            renderSummary();
+            renderHomeChart();
+        }
+
+        function updateHabitNotes(catIndex, habitIndex, value) {
+            const h = categories[catIndex].habits[habitIndex];
+            h.notes = value;
+            saveCategories();
+        }
+
+        function renderSettings() {
+            const container = document.getElementById('settingsCategories');
+            container.innerHTML = '';
+            categories.forEach((cat, catI) => {
+                const div = document.createElement('div');
+                div.className = `category ${theme}`;
+                div.style.background = theme === 'light' ? `rgba(${parseInt(cat.color.slice(1,3),16)},${parseInt(cat.color.slice(3,5),16)},${parseInt(cat.color.slice(5,7),16)},0.1)` : `rgba(${parseInt(cat.color.slice(1,3),16)},${parseInt(cat.color.slice(3,5),16)},${parseInt(cat.color.slice(5,7),16)},0.2)`;
+                div.innerHTML = `<h2 onclick="toggleCategory(${catI}, 'settings')" style="color: ${cat.color}">${cat.name} <span>${cat.habits.length} habits ${openCategories.includes(catI) ? '▲' : '▼'}</span> <button onclick="removeCategory(${catI})">❌</button></h2>
+                    <ul id="settingsList_${catI}"></ul>
+                    <div class="settings-options">
+                        <label>New Habit: <input type="text" id="newHabit_${catI}" class="${theme}" placeholder="New habit in ${cat.name} 😄"></label>
+                        <label><button onclick="addHabit(${catI})" class="${theme}">➕ Add Habit</button></label>
+                        <label>Category Color: <input type="color" id="color_${catI}" value="${cat.color}" onchange="changeCategoryColor(${catI})"></label>
+                    </div>`;
+                container.appendChild(div);
+                const list = document.getElementById(`settingsList_${catI}`);
+                if (openCategories.includes(catI)) div.classList.add('open');
+                cat.habits.forEach((h, hI) => {
+                    const li = document.createElement('li');
+                    li.className = theme;
+                    li.innerHTML = `${h.name} <button onclick="removeHabit(${catI}, ${hI})">❌</button>`;
+                    list.appendChild(li);
+                });
+            });
+            document.getElementById('soundToggle').checked = soundEnabled;
+        }
+
+        function removeCategory(index) {
+            categories.splice(index, 1);
+            openCategories = openCategories.filter(i => i !== index).map(i => i > index ? i - 1 : i);
+            saveCategories();
+            localStorage.setItem('openCategories', JSON.stringify(openCategories));
+            renderSettings();
+        }
+
+        function removeHabit(catIndex, habitIndex) {
+            categories[catIndex].habits.splice(habitIndex, 1);
+            saveCategories();
+            renderSettings();
+        }
+
+        function toggleCategory(catIndex, screen) {
+            const list = document.getElementById(`${screen}List_${catIndex}`);
+            const parent = list.parentElement;
+            parent.classList.toggle('open');
+            const span = parent.querySelector('h2 span');
+            span.textContent = span.textContent.replace(/[▼▲]/, parent.classList.contains('open') ? '▲' : '▼');
+            if (parent.classList.contains('open')) {
+                if (!openCategories.includes(catIndex)) openCategories.push(catIndex);
+            } else {
+                openCategories = openCategories.filter(i => i !== catIndex);
+            }
+            localStorage.setItem('openCategories', JSON.stringify(openCategories));
+        }
+
+        function renderMain() {
+            const container = document.getElementById('categoryList');
+            container.innerHTML = '';
+            categories.forEach((cat, catI) => {
+                const div = document.createElement('div');
+                div.className = `category ${theme}`;
+                if (openCategories.includes(catI)) div.classList.add('open');
+                div.innerHTML = `<h2 onclick="toggleCategory(${catI}, 'habit')" style="color: ${cat.color}">${cat.name} <span>${cat.habits.length} habits ${openCategories.includes(catI) ? '▲' : '▼'}</span></h2><ul id="habitList_${catI}"></ul>`;
+                container.appendChild(div);
+                const list = document.getElementById(`habitList_${catI}`);
+                cat.habits.forEach((h, hI) => {
+                    const completedToday = h.progress >= h.goal && h.history.includes(today);
+                    const li = document.createElement('li');
+                    li.className = theme;
+                    li.style.background = theme === 'light' ? `rgba(${parseInt(cat.color.slice(1,3),16)},${parseInt(cat.color.slice(3,5),16)},${parseInt(cat.color.slice(5,7),16)},0.1)` : `rgba(${parseInt(cat.color.slice(1,3),16)},${parseInt(cat.color.slice(3,5),16)},${parseInt(cat.color.slice(5,7),16)},0.2)`;
+                    li.innerHTML = `
+                        ${h.name} <span class="streak">Streak: ${computeStreak(h.history)} 🔥</span>
+                        <div class="slider-container">
+                            <input type="range" min="0" max="${h.goal}" value="${h.progress}" onchange="updateHabitProgress(${catI}, ${hI}, this.value, this)">
+                            <span>${h.progress}/${h.goal}</span>
+                            <button class="emoji" onclick="updateHabitProgress(${catI}, ${hI}, ${h.goal}, this)" ${completedToday ? 'disabled' : ''}>${completedToday ? '✅' : '⬜'}</button>
+                        </div>
+                        <input type="text" class="notes-input ${theme}" placeholder="Notes..." value="${h.notes}" onblur="updateHabitNotes(${catI}, ${hI}, this.value)">
+                    `;
+                    list.appendChild(li);
+                });
+            });
+        }
+
+        function computeStreak(history) {
+            if (!history.length) return 0;
+            const sorted = [...history].sort((a, b) => new Date(b) - new Date(a));
+            if (sorted[0] !== today) return 0;
+            let streak = 1;
+            let current = new Date(sorted[0]);
+            for (let i = 1; i < sorted.length; i++) {
+                const prev = new Date(sorted[i]);
+                if (current - prev === 86400000) {
+                    streak++;
+                    current = prev;
+                } else break;
+            }
+            return streak;
+        }
+
+        function computeLongestStreak(history) {
+            if (!history.length) return 0;
+            const sorted = [...history].sort((a, b) => new Date(a) - new Date(b));
+            let longest = 0, current = 1;
+            let prev = new Date(sorted[0]);
+            for (let i = 1; i < sorted.length; i++) {
+                const curr = new Date(sorted[i]);
+                if (curr - prev === 86400000) {
+                    current++;
+                } else {
+                    longest = Math.max(longest, current);
+                    current = 1;
+                }
+                prev = curr;
+            }
+            return Math.max(longest, current);
+        }
+
+        function showPulseEffect(button) {
+            const pulse = document.createElement('div');
+            pulse.className = 'pulse';
+            button.appendChild(pulse);
+            setTimeout(() => pulse.remove(), 800);
+        }
+
+        function showMilestoneEffect(streak) {
+            const confetti = document.getElementById('confetti');
+            const milestone = streak === 1 ? 'first' : streak >= 5 ? 'high' : 'normal';
+            let particleType, count, badge;
+            switch (milestone) {
+                case 'first':
+                    particleType = 'firework';
+                    count = 50;
+                    badge = '🎉';
+                    break;
+                case 'high':
+                    particleType = 'star';
+                    count = 75;
+                    badge = '🏆';
+                    break;
+                default:
+                    particleType = 'firework';
+                    count = 60;
+                    badge = '⭐';
+            }
+            for (let i = 0; i < count; i++) {
+                const particle = document.createElement('div');
+                particle.className = particleType;
+                particle.style.left = `${Math.random() * 100}vw`;
+                particle.style.animationDuration = `${Math.random() * 1.5 + 0.5}s`;
+                particle.style.background = `hsl(${Math.random() * 360}, 100%, ${theme === 'light' ? '50%' : '70%'})`;
+                particle.style.transform = `scale(${Math.random() * 0.5 + 0.5})`;
+                confetti.appendChild(particle);
+                setTimeout(() => particle.remove(), 4000);
+            }
+            if (streak >= 1) {
+                const badgeEl = document.createElement('div');
+                badgeEl.className = 'badge';
+                badgeEl.textContent = badge;
+                confetti.appendChild(badgeEl);
+                setTimeout(() => badgeEl.remove(), 2000);
+            }
+        }
+
+        function saveCategories() {
+            localStorage.setItem('categories', JSON.stringify(categories));
+        }
+
+        function populateCategorySelect() {
+            const select = document.getElementById('categorySelect');
+            select.className = theme;
+            select.innerHTML = '';
+            categories.forEach((cat, i) => {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = cat.name;
+                select.appendChild(opt);
+            });
+        }
+
+        function populateHabitSelect() {
+            const catSelect = document.getElementById('categorySelect');
+            const habitSelect = document.getElementById('habitSelect');
+            habitSelect.className = theme;
+            const catIndex = parseInt(catSelect.value);
+            habitSelect.innerHTML = '';
+            if (!isNaN(catIndex)) {
+                categories[catIndex].habits.forEach((h, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = h.name;
+                    habitSelect.appendChild(opt);
+                });
+            }
+        }
+
+        function populateReportCategoryFilter() {
+            const select = document.getElementById('reportCategoryFilter');
+            select.className = theme;
+            select.innerHTML = '<option value="all">All Categories</option>';
+            categories.forEach((cat, i) => {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = cat.name;
+                select.appendChild(opt);
+            });
+        }
+
+        function exportToCSV() {
+            const timeRange = parseInt(document.getElementById('reportTimeRange').value);
+            const catFilter = document.getElementById('reportCategoryFilter').value;
+            let habits = categories.flatMap(cat => cat.habits.map(h => ({ name: `${cat.name}: ${h.name}`, history: h.history, notes: h.notes, progress: h.progress, goal: h.goal })));
+            if (catFilter !== 'all') {
+                habits = categories[parseInt(catFilter)].habits.map(h => ({ name: `${categories[parseInt(catFilter)].name}: ${h.name}`, history: h.history, notes: h.notes, progress: h.progress, goal: h.goal }));
+            }
+            const startDate = new Date(Date.now() - (timeRange - 1) * 86400000);
+            let csv = 'Habit,Date,Progress,Goal,Notes\n';
+            habits.forEach(h => {
+                h.history.forEach(date => {
+                    if (new Date(date) >= startDate) {
+                        csv += `"${h.name.replace(/"/g, '""')}",${date},${h.progress},${h.goal},"${h.notes.replace(/"/g, '""')}"\n`;
+                    }
+                });
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `habit_tracker_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function exportToPDF() {
+            alert('PDF export requires a library like jsPDF, which is not included. Please implement it for full functionality.');
+        }
+
+        function renderCalendar() {
+            const catSelect = document.getElementById('categorySelect');
+            const habitSelect = document.getElementById('habitSelect');
+            const catIndex = parseInt(catSelect.value);
+            const habitIndex = parseInt(habitSelect.value);
+            if (isNaN(catIndex) || isNaN(habitIndex)) return;
+            const h = categories[catIndex].habits[habitIndex];
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            days.forEach(d => {
+                const div = document.createElement('div');
+                div.className = theme;
+                div.textContent = d;
+                div.style.fontWeight = 'bold';
+                grid.appendChild(div);
+            });
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            for (let i = 0; i < firstDay; i++) {
+                grid.appendChild(document.createElement('div'));
+            }
+            const now = new Date();
+            for (let day = 1; day <= daysInMonth; day++) {
+                const div = document.createElement('div');
+                div.className = theme;
+                div.textContent = day;
+                const dateStr = new Date(currentYear, currentMonth, day).toDateString();
+                if (h.history.includes(dateStr)) {
+                    div.classList.add('completed');
+                    div.classList.add(theme);
+                }
+                if (currentYear === now.getFullYear() && currentMonth === now.getMonth() && day === now.getDate()) {
+                    div.classList.add('today');
+                }
+                grid.appendChild(div);
+            }
+            document.getElementById('monthYear').textContent = `${new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long' })} ${currentYear}`;
+        }
+
+        function prevMonth() {
+            currentMonth--;
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            renderCalendar();
+        }
+
+        function nextMonth() {
+            currentMonth++;
+            if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            renderCalendar();
+        }
+
+        function renderCharts() {
+            const timeRange = parseInt(document.getElementById('reportTimeRange').value);
+            const catFilter = document.getElementById('reportCategoryFilter').value;
+            let allHabits = categories.flatMap(cat => cat.habits.map(h => ({name: `${cat.name}: ${h.name}`, emoji: h.name.match(/[\p{Emoji}]/u)?.[0] || '📌', history: h.history})));
+            if (catFilter !== 'all') {
+                allHabits = categories[parseInt(catFilter)].habits.map(h => ({name: `${categories[parseInt(catFilter)].name}: ${h.name}`, emoji: h.name.match(/[\p{Emoji}]/u)?.[0] || '📌', history: h.history}));
+            }
+            const textColor = theme === 'light' ? '#333' : '#e0e0e0';
+            const gridColor = theme === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)';
+            const bgStreak = theme === 'light' ? '#4caf50' : '#2e7d32';
+            const bgCompletion = theme === 'light' ? '#2196f3' : '#1976d2';
+            const bgPie = theme === 'light' ? ['#4caf50', '#ff4500'] : ['#2e7d32', '#d32f2f'];
+
+            const commonOptions = {
+                scales: { x: { ticks: { color: textColor, callback: (val, idx) => allHabits[idx].emoji }, grid: { color: gridColor } }, y: { ticks: { color: textColor }, grid: { color: gridColor } } },
+                plugins: { legend: { labels: { color: textColor } } }
+            };
+
+            const streakCtx = document.getElementById('streakChart').getContext('2d');
+            if (charts.streak) charts.streak.destroy();
+            charts.streak = new Chart(streakCtx, {
+                type: 'bar',
+                data: {
+                    labels: allHabits.map(h => h.emoji),
+                    datasets: [{ label: 'Current Streak', data: allHabits.map(h => computeStreak(h.history)), backgroundColor: bgStreak }]
+                },
+                options: { ...commonOptions, scales: { ...commonOptions.scales, y: { beginAtZero: true } } }
+            });
+
+            const lastN = [];
+            for (let i = timeRange - 1; i >= 0; i--) {
+                lastN.push(new Date(Date.now() - i * 86400000).toDateString());
+            }
+            const completionData = allHabits.map(h => (lastN.filter(d => h.history.includes(d)).length / timeRange * 100).toFixed(2));
+            const completionCtx = document.getElementById('completionChart').getContext('2d');
+            if (charts.completion) charts.completion.destroy();
+            charts.completion = new Chart(completionCtx, {
+                type: 'bar',
+                data: {
+                    labels: allHabits.map(h => h.emoji),
+                    datasets: [{ label: `Completion Rate (Last ${timeRange} Days)`, data: completionData, backgroundColor: bgCompletion }]
+                },
+                options: { ...commonOptions, scales: { ...commonOptions.scales, y: { beginAtZero: true, max: 100 } } }
+            });
+
+            const totalCompleted = allHabits.reduce((sum, h) => sum + h.history.filter(d => lastN.includes(d)).length, 0);
+            const totalPossible = allHabits.length * timeRange;
+            const pieCtx = document.getElementById('overallPie').getContext('2d');
+            if (charts.pie) charts.pie.destroy();
+            charts.pie = new Chart(pieCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Completed', 'Missed'],
+                    datasets: [{ data: [totalCompleted, totalPossible - totalCompleted], backgroundColor: bgPie }]
+                },
+                options: { ...commonOptions, responsive: true }
+            });
+
+            const progressData = lastN.map(date => {
+                return allHabits.filter(h => h.history.includes(date)).length / allHabits.length * 100;
+            });
+            const lineCtx = document.getElementById('progressLine').getContext('2d');
+            if (charts.line) charts.line.destroy();
+            charts.line = new Chart(lineCtx, {
+                type: 'line',
+                data: {
+                    labels: lastN.map(d => new Date(d).toLocaleDateString()),
+                    datasets: [{ label: `Daily Completion (Last ${timeRange} Days)`, data: progressData, borderColor: bgCompletion, fill: false }]
+                },
+                options: { ...commonOptions, scales: { ...commonOptions.scales, y: { beginAtZero: true, max: 100 } } }
+            });
+
+            const longestStreakCtx = document.getElementById('longestStreakChart').getContext('2d');
+            if (charts.longest) charts.longest.destroy();
+            charts.longest = new Chart(longestStreakCtx, {
+                type: 'bar',
+                data: {
+                    labels: allHabits.map(h => h.emoji),
+                    datasets: [{ label: 'Longest Streak', data: allHabits.map(h => computeLongestStreak(h.history)), backgroundColor: bgStreak }]
+                },
+                options: { ...commonOptions, scales: { ...commonOptions.scales, y: { beginAtZero: true } } }
+            });
+        }
+
+        document.getElementById('soundToggle').addEventListener('change', toggleSound);
+        saveCategories();
+        renderSummary();
+        renderHomeChart();
+    </script>
+</body>
+</html>
