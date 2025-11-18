@@ -1,9 +1,11 @@
+<!-- OLD / SUPERSEDED -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>tronAIx Game - V0.98</title>
+    <title>tronAIx Game - V0.99</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
@@ -61,6 +63,18 @@
             font-size: 16px;
             padding: 8px 16px;
             margin-top: 15px;
+            background: #blue;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-shadow: 0 0 5px #000;
+            transition: background 0.3s;
+        }
+        #submit-score {
+            font-size: 16px;
+            padding: 8px 16px;
+            margin-top: 15px;
             background: #00ff00;
             color: #000;
             border: none;
@@ -108,7 +122,7 @@
             opacity: 1;
             z-index: 4;
             pointer-events: none;
-            transition: opacity 4s ease-out;
+            transition: opacity 2s ease-out;
         }
         #welcomeScreen {
             position: absolute;
@@ -130,7 +144,7 @@
             font-size: 64px;
             z-index: 17;
             opacity: 0;
-            animation: fadeIn 1s ease-in forwards;
+            animation: fadeIn 0.5s ease-in forwards;
         }
         #welcomeScreen h1 .letter {
             display: inline-block;
@@ -171,6 +185,11 @@
             50% { color: #ff0000; }
             100% { color: #00ff00; }
         }
+        @keyframes throb {
+            0% { transform: scale(1); box-shadow: 0 0 10px rgba(0,255,0,0.4); }
+            50% { transform: scale(1.08); box-shadow: 0 0 28px rgba(0,255,0,0.65); }
+            100% { transform: scale(1); box-shadow: 0 0 10px rgba(0,255,0,0.4); }
+        }
         #welcomeScreen p {
             font-size: 18px;
             max-width: 700px;
@@ -178,7 +197,7 @@
             text-shadow: 0 0 10px #00ff00;
             z-index: 17;
             opacity: 0;
-            animation: fadeIn 1s ease-in 0.3s forwards;
+            animation: fadeIn 0.5s ease-in 0.3s forwards;
         }
         #welcomeScreen button {
             font-size: 20px;
@@ -194,12 +213,26 @@
             transition: transform 0.2s, box-shadow 0.2s;
             z-index: 17;
             opacity: 0;
-            animation: fadeIn 1s ease-in 0.6s forwards;
+            animation: fadeIn 0.5s ease-in 0.5s forwards;
         }
+        /* Large, attention-grabbing Play button */
         #playButton {
-            margin-top: 20px;
-            animation: throb 0.5s ease-in-out infinite;
+            margin-top: 18px;
+            width: 180px;
+            height: 60px;
+            font-size: 42px;
+            padding: 0;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #00ff6a, #00b7eb);
+            color: #00110a;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 12px 40px rgba(0,183,235,0.18), 0 6px 18px rgba(0,255,106,0.12);
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+            animation: throb 1s ease-in-out infinite;
+            z-index: 18;
         }
+
         #welcomeScreen button:hover {
             background: #00b7eb;
             box-shadow: 0 0 15px #00b7eb;
@@ -250,7 +283,7 @@
             text-shadow: 0 0 10px #00ff00;
             z-index: 17;
             opacity: 0;
-            animation: fadeIn 1s ease-in 0.9s forwards;
+            animation: fadeIn 0.5s ease-in 0.3s forwards;
         }
         #gameModeLabel {
             margin-top: 20px;
@@ -275,7 +308,7 @@
             text-shadow: 0 0 5px #000;
             transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
             opacity: 0;
-            animation: fadeIn 1s ease-in 1.2s forwards;
+            animation: fadeIn 0.5s ease-in 0.3s forwards;
         }
         #gameModeToggle label:hover {
             background: #00b7eb;
@@ -303,7 +336,7 @@
             text-shadow: 0 0 5px #000;
             transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
             opacity: 0;
-            animation: fadeIn 1s ease-in 1.2s forwards;
+            animation: fadeIn 0.5s ease-in 0.3s forwards;
         }
         #gridSizeButtons button:hover, #speedButtons button:hover, #gameTimeButtons button:hover {
             background: #00b7eb;
@@ -505,6 +538,8 @@
 <body>
     <div id="welcomeScreen">
         <div id="starField"></div>
+        <p>&nbsp;</p>
+        <p>&nbsp;</p>
         <h1>
             <span class="letter">t</span>
             <span class="letter">r</span>
@@ -515,18 +550,32 @@
             <span class="letter">x</span>
         </h1>
         <p>Navigate the neon grid, outmaneuver your opponent, and claim territory by creating walls. Survive longer and cover more ground to win!</p>
-        <div id="miniGrid"></div>
-        <button id="playButton">Play</button>
+    <div id="miniGrid"></div>
+    <div id="currentGameMode" style="margin-top:12px; font-size:18px; color:#00ff00; text-shadow:0 0 6px rgba(0,255,0,0.15);">Game Mode: Human</div>
+    <button id="playButton">Play</button>
+    <div style="margin-top:12px; font-size:14px; color:#00ff00; text-shadow:0 0 6px rgba(0,255,0,0.15);">Configure speed, size, type, and AI mode</div>
         <button id="settingsButton">Settings</button>
+        <button id="submit-score">Submit Score (<span id="score-value">0</span>)</button>
+
     </div>
     <div id="settingsScreen">
         <div id="optionsPanel">
+
             <button id="closeSettingsButton">Close</button>
             <div id="gameModeLabel">Game Mode</div>
+            <div id="gameModeToggle">
+                <input type="radio" id="humanMode" name="gameMode" value="human" checked>
+                <label for="humanMode">Human</label>
+
+                <input type="radio" id="aiMode" name="gameMode" value="ai">
+                <label for="aiMode">AI</label>
+            </div>
+            <!--
             <div id="gameModeToggle">
                 <input type="checkbox" id="gameModeSwitch">
                 <label for="gameModeSwitch">Human / AI</label>
             </div>
+             -->
             <div id="gridSizeLabel">Grid Size</div>
             <div id="gridSizeButtons">
                 <button id="gridSmall">Small</button>
@@ -550,6 +599,8 @@
     </div>
     <div id="fadeOverlay"></div>
     <div id="titleBar">
+        <p>&nbsp;</p>
+        <p>&nbsp;</p>
         <h1>tronAIx</h1>
         <div id="speedStats">
             Game Time: <span id="timer">0</span>s<br>
@@ -586,6 +637,8 @@
         <div>Red Score: <span id="redScoreValue" class="scoreValue"></span></div>
         <div>Blue Score: <span id="blueScoreValue" class="scoreValue"></span></div>
         <button id="restartButton">Restart</button>
+        <!--<button id="submit-score">Submit Score</button>-->
+
     </div>
     <div id="bonusMessage"></div>
     <div id="countdownDisplay"></div>
@@ -594,6 +647,10 @@
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
+
+
+
+
         // Star field for welcome screen
         const starField = document.getElementById('starField');
         for (let i = 0; i < 200; i++) {
@@ -811,10 +868,45 @@
         });
 
         // Game mode toggle
-        let is1PlayerMode = true; // Default to Human mode
-        const gameModeSwitch = document.getElementById('gameModeSwitch');
-        gameModeSwitch.addEventListener('change', () => {
-            is1PlayerMode = !gameModeSwitch.checked;
+        // is1PlayerMode === true  -> human controls red player (1-player)
+        // is1PlayerMode === false -> AI controls red player (AI mode)
+        let is1PlayerMode = true; // default to human control
+
+        // Initialize and wire UI after DOM is ready to avoid `null` queries
+        document.addEventListener('DOMContentLoaded', () => {
+            function updateGameModeFromUI() {
+                const selected = document.querySelector('input[name="gameMode"]:checked');
+                if (selected) {
+                    // radios: 'human' -> human controls red player
+                    is1PlayerMode = (selected.value === 'human');
+                } else {
+                    // fallback default
+                    is1PlayerMode = true;
+                }
+
+                // update UI elements that depend on mode (control box visibility, countdown display, etc.)
+                const controlBox = document.getElementById('controlBox');
+                if (controlBox) controlBox.style.display = is1PlayerMode ? 'flex' : 'none';
+                const countdownEl = document.getElementById('countdown');
+                if (countdownEl) countdownEl.textContent = is1PlayerMode ? 'N/A' : (typeof timeToNextIncrease !== 'undefined' && timeToNextIncrease > 0 ? timeToNextIncrease : 0);
+
+                // update the welcome screen display of current game mode
+                const currentModeEl = document.getElementById('currentGameMode');
+                if (currentModeEl) {
+                    currentModeEl.textContent = 'Game Mode: ' + (is1PlayerMode ? 'Human' : 'AI');
+                    currentModeEl.style.color = is1PlayerMode ? '#00ff00' : '#00b7eb';
+                    currentModeEl.style.textShadow = is1PlayerMode ? '0 0 6px rgba(0,255,0,0.15)' : '0 0 6px rgba(0,183,235,0.12)';
+                }
+            }
+
+            // initialize from current UI
+            updateGameModeFromUI();
+
+            // wire up change listeners so toggling the radio updates the variable at runtime
+            const gameModeRadios = document.querySelectorAll('input[name="gameMode"]');
+            gameModeRadios.forEach(r => r.addEventListener('change', () => {
+                updateGameModeFromUI();
+            }));
         });
 
         // Grid setup
@@ -1338,6 +1430,7 @@
             document.getElementById('redScoreValue').textContent = player1.score;
             document.getElementById('blueScoreValue').textContent = player2.score;
             document.getElementById('controlBox').style.display = 'none';
+            document.getElementById("score-value").textContent = player1.score;
         }
 
         // Restart button handler for game over
@@ -1670,11 +1763,35 @@
             renderer.render(scene, camera);
         }
 
+
+        function submitScoreToGameCenter(score, leaderboardId) {
+            window.webkit?.messageHandlers.gridWarsHandler.postMessage({
+                action: "submitScore",
+                score: score,
+                leaderboardId: leaderboardId
+            });
+        }  
+
+        function addButtonListeners(buttonId, callback) {
+            const button = document.getElementById(buttonId);
+            if (!button) return;
+            button.addEventListener('click', (event) => handleButtonInteraction(event, callback));
+            button.addEventListener('touchstart', (event) => {
+                if (event.touches && event.touches.length === 1) {
+                    handleButtonInteraction(event, callback);
+                }
+            }, { passive: false });
+        }
+
+        addButtonListeners('submit-score', () => {
+            submitScoreToGameCenter(redScore, "tronAIxLeaderboard1");
+            showMessage('Score submitted to Game Center!');
+        });
+
         // Welcome screen button handlers
         document.getElementById('playButton').addEventListener('click', (e) => {
             e.stopPropagation();
             document.getElementById('welcomeScreen').style.display = 'none';
-            is1PlayerMode = true;
             setupGrid();
             speedMultiplier = selectedSpeed;
             updateInterval = baseUpdateInterval / speedMultiplier;
